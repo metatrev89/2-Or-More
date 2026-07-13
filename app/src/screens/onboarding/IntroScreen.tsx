@@ -38,7 +38,11 @@ const WORDS = [
   { text: 'minutes per day', bottom: '15%', left: 40, color: colors.gold, size: 20, dur: 6400, rot: '-1deg' },
 ];
 
-/** Gentle horizontal nudge on the swipe hint chevron. */
+/**
+ * Swipe hint, optically centered: an invisible mirror slot on the left
+ * balances the chevron slot on the right, so "Swipe" sits at true center
+ * and the chevron nudges inside a fixed-width slot (no layout shift).
+ */
 function SwipeHint() {
   const x = useSharedValue(0);
   useEffect(() => {
@@ -46,9 +50,12 @@ function SwipeHint() {
   }, [x]);
   const style = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-      <Text style={{ fontFamily: fonts.sans, fontSize: 13, color: colors.warmGray }}>Swipe</Text>
-      <Animated.Text style={[{ fontSize: 16, color: colors.warmGray }, style]}>›</Animated.Text>
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ width: 28 }} />
+      <Text style={{ fontFamily: fonts.sans, fontSize: 13, color: colors.warmGray, textAlign: 'center' }}>Swipe</Text>
+      <View style={{ width: 28, alignItems: 'flex-start', paddingLeft: 6 }}>
+        <Animated.Text style={[{ fontSize: 16, lineHeight: 18, color: colors.warmGray }, style]}>›</Animated.Text>
+      </View>
     </View>
   );
 }
@@ -111,11 +118,11 @@ export default function IntroScreen({ navigation }: NativeStackScreenProps<RootS
       </ScrollView>
 
       <View style={{ alignItems: 'center', paddingHorizontal: 44, paddingBottom: 44, gap: 22 }}>
-        {/* page markers */}
-        <View style={{ flexDirection: 'row', gap: 8 }}>
+        {/* page markers — fixed size, color-only state change (no layout shift) */}
+        <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'center' }}>
           {MANIFESTO_LINES.map((_, i) => (
             <View key={i} style={{
-              width: i === page ? 30 : 22, height: 3, borderRadius: 1.5,
+              width: 22, height: 3, borderRadius: 1.5,
               backgroundColor: i <= page ? colors.ink : colors.sand,
             }} />
           ))}
