@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Keyboard, Platform, Alert } from 'react-native';
 import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'react-native';
@@ -91,6 +91,10 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
 
   const attachPhoto = async (source: 'library' | 'camera' = 'library') => {
     setPhotoSheet(false);
+    if (source === 'camera') {
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (!perm.granted) { Alert.alert('Camera access needed', 'Enable camera access in Settings to take a photo.'); return; }
+    }
     const res = source === 'camera'
       ? await ImagePicker.launchCameraAsync({ quality: 0.8 })
       : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
@@ -188,7 +192,7 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
                 style={{ fontFamily: fonts.sans, fontSize: 16, color: colors.ink, paddingHorizontal: 4 }}
               />
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <Pressable onPress={() => setPhotoSheet(true)} style={{
+                <Pressable onPress={() => { Keyboard.dismiss(); setPhotoSheet(true); }} style={{
                   width: 44, height: 44, borderRadius: 22, backgroundColor: colors.white,
                   borderWidth: 1, borderColor: colors.sand, alignItems: 'center', justifyContent: 'center',
                 }}>

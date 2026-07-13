@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { View, Text, Pressable } from 'react-native';
-import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
+import React, { useEffect, useState } from 'react';
+import { View, Text, Pressable, Alert } from 'react-native';
+import Animated, { FadeIn, FadeInUp, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import Svg, { Path } from 'react-native-svg';
 import * as ImagePicker from 'expo-image-picker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
@@ -17,6 +18,23 @@ const VOICE_BARS: Record<'aria' | 'james', number[]> = {
   aria: [10, 16, 8],
   james: [14, 9, 15],
 };
+
+/** Opacity shimmer, matching the design's `shimmer` keyframes. */
+function Shimmer({ children, dur = 1600, style }: { children: React.ReactNode; dur?: number; style?: object }) {
+  const op = useSharedValue(0.35);
+  useEffect(() => { op.value = withRepeat(withTiming(1, { duration: dur / 2 }), -1, true); }, [op, dur]);
+  const anim = useAnimatedStyle(() => ({ opacity: op.value }));
+  return <Animated.View style={[anim, style]}>{children}</Animated.View>;
+}
+
+/** The 8-point AI spark from the design bundle (white, stroked). */
+function SparkIcon({ size = 18 }: { size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 14 14" fill="none" stroke={colors.white} strokeWidth={1.6} strokeLinecap="round">
+      <Path d="M7 1v12M1 7h12M2.8 2.8l8.4 8.4M11.2 2.8l-8.4 8.4" />
+    </Svg>
+  );
+}
 
 /**
  * Creation moment (design screen 8): voice choice (BIPA consent lives in the
@@ -58,7 +76,12 @@ export default function CreationScreen({ navigation }: NativeStackScreenProps<Ro
   };
 
   const takeSelfie = async () => {
-    const res = await ImagePicker.launchCameraAsync({ quality: 0.8 });
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('Camera access needed', 'Enable camera access for Expo Go in Settings to take a selfie, or choose from your library instead.');
+      return;
+    }
+    const res = await ImagePicker.launchCameraAsync({ quality: 0.8, cameraType: 'front' });
     const uri = res.assets?.[0]?.uri;
     if (uri) { set({ profilePhotoUri: uri }); runBuild(); }
   };
@@ -226,17 +249,35 @@ export default function CreationScreen({ navigation }: NativeStackScreenProps<Ro
       {step === 'building' && (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           {!ready ? (
-            <Serif size={24} color={colors.cream}>{CREATION_LINES[lineIdx]}</Serif>
+            <View style={{ alignItems: 'center' }}>
+              <Shimmer dur={1600} style={{ marginBottom: 30 }}>
+                <View style={{
+                  width: 44, height: 44, borderRadius: 22, backgroundColor: colors.teal,
+                  alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <SparkIcon size={18} />
+                </View>
+              </Shimmer>
+              <Shimmer dur={2400}>
+                <Serif size={24} color={colors.cream} style={{ textAlign: 'center' }}>{CREATION_LINES[lineIdx]}</Serif>
+              </Shimmer>
+            </View>
           ) : (
             <Animated.View entering={FadeInUp.duration(600)} style={{ alignItems: 'center' }}>
-              <Serif size={30} color={colors.cream} style={{ textAlign: 'center' }}>
-                Your practice{'\n'}starts now.
+              <Serif size={30} color={colors.cream} style={{ textAlign: 'center', lineHeight: 40 }}>
+                Your practice{'\n'}is ready.
               </Serif>
+              <Text style={{
+                fontFamily: fonts.sans, fontSize: 14, color: 'rgba(250,244,232,0.6)',
+                textAlign: 'center', lineHeight: 21, marginTop: 16,
+              }}>
+                Images and your mind movie keep rendering{'\n'}in the background.
+              </Text>
               <PillButton
                 label="Enter 2+" height={54}
                 bg={colors.gold} color={colors.ink}
                 onPress={() => navigation.reset({ index: 0, routes: [{ name: 'Main' }] })}
-                style={{ marginTop: 38, paddingHorizontal: 44 }}
+                style={{ marginTop: 36, paddingHorizontal: 48 }}
               />
             </Animated.View>
           )}
