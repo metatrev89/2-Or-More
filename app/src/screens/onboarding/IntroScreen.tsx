@@ -1,12 +1,11 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, Pressable } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, Pressable, ScrollView, NativeSyntheticEvent, NativeScrollEvent, useWindowDimensions } from 'react-native';
 import Animated, { FadeIn, FadeInUp, useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing } from 'react-native-reanimated';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
 import { colors, fonts, timing } from '../../theme';
 import { MANIFESTO_LINES } from '../../api/mockData';
 import { PillButton, Serif } from '../../components/ui';
-import { useStore } from '../../store';
 
 /** Drifting serif word from the cold open (design: drift1/2/3 keyframes). */
 function DriftWord({ text, top, left, right, bottom, color, size, dur, rot }: {
@@ -39,56 +38,106 @@ const WORDS = [
   { text: 'minutes per day', bottom: '15%', left: 40, color: colors.gold, size: 20, dur: 6400, rot: '-1deg' },
 ];
 
+/** Gentle horizontal nudge on the swipe hint chevron. */
+function SwipeHint() {
+  const x = useSharedValue(0);
+  useEffect(() => {
+    x.value = withRepeat(withTiming(6, { duration: 700, easing: Easing.inOut(Easing.ease) }), -1, true);
+  }, [x]);
+  const style = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+      <Text style={{ fontFamily: fonts.sans, fontSize: 13, color: colors.warmGray }}>Swipe</Text>
+      <Animated.Text style={[{ fontSize: 16, color: colors.warmGray }, style]}>›</Animated.Text>
+    </View>
+  );
+}
+
 export default function IntroScreen({ navigation }: NativeStackScreenProps<RootStackParamList, 'Intro'>) {
-  const [step, setStep] = useState(0);
+  const [showPager, setShowPager] = useState(false);
+  const [page, setPage] = useState(0);
+  const { width } = useWindowDimensions();
+  const pagerRef = useRef<ScrollView>(null);
 
   useEffect(() => {
-    if (step === 0) {
-      const t = setTimeout(() => setStep(1), timing.introAutoAdvanceMs);
-      return () => clearTimeout(t);
-    }
-  }, [step]);
+    const t = setTimeout(() => setShowPager(true), timing.introAutoAdvanceMs);
+    return () => clearTimeout(t);
+  }, []);
 
-  const advance = () => { if (step < 3) setStep(step + 1); };
+  const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const p = Math.round(e.nativeEvent.contentOffset.x / width);
+    if (p !== page) setPage(p);
+  };
+
+  const onLast = page === MANIFESTO_LINES.length - 1;
   const toSignup = () => navigation.replace('Signup');
 
-  return (
-    <Pressable onPress={advance} style={{ flex: 1, backgroundColor: colors.cream, alignItems: 'center', justifyContent: 'center', padding: 44 }}>
-      {step === 0 ? (
-        <>
-          <Animated.View entering={FadeIn.duration(1400)} pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
-            {WORDS.map(w => <DriftWord key={w.text} {...w} />)}
-          </Animated.View>
-          <Animated.View entering={FadeInUp.duration(900)} style={{ alignItems: 'center' }}>
-            <Text style={{ fontFamily: fonts.sansSemi, fontSize: 76, color: colors.ink, letterSpacing: -2 }}>
-              2<Text style={{ color: colors.gold }}>+</Text>
-            </Text>
-            <Serif size={21} color={colors.warmGray} style={{ marginTop: 28, textAlign: 'center', maxWidth: 260 }}>
-              “Wherever two or more are in agreement…”
-            </Serif>
-          </Animated.View>
-        </>
-      ) : (
-        <>
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-            <Animated.View key={step} entering={FadeInUp.duration(700)}>
-              <Serif size={32} style={{ textAlign: 'center', maxWidth: 300, lineHeight: 45 }}>
-                {MANIFESTO_LINES[Math.min(step, 3) - 1]}
-              </Serif>
-            </Animated.View>
-          </View>
-          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 36 }}>
-            {[1, 2, 3].map(i => (
-              <View key={i} style={{ width: 22, height: 2, borderRadius: 1, backgroundColor: i <= step ? colors.ink : colors.sand }} />
-            ))}
-          </View>
-          <PillButton label="Begin" onPress={toSignup} style={{ alignSelf: 'stretch' }} />
-          <Text style={{ marginTop: 18, fontFamily: fonts.sans, fontSize: 14, color: colors.warmGray }}>
-            Already have an account?{' '}
-            <Text onPress={toSignup} style={{ fontFamily: fonts.sansMedium, color: colors.ink }}>Sign in</Text>
+  if (!showPager) {
+    return (
+      <Pressable onPress={() => setShowPager(true)} style={{ flex: 1, backgroundColor: colors.cream, alignItems: 'center', justifyContent: 'center', padding: 44 }}>
+        <Animated.View entering={FadeIn.duration(1400)} pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
+          {WORDS.map(w => <DriftWord key={w.text} {...w} />)}
+        </Animated.View>
+        <Animated.View entering={FadeInUp.duration(900)} style={{ alignItems: 'center' }}>
+          <Text style={{ fontFamily: fonts.sansSemi, fontSize: 76, color: colors.ink, letterSpacing: -2 }}>
+            2<Text style={{ color: colors.gold }}>+</Text>
           </Text>
-        </>
-      )}
-    </Pressable>
+          <Serif size={21} color={colors.warmGray} style={{ marginTop: 28, textAlign: 'center', maxWidth: 260 }}>
+            “Wherever two or more are in agreement…”
+          </Serif>
+        </Animated.View>
+      </Pressable>
+    );
+  }
+
+  return (
+    <Animated.View entering={FadeIn.duration(400)} style={{ flex: 1, backgroundColor: colors.cream }}>
+      <ScrollView
+        ref={pagerRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onScroll={onScroll}
+        scrollEventThrottle={32}
+        style={{ flex: 1 }}
+      >
+        {MANIFESTO_LINES.map((line, i) => (
+          <View key={i} style={{ width, alignItems: 'center', justifyContent: 'center', padding: 44 }}>
+            <Serif size={32} style={{ textAlign: 'center', maxWidth: 300, lineHeight: 45 }}>
+              {line}
+            </Serif>
+          </View>
+        ))}
+      </ScrollView>
+
+      <View style={{ alignItems: 'center', paddingHorizontal: 44, paddingBottom: 44, gap: 22 }}>
+        {/* page markers */}
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          {MANIFESTO_LINES.map((_, i) => (
+            <View key={i} style={{
+              width: i === page ? 30 : 22, height: 3, borderRadius: 1.5,
+              backgroundColor: i <= page ? colors.ink : colors.sand,
+            }} />
+          ))}
+        </View>
+
+        {/* swipe hint until the last card; Begin appears on card 3 */}
+        <View style={{ alignSelf: 'stretch', minHeight: 92, justifyContent: 'center' }}>
+          {onLast ? (
+            <Animated.View entering={FadeInUp.duration(450)}>
+              <PillButton label="Begin" onPress={toSignup} />
+              <Text style={{ marginTop: 18, textAlign: 'center', fontFamily: fonts.sans, fontSize: 14, color: colors.warmGray }}>
+                Already have an account?{' '}
+                <Text onPress={toSignup} style={{ fontFamily: fonts.sansMedium, color: colors.ink }}>Sign in</Text>
+              </Text>
+            </Animated.View>
+          ) : (
+            <View style={{ alignItems: 'center' }}>
+              <SwipeHint />
+            </View>
+          )}
+        </View>
+      </View>
+    </Animated.View>
   );
 }
