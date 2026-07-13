@@ -7,7 +7,9 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
 import { AREAS, colors, fonts, timing } from '../../theme';
 import { MOCK_SCRIPT } from '../../api/mockData';
-import { AiSpark, Mono, PillButton, SegmentBar, Wordmark } from '../../components/ui';
+import { AiSpark, BackButton, Mono, PillButton, SegmentBar, Wordmark } from '../../components/ui';
+import { CameraIcon, ClockIcon, LibraryIcon, MicIcon, PaperclipIcon } from '../../components/brandIcons';
+import { DancingBars, PulseRing } from '../../components/AnimatedBars';
 import { useStore } from '../../store';
 
 /**
@@ -19,6 +21,7 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
   const { msgs, scriptIdx, areaIdx, typing, listening, intakeDone, addMsg, set } = useStore();
   const [draft, setDraft] = useState('');
   const [chips, setChips] = useState<string[]>([]);
+  const [photoSheet, setPhotoSheet] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
   const scrollDown = () => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
@@ -86,8 +89,11 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
     scrollDown();
   };
 
-  const attachPhoto = async () => {
-    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
+  const attachPhoto = async (source: 'library' | 'camera' = 'library') => {
+    setPhotoSheet(false);
+    const res = source === 'camera'
+      ? await ImagePicker.launchCameraAsync({ quality: 0.8 })
+      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
     const uri = res.assets?.[0]?.uri;
     if (!uri) return;
     addMsg({ isAi: false, text: '', photoUri: uri });
@@ -108,8 +114,8 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
     <Animated.View entering={FadeIn.duration(400)} style={{ flex: 1, backgroundColor: colors.cream, paddingTop: 52 }}>
       <View style={{ alignItems: 'center', paddingVertical: 6 }}><Wordmark /></View>
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 22, paddingVertical: 8 }}>
-        <Pressable onPress={() => navigation.goBack()}><Text style={{ fontSize: 22, color: colors.ink }}>‹</Text></Pressable>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 22, paddingVertical: 2 }}>
+        <BackButton onPress={() => navigation.goBack()} />
         <SegmentBar total={7} activeCount={areaIdx + 1} />
         <Mono>{areaIdx + 1}/7</Mono>
       </View>
@@ -152,20 +158,20 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
             </View>
           </View>
         )}
+        {/* quick-reply chips live in the chat flow and scroll with it (design behavior) */}
+        {chips.length > 0 && !typing && !intakeDone && (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingTop: 2 }}>
+            {chips.map(c => (
+              <Pressable key={c} onPress={() => setDraft(`${c} — `)} style={{
+                backgroundColor: colors.white, borderWidth: 1, borderColor: colors.sand,
+                borderRadius: 20, paddingVertical: 9, paddingHorizontal: 16,
+              }}>
+                <Text style={{ fontFamily: fonts.sans, fontSize: 14, color: colors.ink }}>{c}</Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
       </ScrollView>
-
-      {chips.length > 0 && !typing && !intakeDone && (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 22, paddingBottom: 12 }}>
-          {chips.map(c => (
-            <Pressable key={c} onPress={() => setDraft(`${c} — `)} style={{
-              backgroundColor: colors.white, borderWidth: 1, borderColor: colors.sand,
-              borderRadius: 20, paddingVertical: 9, paddingHorizontal: 16,
-            }}>
-              <Text style={{ fontFamily: fonts.sans, fontSize: 14, color: colors.ink }}>{c}</Text>
-            </Pressable>
-          ))}
-        </View>
-      )}
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         {!intakeDone ? (
@@ -182,7 +188,7 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
                 style={{ fontFamily: fonts.sans, fontSize: 16, color: colors.ink, paddingHorizontal: 4 }}
               />
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <Pressable onPress={attachPhoto} style={{
+                <Pressable onPress={() => setPhotoSheet(true)} style={{
                   width: 44, height: 44, borderRadius: 22, backgroundColor: colors.white,
                   borderWidth: 1, borderColor: colors.sand, alignItems: 'center', justifyContent: 'center',
                 }}>
@@ -196,13 +202,21 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
                   }}>
                     <Text style={{ color: colors.cream, fontSize: 18 }}>↑</Text>
                   </Pressable>
+                ) : listening ? (
+                  <PulseRing size={44} color={colors.teal}>
+                    <View style={{
+                      width: 44, height: 44, borderRadius: 22, backgroundColor: colors.tealDeep,
+                      alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <DancingBars heights={[12, 18, 10, 15]} color={colors.white} />
+                    </View>
+                  </PulseRing>
                 ) : (
                   <Pressable onPress={micTap} style={{
-                    width: 44, height: 44, borderRadius: 22,
-                    backgroundColor: listening ? colors.tealDeep : colors.teal,
+                    width: 44, height: 44, borderRadius: 22, backgroundColor: colors.teal,
                     alignItems: 'center', justifyContent: 'center',
                   }}>
-                    <Text style={{ color: colors.white, fontSize: 18 }}>{listening ? '▮▮' : '🎙'}</Text>
+                    <MicIcon />
                   </Pressable>
                 )}
               </View>
@@ -216,6 +230,56 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
           </View>
         )}
       </KeyboardAvoidingView>
+
+      {/* photo sheet — the design's intermediate step before the system picker */}
+      {photoSheet && (
+        <>
+          <Pressable onPress={() => setPhotoSheet(false)} style={{
+            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(38,32,26,0.4)',
+          }} />
+          <Animated.View entering={FadeInUp.duration(300)} style={{
+            position: 'absolute', left: 8, right: 8, bottom: 8,
+            backgroundColor: colors.cream, borderRadius: 30, padding: 22, paddingHorizontal: 16, gap: 14,
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 10 }}>
+              <Text style={{ fontFamily: fonts.sansSemi, fontSize: 18, color: colors.ink }}>Library</Text>
+              <Pressable onPress={() => attachPhoto('library')}>
+                <Text style={{ fontFamily: fonts.sans, fontSize: 15, color: colors.teal }}>See all</Text>
+              </Pressable>
+            </View>
+            <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 2, overflow: 'hidden' }}>
+              <Pressable onPress={() => attachPhoto('camera')} style={{
+                width: 88, height: 88, borderRadius: 18, backgroundColor: colors.white,
+                borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center',
+              }}>
+                <CameraIcon size={26} />
+              </Pressable>
+              {['#EFE7D6', '#E4EDE9', '#F3E9D3'].map(bg => (
+                <Pressable key={bg} onPress={() => attachPhoto('library')} style={{
+                  width: 88, height: 88, borderRadius: 18, backgroundColor: bg,
+                  alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <LibraryIcon size={24} />
+                </Pressable>
+              ))}
+            </View>
+            <View style={{ backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 22, paddingHorizontal: 18, paddingVertical: 4 }}>
+              <Pressable onPress={() => attachPhoto('library')} style={{
+                flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 15,
+                borderBottomWidth: 1, borderBottomColor: colors.borderSoft,
+              }}>
+                <ClockIcon />
+                <Text style={{ fontFamily: fonts.sans, fontSize: 16, color: colors.ink }}>Recently uploaded</Text>
+              </Pressable>
+              <Pressable onPress={() => attachPhoto('library')} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 15 }}>
+                <PaperclipIcon />
+                <Text style={{ fontFamily: fonts.sans, fontSize: 16, color: colors.ink }}>Files</Text>
+              </Pressable>
+            </View>
+          </Animated.View>
+        </>
+      )}
     </Animated.View>
   );
 }

@@ -36,6 +36,97 @@ export function GoogleLogo({ size = 18 }: { size?: number }) {
   );
 }
 
+/** Microphone (design bundle glyph — used in chat input, voice screens). */
+export function MicIcon({ size = 20, color = colors.white }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <Rect x={9} y={2} width={6} height={12} rx={3} />
+      <Path d="M5 10v1a7 7 0 0 0 14 0v-1M12 18v4" />
+    </Svg>
+  );
+}
+
+/** Camera (design bundle glyph). */
+export function CameraIcon({ size = 18, color = colors.ink }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+      <Circle cx={12} cy={13} r={4} />
+    </Svg>
+  );
+}
+
+/** Photo library (design bundle glyph). */
+export function LibraryIcon({ size = 18, color = colors.warmGray }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <Rect x={3} y={3} width={18} height={18} rx={3} />
+      <Circle cx={8.5} cy={8.5} r={1.5} />
+      <Path d="M21 15l-5-5L5 21" />
+    </Svg>
+  );
+}
+
+/** Reword / regenerate arrow-circle (design bundle glyph — review screen). */
+export function RewordIcon({ size = 21, color = colors.teal }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M21 12a9 9 0 1 1-2.6-6.3" />
+      <Path d="M21 3v6h-6" />
+    </Svg>
+  );
+}
+
+/** Edit pencil (design bundle glyph — review screen). */
+export function PencilIcon({ size = 19, color = colors.warmGray }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" />
+    </Svg>
+  );
+}
+
+/** Clock (design bundle glyph — photo sheet "Recently uploaded"). */
+export function ClockIcon({ size = 20, color = colors.ink }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <Circle cx={12} cy={12} r={9} />
+      <Path d="M12 7v5l3 2" />
+    </Svg>
+  );
+}
+
+/** Paperclip (design bundle glyph — photo sheet "Files"). */
+export function PaperclipIcon({ size = 20, color = colors.ink }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+    </Svg>
+  );
+}
+
+/** Simple check (design bundle glyph). */
+export function CheckIcon({ size = 20, color = colors.cream, strokeWidth = 2.2 }: { size?: number; color?: string; strokeWidth?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M20 6L9 17l-5-5" />
+    </Svg>
+  );
+}
+
+/**
+ * Prime protocol selector: gold ring, gold check when selected (design:
+ * check stroke goes transparent when unselected — the ring stays).
+ */
+export function GoldCheckCircle({ size = 20, checked }: { size?: number; checked: boolean }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Circle cx={12} cy={12} r={9} stroke={colors.gold} strokeWidth={1.8} />
+      <Path d="M8.5 12.5l2.4 2.4 4.6-5.3" stroke={checked ? colors.gold : 'transparent'} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
 export function LockIcon({ size = 14, color = colors.warmGray }: { size?: number; color?: string }) {
   const h = size * (15 / 13);
   return (

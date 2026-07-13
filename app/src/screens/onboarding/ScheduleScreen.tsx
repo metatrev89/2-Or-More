@@ -4,7 +4,8 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
 import { colors, fonts } from '../../theme';
-import { Label, Mono, PillButton, Wordmark } from '../../components/ui';
+import { BackButton, Label, Mono, PillButton, Wordmark } from '../../components/ui';
+import { GoldCheckCircle } from '../../components/brandIcons';
 import { useStore } from '../../store';
 
 function fmtHour(h: number): string {
@@ -40,9 +41,7 @@ export default function ScheduleScreen({ navigation }: NativeStackScreenProps<Ro
     <Animated.View entering={FadeIn.duration(400)} style={{ flex: 1, backgroundColor: colors.cream }}>
       <ScrollView contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 52, paddingBottom: 36 }}>
         <View style={{ alignItems: 'center', paddingVertical: 6 }}><Wordmark /></View>
-        <Pressable onPress={() => navigation.goBack()} style={{ paddingVertical: 10, alignSelf: 'flex-start' }}>
-          <Text style={{ fontSize: 22, color: colors.ink }}>‹</Text>
-        </Pressable>
+        <BackButton onPress={() => navigation.goBack()} />
 
         <Text style={{ fontFamily: fonts.sansSemi, fontSize: 26, color: colors.ink, lineHeight: 33, marginTop: 8 }}>
           When should your affirmations find you?
@@ -57,7 +56,7 @@ export default function ScheduleScreen({ navigation }: NativeStackScreenProps<Ro
         }}>
           <View style={row}>
             <Label>Recommended</Label>
-            <Text style={{ fontSize: 18, color: prime ? colors.gold : 'transparent' }}>◉</Text>
+            <GoldCheckCircle checked={prime} />
           </View>
           <Text style={{ fontFamily: fonts.sansSemi, fontSize: 21, color: colors.ink, marginTop: 10 }}>Prime protocol</Text>
           <View style={{ gap: 9, marginTop: 14 }}>

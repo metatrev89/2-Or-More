@@ -4,7 +4,8 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
 import { colors, fonts } from '../../theme';
-import { Label, PillButton, Serif, Wordmark } from '../../components/ui';
+import { BackButton, Label, PillButton, Serif, Wordmark } from '../../components/ui';
+import { PencilIcon, RewordIcon } from '../../components/brandIcons';
 import { affText, useStore } from '../../store';
 
 /** Affirmation review — the "want → I am" reveal (design screen 5). */
@@ -33,9 +34,7 @@ export default function ReviewScreen({ navigation }: NativeStackScreenProps<Root
       <View style={{ alignItems: 'center', paddingVertical: 6 }}><Wordmark /></View>
 
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10 }}>
-        <Pressable onPress={() => reviewIndex > 0 ? set({ reviewIndex: reviewIndex - 1 }) : navigation.goBack()}>
-          <Text style={{ fontSize: 22, color: colors.ink }}>‹</Text>
-        </Pressable>
+        <BackButton onPress={() => reviewIndex > 0 ? set({ reviewIndex: reviewIndex - 1 }) : navigation.goBack()} />
         <Text style={{ fontFamily: fonts.sans, fontSize: 16, color: colors.ink }}>
           Affirmation {reviewIndex + 1} of {affirmations.length}
         </Text>
@@ -97,13 +96,13 @@ export default function ReviewScreen({ navigation }: NativeStackScreenProps<Root
           width: 58, height: 58, borderRadius: 29, borderWidth: 1.5, borderColor: colors.teal,
           alignItems: 'center', justifyContent: 'center',
         }}>
-          <Text style={{ fontSize: 20, color: colors.teal }}>↻</Text>
+          <RewordIcon />
         </Pressable>
         <Pressable onPress={() => { setEditing(true); setEditText(text); }} style={{
           width: 58, height: 58, borderRadius: 29, borderWidth: 1.5, borderColor: colors.sand,
           alignItems: 'center', justifyContent: 'center',
         }}>
-          <Text style={{ fontSize: 18, color: colors.warmGray }}>✎</Text>
+          <PencilIcon />
         </Pressable>
       </View>
       <Text style={{ textAlign: 'center', fontFamily: fonts.sans, fontSize: 13, color: colors.inactive, marginTop: 10 }}>

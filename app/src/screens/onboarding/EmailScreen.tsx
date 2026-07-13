@@ -40,7 +40,7 @@ export default function EmailScreen({ navigation, route }: NativeStackScreenProp
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={12}
-      style={{ flex: 1, paddingHorizontal: 28, paddingTop: 52, paddingBottom: Math.max(insets.bottom, 16) + 20 }}
+      style={{ flex: 1, paddingHorizontal: 28, paddingTop: 52, paddingBottom: Math.max(insets.bottom, 34) + 24 }}
     >
       <View style={{ alignItems: 'center', paddingVertical: 6 }}><Wordmark /></View>
       <BackButton onPress={() => navigation.goBack()} />
@@ -71,7 +71,15 @@ export default function EmailScreen({ navigation, route }: NativeStackScreenProp
         ) : (
           <View style={{ gap: 7 }}>
             <Label>Email</Label>
-            <TextInput value={email} onChangeText={setEmail} placeholder="you@example.com" placeholderTextColor={colors.inactive} autoCapitalize="none" keyboardType="email-address" style={field} />
+            <TextInput
+              value={email} onChangeText={setEmail}
+              placeholder="you@example.com" placeholderTextColor={colors.inactive}
+              autoCapitalize="none" keyboardType="email-address"
+              returnKeyType="next"
+              blurOnSubmit={false}
+              onSubmitEditing={() => passRef.current?.focus()}
+              style={field}
+            />
           </View>
         )}
         <View style={{ gap: 7 }}>
