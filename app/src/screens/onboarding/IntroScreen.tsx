@@ -79,6 +79,13 @@ export default function IntroScreen({ navigation }: NativeStackScreenProps<RootS
   const onLast = page === MANIFESTO_LINES.length - 1;
   const toSignup = () => navigation.replace('Signup');
 
+  /** Tap anywhere advances one card (swipe still works); last card is the Begin button's job. */
+  const advance = () => {
+    if (page < MANIFESTO_LINES.length - 1) {
+      pagerRef.current?.scrollTo({ x: (page + 1) * width, animated: true });
+    }
+  };
+
   if (!showPager) {
     return (
       <Pressable onPress={() => setShowPager(true)} style={{ flex: 1, backgroundColor: colors.cream, alignItems: 'center', justifyContent: 'center', padding: 44 }}>
@@ -109,11 +116,11 @@ export default function IntroScreen({ navigation }: NativeStackScreenProps<RootS
         style={{ flex: 1 }}
       >
         {MANIFESTO_LINES.map((line, i) => (
-          <View key={i} style={{ width, alignItems: 'center', justifyContent: 'center', padding: 44 }}>
+          <Pressable key={i} onPress={advance} style={{ width, alignItems: 'center', justifyContent: 'center', padding: 44 }}>
             <Serif size={32} style={{ textAlign: 'center', maxWidth: 300, lineHeight: 45 }}>
               {line}
             </Serif>
-          </View>
+          </Pressable>
         ))}
       </ScrollView>
 
