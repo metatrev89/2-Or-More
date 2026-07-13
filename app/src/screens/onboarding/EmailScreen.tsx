@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { View, Text, TextInput, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
@@ -17,6 +18,7 @@ export default function EmailScreen({ navigation, route }: NativeStackScreenProp
   const [pass, setPass] = useState('');
   const [showPass, setShowPass] = useState(false);
   const passRef = useRef<TextInput>(null);
+  const insets = useSafeAreaInsets();
 
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const valid = isSignup ? pass.length >= 8 && name.trim().length > 0 : emailOk && pass.length > 0;
@@ -37,7 +39,8 @@ export default function EmailScreen({ navigation, route }: NativeStackScreenProp
     <Animated.View entering={FadeIn.duration(400)} style={{ flex: 1, backgroundColor: colors.cream }}>
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={{ flex: 1, paddingHorizontal: 28, paddingTop: 52, paddingBottom: 24 }}
+      keyboardVerticalOffset={12}
+      style={{ flex: 1, paddingHorizontal: 28, paddingTop: 52, paddingBottom: Math.max(insets.bottom, 16) + 20 }}
     >
       <View style={{ alignItems: 'center', paddingVertical: 6 }}><Wordmark /></View>
       <BackButton onPress={() => navigation.goBack()} />
