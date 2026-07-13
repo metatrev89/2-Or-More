@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { View, Text, TextInput, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
 import { colors, fonts } from '../../theme';
 import { BackButton, Label, PillButton, Wordmark } from '../../components/ui';
+import { EyeIcon } from '../../components/brandIcons';
 import { useStore } from '../../store';
 
 export default function EmailScreen({ navigation, route }: NativeStackScreenProps<RootStackParamList, 'Email'>) {
@@ -15,6 +16,7 @@ export default function EmailScreen({ navigation, route }: NativeStackScreenProp
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
   const [showPass, setShowPass] = useState(false);
+  const passRef = useRef<TextInput>(null);
 
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const valid = isSignup ? pass.length >= 8 && name.trim().length > 0 : emailOk && pass.length > 0;
@@ -32,7 +34,11 @@ export default function EmailScreen({ navigation, route }: NativeStackScreenProp
   } as const;
 
   return (
-    <Animated.View entering={FadeIn.duration(400)} style={{ flex: 1, backgroundColor: colors.cream, paddingHorizontal: 28, paddingTop: 52, paddingBottom: 36 }}>
+    <Animated.View entering={FadeIn.duration(400)} style={{ flex: 1, backgroundColor: colors.cream }}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ flex: 1, paddingHorizontal: 28, paddingTop: 52, paddingBottom: 24 }}
+    >
       <View style={{ alignItems: 'center', paddingVertical: 6 }}><Wordmark /></View>
       <BackButton onPress={() => navigation.goBack()} />
       <Text style={{ fontFamily: fonts.sansSemi, fontSize: 26, color: colors.ink, letterSpacing: -0.5, marginTop: 10 }}>
@@ -50,7 +56,14 @@ export default function EmailScreen({ navigation, route }: NativeStackScreenProp
         {isSignup ? (
           <View style={{ gap: 7 }}>
             <Label>Name</Label>
-            <TextInput value={name} onChangeText={setName} placeholder="What should we call you?" placeholderTextColor={colors.inactive} style={field} />
+            <TextInput
+              value={name} onChangeText={setName}
+              placeholder="What should we call you?" placeholderTextColor={colors.inactive}
+              returnKeyType="next"
+              blurOnSubmit={false}
+              onSubmitEditing={() => passRef.current?.focus()}
+              style={field}
+            />
           </View>
         ) : (
           <View style={{ gap: 7 }}>
@@ -62,14 +75,17 @@ export default function EmailScreen({ navigation, route }: NativeStackScreenProp
           <Label>Password</Label>
           <View>
             <TextInput
+              ref={passRef}
               value={pass} onChangeText={setPass}
               placeholder={isSignup ? 'Create a password' : 'Your password'}
               placeholderTextColor={colors.inactive}
               secureTextEntry={!showPass}
+              returnKeyType="go"
+              onSubmitEditing={submit}
               style={[field, { paddingRight: 50 }]}
             />
-            <Pressable onPress={() => setShowPass(!showPass)} style={{ position: 'absolute', right: 6, top: 6, width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontSize: 16, color: colors.warmGray }}>{showPass ? '🙈' : '👁'}</Text>
+            <Pressable onPress={() => setShowPass(!showPass)} hitSlop={6} style={{ position: 'absolute', right: 6, top: 6, width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}>
+              <EyeIcon slashed={showPass} />
             </Pressable>
           </View>
           {isSignup && (
@@ -94,6 +110,7 @@ export default function EmailScreen({ navigation, route }: NativeStackScreenProp
         bg={valid ? colors.ink : colors.border}
         color={valid ? colors.cream : colors.inactive}
       />
+    </KeyboardAvoidingView>
     </Animated.View>
   );
 }

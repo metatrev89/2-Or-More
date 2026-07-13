@@ -1,6 +1,19 @@
 import React from 'react';
-import Svg, { Path, Rect } from 'react-native-svg';
+import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { colors } from '../theme';
+
+/** Password visibility eye (design bundle glyphs): plain eye, or slashed when the password is shown. */
+export function EyeIcon({ size = 20, slashed = false, color = colors.warmGray }: {
+  size?: number; slashed?: boolean; color?: string;
+}) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z" />
+      <Circle cx={12} cy={12} r={3} />
+      {slashed && <Path d="M4 4l16 16" />}
+    </Svg>
+  );
+}
 
 /** Vector marks extracted verbatim from the design bundle (2+ First-Run.dc.html). */
 
