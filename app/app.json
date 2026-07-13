@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "2+",
+    "slug": "twoplus",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#FAF4E8",
+    "splash": {
+      "backgroundColor": "#FAF4E8"
+    },
+    "ios": {
+      "bundleIdentifier": "com.highnoon.twoplus",
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "com.highnoon.twoplus"
+    },
+    "plugins": [
+      "expo-font"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "8de97b82-410f-4082-a230-406b121ec504"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/8de97b82-410f-4082-a230-406b121ec504"
+    }
+  }
+}

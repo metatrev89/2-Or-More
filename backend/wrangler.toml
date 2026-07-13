@@ -1,0 +1,37 @@
+# Cloudflare deployment config for the 2+ backend.
+# API runs as a Worker (Hono app.fetch); the media pipeline runs as a
+# Workflow whose ffmpeg step executes in a Container.
+
+name = "twoplus-backend"
+main = "src/cf/entry.ts"          # Worker entry: exports Hono fetch + Workflow bindings (to be added at deploy step)
+compatibility_date = "2026-07-01"
+compatibility_flags = ["nodejs_compat"]
+
+[[workflows]]
+binding = "MIND_MOVIE_WORKFLOW"
+name = "mind-movie"
+class_name = "MindMovieWorkflow"
+
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "twoplus-media"
+
+# Container for ffmpeg stitching (Dockerfile at repo root).
+# Sizing note: 45s 1080p concat is modest — standard instance is sufficient.
+[[containers]]
+name = "stitcher"
+image = "./Dockerfile"
+instance_type = "standard"
+
+[vars]
+PROVIDER_INTAKE_LLM = "live"
+PROVIDER_REWRITE_LLM = "live"
+PROVIDER_TTS = "live"
+PROVIDER_IMAGE = "live"
+PROVIDER_VIDEO = "live"
+PROVIDER_STORAGE = "r2"
+VIDEO_VENDOR = "ltx"              # bake-off winner
+
+# Secrets (set via `wrangler secret put`): META_MODEL_API_KEY, TOGETHER_API_KEY,
+# FISH_AUDIO_API_KEY, FAL_API_KEY, LTX_API_KEY, SUPABASE_SERVICE_ROLE_KEY,
+# REVENUECAT_WEBHOOK_SECRET, R2 credentials.

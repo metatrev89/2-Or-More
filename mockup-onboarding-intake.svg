@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="380" height="700" viewBox="0 0 380 700">
+  <rect x="0" y="0" width="380" height="700" rx="36" fill="#FAF4E8" stroke="#D9CBB0" stroke-width="1"/>
+
+  <path d="M 38 46 L 28 54 L 38 62" stroke="#8A7A66" stroke-width="2" fill="none"/>
+  <g>
+    <rect x="70" y="50" width="30" height="7" rx="3.5" fill="#157A6E"/>
+    <rect x="106" y="50" width="30" height="7" rx="3.5" fill="#157A6E"/>
+    <rect x="142" y="50" width="30" height="7" rx="3.5" fill="#157A6E"/>
+    <rect x="178" y="50" width="30" height="7" rx="3.5" fill="#E8DEC9"/>
+    <rect x="214" y="50" width="30" height="7" rx="3.5" fill="#E8DEC9"/>
+    <rect x="250" y="50" width="30" height="7" rx="3.5" fill="#E8DEC9"/>
+    <rect x="286" y="50" width="30" height="7" rx="3.5" fill="#E8DEC9"/>
+  </g>
+  <text x="330" y="60" font-family="DejaVu Sans" font-size="12" fill="#8A7A66">3/7</text>
+  <text x="28" y="94" font-family="DejaVu Sans" font-size="11" fill="#8A7A66" letter-spacing="1">FITNESS &amp; HEALTH</text>
+
+  <circle cx="42" cy="130" r="14" fill="#157A6E"/>
+  <text x="36" y="136" font-family="DejaVu Sans" font-size="13" fill="#FAF4E8">*</text>
+  <path d="M 64 116 L 328 116 Q 342 116 342 130 L 342 176 Q 342 190 328 190 L 78 190 Q 64 190 64 176 Z" fill="#FFFFFF" stroke="#E8DEC9" stroke-width="1"/>
+  <text x="78" y="138" font-family="DejaVu Sans" font-size="13" fill="#26201A">You mentioned losing 70 pounds —</text>
+  <text x="78" y="156" font-family="DejaVu Sans" font-size="13" fill="#26201A">that's huge. What does the finish</text>
+  <text x="78" y="174" font-family="DejaVu Sans" font-size="13" fill="#26201A">line look like for you?</text>
+
+  <path d="M 130 210 Q 116 210 116 224 L 116 252 Q 116 266 130 266 L 338 266 Q 352 266 352 252 L 352 224 Q 352 210 352 210 Z" fill="#26201A"/>
+  <text x="132" y="232" font-family="DejaVu Sans" font-size="13" fill="#FAF4E8">Lose 20 more, then maintain and</text>
+  <text x="132" y="250" font-family="DejaVu Sans" font-size="13" fill="#FAF4E8">keep my bloodwork immaculate</text>
+
+  <circle cx="42" cy="308" r="14" fill="#157A6E"/>
+  <text x="36" y="314" font-family="DejaVu Sans" font-size="13" fill="#FAF4E8">*</text>
+  <path d="M 64 294 L 316 294 Q 330 294 330 308 L 330 336 Q 330 350 316 350 L 78 350 Q 64 350 64 336 Z" fill="#FFFFFF" stroke="#E8DEC9" stroke-width="1"/>
+  <text x="78" y="316" font-family="DejaVu Sans" font-size="13" fill="#26201A">And why does that matter to you —</text>
+  <text x="78" y="334" font-family="DejaVu Sans" font-size="13" fill="#26201A">who are you doing it for?</text>
+
+  <g>
+    <rect x="28" y="374" width="74" height="30" rx="15" fill="none" stroke="#D9CBB0" stroke-width="1"/>
+    <text x="42" y="393" font-family="DejaVu Sans" font-size="12" fill="#5F5347">My kids</text>
+    <rect x="110" y="374" width="66" height="30" rx="15" fill="none" stroke="#D9CBB0" stroke-width="1"/>
+    <text x="124" y="393" font-family="DejaVu Sans" font-size="12" fill="#5F5347">Energy</text>
+    <rect x="184" y="374" width="84" height="30" rx="15" fill="none" stroke="#D9CBB0" stroke-width="1"/>
+    <text x="198" y="393" font-family="DejaVu Sans" font-size="12" fill="#5F5347">Longevity</text>
+    <rect x="276" y="374" width="92" height="30" rx="15" fill="none" stroke="#D9CBB0" stroke-width="1"/>
+    <text x="290" y="393" font-family="DejaVu Sans" font-size="12" fill="#5F5347">Confidence</text>
+  </g>
+
+  <rect x="28" y="620" width="270" height="44" rx="22" fill="#FFFFFF" stroke="#D9CBB0" stroke-width="1"/>
+  <text x="46" y="647" font-family="DejaVu Sans" font-size="13" fill="#B5A88F">Type or speak…</text>
+  <circle cx="330" cy="642" r="22" fill="#157A6E"/>
+  <rect x="326" y="630" width="8" height="14" rx="4" fill="#FAF4E8"/>
+  <path d="M 322 640 C 322 650 338 650 338 640 M 330 650 L 330 655" stroke="#FAF4E8" stroke-width="2" fill="none"/>
+</svg>

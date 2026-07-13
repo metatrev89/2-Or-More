@@ -1,0 +1,25 @@
+# dependencies
+node_modules/
+
+# secrets — NEVER commit real env files (templates: .env.example)
+.env
+.env.*
+!.env.example
+
+# builds & caches
+dist/
+.expo/
+*.tsbuildinfo
+install.log
+*.log
+
+# generated media (demo output, local storage provider)
+.media/
+
+# OS
+.DS_Store
+
+# redundant archive (extracted copy lives in design-handoff/)
+# 2+ First Design Pass-handoff.zip
+"# 2+ First Design Pass-handoff.zip"
+*.zip

@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="380" height="700" viewBox="0 0 380 700">
+  <rect x="0" y="0" width="380" height="700" rx="36" fill="#FAF4E8" stroke="#D9CBB0" stroke-width="1"/>
+
+  <path d="M 38 46 L 28 54 L 38 62" stroke="#8A7A66" stroke-width="2" fill="none"/>
+  <text x="130" y="59" font-family="DejaVu Sans" font-size="12" fill="#8A7A66">Affirmation 2 of 7</text>
+  <rect x="278" y="42" width="78" height="26" rx="13" fill="none" stroke="#D9CBB0" stroke-width="1"/>
+  <text x="292" y="59" font-family="DejaVu Sans" font-size="11" fill="#5F5347">Business</text>
+
+  <rect x="28" y="94" width="3" height="76" fill="#D9CBB0"/>
+  <text x="44" y="112" font-family="DejaVu Sans" font-size="11" fill="#8A7A66" letter-spacing="1">YOU SAID</text>
+  <text x="44" y="134" font-family="DejaVu Sans" font-size="13" fill="#8A7A66">"I want to make seven figures this</text>
+  <text x="44" y="152" font-family="DejaVu Sans" font-size="13" fill="#8A7A66">year from my business."</text>
+
+  <line x1="28" y1="200" x2="104" y2="200" stroke="#E8DEC9" stroke-width="1"/>
+  <rect x="112" y="187" width="156" height="26" rx="13" fill="#DFF0ED"/>
+  <text x="126" y="204" font-family="DejaVu Sans" font-size="11" fill="#0E5A50">+ Rewritten as I am</text>
+  <line x1="276" y1="200" x2="352" y2="200" stroke="#E8DEC9" stroke-width="1"/>
+
+  <rect x="28" y="228" width="324" height="190" rx="16" fill="#FFFFFF" stroke="#E8DEC9" stroke-width="1"/>
+  <text x="48" y="266" font-family="DejaVu Serif" font-size="17" font-style="italic" fill="#26201A">"I run a profitable business</text>
+  <text x="48" y="292" font-family="DejaVu Serif" font-size="17" font-style="italic" fill="#26201A">that gives me a seven-figure</text>
+  <text x="48" y="318" font-family="DejaVu Serif" font-size="17" font-style="italic" fill="#26201A">income, delighting every</text>
+  <text x="48" y="344" font-family="DejaVu Serif" font-size="17" font-style="italic" fill="#26201A">client I serve."</text>
+  <path d="M 50 378 L 50 390 L 58 390 L 66 398 L 66 370 L 58 378 Z" fill="#157A6E"/>
+  <text x="78" y="389" font-family="DejaVu Sans" font-size="12" fill="#8A7A66">Hear it in your voice</text>
+
+  <rect x="28" y="442" width="212" height="46" rx="23" fill="#26201A"/>
+  <text x="98" y="470" font-family="DejaVu Sans" font-size="14" font-weight="500" fill="#FAF4E8">Keep it</text>
+  <circle cx="278" cy="465" r="23" fill="none" stroke="#157A6E" stroke-width="1.5"/>
+  <path d="M 270 465 A 8 8 0 1 1 278 473 M 278 473 L 274 470 M 278 473 L 281 469" stroke="#157A6E" stroke-width="1.8" fill="none"/>
+  <circle cx="330" cy="465" r="23" fill="none" stroke="#D9CBB0" stroke-width="1.5"/>
+  <path d="M 323 472 L 334 461 L 337 464 L 326 475 L 322 476 Z" stroke="#5F5347" stroke-width="1.4" fill="none"/>
+  <text x="140" y="512" font-family="DejaVu Sans" font-size="11" fill="#B5A88F">Reword · Edit</text>
+
+  <g>
+    <rect x="28" y="640" width="42" height="6" rx="3" fill="#E9B84C"/>
+    <rect x="76" y="640" width="42" height="6" rx="3" fill="#E9B84C"/>
+    <rect x="124" y="640" width="42" height="6" rx="3" fill="#E8DEC9"/>
+    <rect x="172" y="640" width="42" height="6" rx="3" fill="#E8DEC9"/>
+    <rect x="220" y="640" width="42" height="6" rx="3" fill="#E8DEC9"/>
+    <rect x="268" y="640" width="42" height="6" rx="3" fill="#E8DEC9"/>
+    <rect x="316" y="640" width="36" height="6" rx="3" fill="#E8DEC9"/>
+  </g>
+</svg>

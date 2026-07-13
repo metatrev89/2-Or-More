@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="380" height="700" viewBox="0 0 380 700">
+  <rect x="0" y="0" width="380" height="700" rx="36" fill="#FAF4E8" stroke="#D9CBB0" stroke-width="1"/>
+
+  <text x="28" y="48" font-family="DejaVu Sans" font-size="13" fill="#8A7A66">Thursday, July 9</text>
+  <text x="28" y="72" font-family="DejaVu Sans" font-size="20" font-weight="500" fill="#26201A">Good morning, Trevor</text>
+  <rect x="288" y="42" width="64" height="28" rx="14" fill="#26201A"/>
+  <circle cx="306" cy="56" r="6" fill="#E9B84C"/>
+  <text x="320" y="61" font-family="DejaVu Sans" font-size="13" fill="#FAF4E8">12</text>
+
+  <rect x="20" y="94" width="340" height="150" rx="16" fill="#FFFFFF" stroke="#E8DEC9" stroke-width="1"/>
+  <text x="36" y="122" font-family="DejaVu Sans" font-size="11" fill="#8A7A66" letter-spacing="0.5">AFFIRMATION 4 OF 6</text>
+  <rect x="222" y="106" width="124" height="22" rx="11" fill="#DFF0ED"/>
+  <text x="234" y="121" font-family="DejaVu Sans" font-size="11" fill="#0E5A50">Rewritten as I am</text>
+  <text x="36" y="152" font-family="DejaVu Serif" font-size="15" font-style="italic" fill="#26201A">"I run a profitable business that</text>
+  <text x="36" y="174" font-family="DejaVu Serif" font-size="15" font-style="italic" fill="#26201A">delights my clients."</text>
+  <circle cx="55" cy="212" r="19" fill="#157A6E"/>
+  <path d="M 50 204 L 63 212 L 50 220 Z" fill="#FAF4E8"/>
+  <g fill="#157A6E">
+    <rect x="86" y="206" width="3" height="12" rx="1.5"/>
+    <rect x="92" y="202" width="3" height="20" rx="1.5"/>
+    <rect x="98" y="198" width="3" height="28" rx="1.5"/>
+    <rect x="104" y="204" width="3" height="16" rx="1.5"/>
+    <rect x="110" y="200" width="3" height="24" rx="1.5"/>
+    <rect x="116" y="207" width="3" height="10" rx="1.5"/>
+  </g>
+  <g fill="#D9CBB0">
+    <rect x="122" y="203" width="3" height="18" rx="1.5"/>
+    <rect x="128" y="199" width="3" height="26" rx="1.5"/>
+    <rect x="134" y="206" width="3" height="12" rx="1.5"/>
+    <rect x="140" y="201" width="3" height="22" rx="1.5"/>
+    <rect x="146" y="205" width="3" height="14" rx="1.5"/>
+    <rect x="152" y="198" width="3" height="28" rx="1.5"/>
+    <rect x="158" y="206" width="3" height="12" rx="1.5"/>
+    <rect x="164" y="202" width="3" height="20" rx="1.5"/>
+    <rect x="170" y="204" width="3" height="16" rx="1.5"/>
+    <rect x="176" y="200" width="3" height="24" rx="1.5"/>
+    <rect x="182" y="205" width="3" height="14" rx="1.5"/>
+    <rect x="188" y="202" width="3" height="20" rx="1.5"/>
+  </g>
+  <text x="316" y="217" font-family="DejaVu Sans Mono" font-size="11" fill="#8A7A66">0:21</text>
+
+  <rect x="20" y="258" width="340" height="64" rx="16" fill="#26201A"/>
+  <rect x="36" y="273" width="34" height="34" rx="10" fill="#E9B84C"/>
+  <path d="M 45 282 L 45 298 L 60 298 L 60 282 Z M 47 284 L 50 284 L 50 287 L 47 287 Z M 55 284 L 58 284 L 58 287 L 55 287 Z M 47 293 L 50 293 L 50 296 L 47 296 Z M 55 293 L 58 293 L 58 296 L 55 296 Z" fill="#26201A"/>
+  <text x="84" y="286" font-family="DejaVu Sans" font-size="14" font-weight="500" fill="#FAF4E8">Your mind movie</text>
+  <text x="84" y="305" font-family="DejaVu Sans" font-size="11" fill="#C8B896">New scene generated from goal 3</text>
+  <text x="322" y="295" font-family="DejaVu Sans Mono" font-size="11" fill="#E9B84C">0:45</text>
+
+  <rect x="20" y="336" width="164" height="92" rx="12" fill="#FFFFFF" stroke="#E8DEC9" stroke-width="1"/>
+  <text x="34" y="364" font-family="DejaVu Sans Mono" font-size="18" font-weight="500" fill="#26201A">4/6</text>
+  <text x="34" y="382" font-family="DejaVu Sans" font-size="11" fill="#8A7A66">Rings today</text>
+  <g>
+    <rect x="34" y="396" width="20" height="5" rx="2.5" fill="#157A6E"/>
+    <rect x="58" y="396" width="20" height="5" rx="2.5" fill="#157A6E"/>
+    <rect x="82" y="396" width="20" height="5" rx="2.5" fill="#157A6E"/>
+    <rect x="106" y="396" width="20" height="5" rx="2.5" fill="#157A6E"/>
+    <rect x="130" y="396" width="20" height="5" rx="2.5" fill="#E8DEC9"/>
+    <rect x="154" y="396" width="16" height="5" rx="2.5" fill="#E8DEC9"/>
+  </g>
+
+  <rect x="196" y="336" width="164" height="92" rx="12" fill="#FFFFFF" stroke="#E8DEC9" stroke-width="1"/>
+  <text x="210" y="364" font-family="DejaVu Sans Mono" font-size="18" font-weight="500" fill="#26201A">92%</text>
+  <text x="210" y="382" font-family="DejaVu Sans" font-size="11" fill="#8A7A66">This week</text>
+  <g>
+    <rect x="210" y="402" width="16" height="12" rx="2" fill="#E9B84C"/>
+    <rect x="230" y="398" width="16" height="16" rx="2" fill="#E9B84C"/>
+    <rect x="250" y="404" width="16" height="10" rx="2" fill="#E9B84C"/>
+    <rect x="270" y="394" width="16" height="20" rx="2" fill="#E9B84C"/>
+    <rect x="290" y="396" width="16" height="18" rx="2" fill="#E9B84C"/>
+    <rect x="310" y="400" width="16" height="14" rx="2" fill="#E9B84C"/>
+    <rect x="330" y="401" width="16" height="13" rx="2" fill="#D9CBB0"/>
+  </g>
+
+  <rect x="20" y="452" width="340" height="180" rx="16" fill="#FFFFFF" stroke="#E8DEC9" stroke-width="1"/>
+  <text x="36" y="478" font-family="DejaVu Sans" font-size="11" fill="#8A7A66" letter-spacing="0.5">PALETTE — GOLDEN HOUR 2.0</text>
+  <rect x="36" y="492" width="56" height="40" rx="8" fill="#FAF4E8" stroke="#D9CBB0" stroke-width="1"/>
+  <rect x="100" y="492" width="56" height="40" rx="8" fill="#26201A"/>
+  <rect x="164" y="492" width="56" height="40" rx="8" fill="#E9B84C"/>
+  <rect x="228" y="492" width="56" height="40" rx="8" fill="#157A6E"/>
+  <rect x="292" y="492" width="56" height="40" rx="8" fill="#DFF0ED"/>
+  <text x="36" y="548" font-family="DejaVu Sans Mono" font-size="9" fill="#8A7A66">#FAF4E8</text>
+  <text x="100" y="548" font-family="DejaVu Sans Mono" font-size="9" fill="#8A7A66">#26201A</text>
+  <text x="164" y="548" font-family="DejaVu Sans Mono" font-size="9" fill="#8A7A66">#E9B84C</text>
+  <text x="228" y="548" font-family="DejaVu Sans Mono" font-size="9" fill="#8A7A66">#157A6E</text>
+  <text x="292" y="548" font-family="DejaVu Sans Mono" font-size="9" fill="#8A7A66">#DFF0ED</text>
+  <text x="36" y="566" font-family="DejaVu Sans" font-size="10" fill="#8A7A66">cream</text>
+  <text x="100" y="566" font-family="DejaVu Sans" font-size="10" fill="#8A7A66">ink</text>
+  <text x="164" y="566" font-family="DejaVu Sans" font-size="10" fill="#8A7A66">gold</text>
+  <text x="228" y="566" font-family="DejaVu Sans" font-size="10" fill="#8A7A66">teal / AI</text>
+  <text x="292" y="566" font-family="DejaVu Sans" font-size="10" fill="#8A7A66">AI tint</text>
+  <text x="36" y="596" font-family="DejaVu Sans" font-size="11" fill="#26201A">Serif for affirmation voice - Mono for numbers</text>
+  <text x="36" y="614" font-family="DejaVu Sans" font-size="11" fill="#26201A">Teal reserved for AI actions - Gold for achievement</text>
+
+  <line x1="20" y1="650" x2="360" y2="650" stroke="#E8DEC9" stroke-width="1"/>
+  <g stroke="#26201A" stroke-width="1.8" fill="none">
+    <path d="M 48 678 L 56 670 L 64 678 M 51 677 L 51 684 L 61 684 L 61 677"/>
+  </g>
+  <g stroke="#B5A88F" stroke-width="1.8" fill="none">
+    <circle cx="122" cy="674" r="4"/>
+    <path d="M 115 685 C 115 679 129 679 129 685"/>
+    <circle cx="190" cy="677" r="8"/>
+    <path d="M 186 677 L 194 677 M 190 673 L 190 681"/>
+    <path d="M 252 682 C 246 676 250 668 258 672 C 266 668 270 676 264 682 L 258 687 Z"/>
+    <circle cx="326" cy="673" r="4"/>
+    <path d="M 319 685 C 319 678 333 678 333 685"/>
+  </g>
+</svg>
