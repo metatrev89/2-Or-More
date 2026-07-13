@@ -34,7 +34,7 @@ export default function SignupScreen({ navigation }: NativeStackScreenProps<Root
   const emailContinue = () => {
     if (!emailOk) return;
     set({ emailMode: 'signup' });
-    navigation.navigate('Email');
+    navigation.navigate('Email', { email });
   };
 
   return (

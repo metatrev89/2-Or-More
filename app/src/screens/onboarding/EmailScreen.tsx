@@ -4,12 +4,13 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
 import { colors, fonts } from '../../theme';
-import { Label, PillButton, Wordmark } from '../../components/ui';
+import { BackButton, Label, PillButton, Wordmark } from '../../components/ui';
 import { useStore } from '../../store';
 
-export default function EmailScreen({ navigation }: NativeStackScreenProps<RootStackParamList, 'Email'>) {
+export default function EmailScreen({ navigation, route }: NativeStackScreenProps<RootStackParamList, 'Email'>) {
   const emailMode = useStore(s => s.emailMode);
   const isSignup = emailMode === 'signup';
+  const continuingEmail = route.params?.email ?? '';
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
@@ -33,14 +34,16 @@ export default function EmailScreen({ navigation }: NativeStackScreenProps<RootS
   return (
     <Animated.View entering={FadeIn.duration(400)} style={{ flex: 1, backgroundColor: colors.cream, paddingHorizontal: 28, paddingTop: 52, paddingBottom: 36 }}>
       <View style={{ alignItems: 'center', paddingVertical: 6 }}><Wordmark /></View>
-      <Pressable onPress={() => navigation.goBack()} style={{ paddingVertical: 10, marginLeft: -8, alignSelf: 'flex-start' }}>
-        <Text style={{ fontSize: 22, color: colors.ink }}>‹</Text>
-      </Pressable>
+      <BackButton onPress={() => navigation.goBack()} />
       <Text style={{ fontFamily: fonts.sansSemi, fontSize: 26, color: colors.ink, letterSpacing: -0.5, marginTop: 10 }}>
         {isSignup ? 'Finish creating your account' : 'Welcome back'}
       </Text>
       <Text style={{ fontFamily: fonts.sans, fontSize: 15, color: colors.warmGray, lineHeight: 22, marginTop: 8 }}>
-        {isSignup ? 'Your affirmations stay private to you.' : 'Sign in to return to your practice.'}
+        {isSignup
+          ? continuingEmail
+            ? `Continuing as ${continuingEmail}. Your affirmations stay private to you.`
+            : 'Your affirmations stay private to you.'
+          : 'Sign in to return to your practice.'}
       </Text>
 
       <View style={{ gap: 16, marginTop: 26 }}>

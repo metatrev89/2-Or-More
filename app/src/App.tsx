@@ -31,7 +31,7 @@ import DiscoverScreen from './screens/social/DiscoverScreen';
 export type RootStackParamList = {
   Intro: undefined;
   Signup: undefined;
-  Email: undefined;
+  Email: { email?: string } | undefined;
   Intake: undefined;
   Build: undefined;
   Review: undefined;

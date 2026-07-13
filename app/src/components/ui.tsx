@@ -1,6 +1,26 @@
 import React from 'react';
 import { Text, Pressable, View, TextStyle, ViewStyle, StyleProp } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import { colors, fonts } from '../theme';
+
+/** Back chevron matching the design bundle's glyph, with a full 44pt touch target. */
+export function BackButton({ onPress, color = colors.ink }: { onPress: () => void; color?: string }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      hitSlop={8}
+      style={({ pressed }) => ({
+        width: 44, height: 44, marginLeft: -10,
+        alignItems: 'flex-start', justifyContent: 'center',
+        opacity: pressed ? 0.6 : 1,
+      })}
+    >
+      <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <Path d="M15 18l-6-6 6-6" />
+      </Svg>
+    </Pressable>
+  );
+}
 
 export function Wordmark({ size = 22, light = false }: { size?: number; light?: boolean }) {
   return (
