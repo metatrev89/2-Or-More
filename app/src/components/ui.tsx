@@ -71,14 +71,21 @@ export function Label({ children, color = colors.warmGray }: { children: React.R
   );
 }
 
-/** The AI spark avatar — teal circle with the 8-point star (AI-only color rule). */
+/**
+ * The AI spark avatar — teal circle with the design's stroked 8-point spark
+ * (AI-only color rule). Glyph sizes per the design: 14px in the 32px chat
+ * avatar, 18px in the 44px build/creation disc.
+ */
 export function AiSpark({ size = 32 }: { size?: number }) {
+  const glyph = size >= 40 ? 18 : 14;
   return (
     <View style={{
       width: size, height: size, borderRadius: size / 2, backgroundColor: colors.teal,
       alignItems: 'center', justifyContent: 'center',
     }}>
-      <Text style={{ color: colors.white, fontSize: size * 0.5, lineHeight: size * 0.62, fontFamily: fonts.sans }}>✦</Text>
+      <Svg width={glyph} height={glyph} viewBox="0 0 14 14" fill="none" stroke={colors.white} strokeWidth={1.6} strokeLinecap="round">
+        <Path d="M7 1v12M1 7h12M2.8 2.8l8.4 8.4M11.2 2.8l-8.4 8.4" />
+      </Svg>
     </View>
   );
 }

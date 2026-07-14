@@ -1,5 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Path } from 'react-native-svg';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
@@ -16,6 +18,7 @@ import { useStore } from '../../store';
 export default function PaywallScreen({ navigation }: NativeStackScreenProps<RootStackParamList, 'Paywall'>) {
   const { payPlan, set } = useStore();
   const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
 
   const benefits = [
     'Every affirmation as audio — AI voice or your own',
@@ -40,7 +43,7 @@ export default function PaywallScreen({ navigation }: NativeStackScreenProps<Roo
   );
 
   return (
-    <Animated.View entering={FadeIn.duration(500)} style={{ flex: 1, backgroundColor: colors.ink, padding: 24, paddingTop: 70, paddingBottom: 30 }}>
+    <Animated.View entering={FadeIn.duration(500)} style={{ flex: 1, backgroundColor: colors.ink, padding: 24, paddingTop: 70, paddingBottom: Math.max(insets.bottom, 24) + 6 }}>
       {PAY_FRAGMENTS.map(f => (
         <Text key={f.text} style={{
           position: 'absolute', left: f.left * width, top: f.top * height,
@@ -61,8 +64,10 @@ export default function PaywallScreen({ navigation }: NativeStackScreenProps<Roo
         <View style={{ gap: 10, marginTop: 20, marginBottom: 22 }}>
           {benefits.map(b => (
             <View key={b} style={{ flexDirection: 'row', alignItems: 'center', gap: 11 }}>
-              <Text style={{ color: colors.gold, fontSize: 14 }}>✓</Text>
-              <Text style={{ fontFamily: fonts.sans, fontSize: 14.5, color: colors.creamOnDark }}>{b}</Text>
+              <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={colors.gold} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <Path d="M5 12l5 5L20 7" />
+              </Svg>
+              <Text style={{ flex: 1, fontFamily: fonts.sans, fontSize: 14.5, color: colors.creamOnDark }}>{b}</Text>
             </View>
           ))}
         </View>
@@ -79,10 +84,12 @@ export default function PaywallScreen({ navigation }: NativeStackScreenProps<Roo
           onPress={() => navigation.navigate('Creation')}
           style={{ marginTop: 14 }}
         />
-        <Text style={{ textAlign: 'center', fontFamily: fonts.sans, fontSize: 11.5, color: colors.warmGray, marginTop: 10 }}>
-          Free for 7 days, then auto-renews. Cancel anytime in Settings.
-        </Text>
       </View>
+      {/* Sits where the design's decline link was (removed — hard paywall,
+          July 12 decision) so the card doesn't end abruptly against the ink. */}
+      <Text style={{ textAlign: 'center', fontFamily: fonts.sans, fontSize: 13, lineHeight: 19, color: colors.creamOnDarkDim, marginTop: 16 }}>
+        Free for 7 days, then auto-renews.{'\n'}Cancel anytime in Settings.
+      </Text>
     </Animated.View>
   );
 }

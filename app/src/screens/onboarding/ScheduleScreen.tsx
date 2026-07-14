@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, Pressable, ScrollView } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
@@ -117,8 +118,10 @@ export default function ScheduleScreen({ navigation }: NativeStackScreenProps<Ro
           )}
         </Pressable>
 
-        <View style={{ flexDirection: 'row', gap: 9, marginTop: 18, backgroundColor: colors.aiTint, borderRadius: 14, padding: 12, paddingHorizontal: 14 }}>
-          <Text style={{ color: colors.tealDeep }}>✦</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 9, marginTop: 18, backgroundColor: colors.aiTint, borderRadius: 14, padding: 12, paddingHorizontal: 14 }}>
+          <Svg width={14} height={14} viewBox="0 0 14 14" fill="none" stroke={colors.tealDeep} strokeWidth={1.5} strokeLinecap="round" style={{ marginTop: 2 }}>
+            <Path d="M7 1v12M1 7h12M2.8 2.8l8.4 8.4M11.2 2.8l-8.4 8.4" />
+          </Svg>
           <Text style={{ flex: 1, fontFamily: fonts.sans, fontSize: 13.5, color: colors.tealDeep, lineHeight: 19 }}>
             2+ staggers each delivery through your day automatically — you never get two at once.
           </Text>
