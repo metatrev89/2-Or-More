@@ -45,12 +45,16 @@ export default function MoodCheckIn({ sessionKey, onDone, title = 'How do you fe
 }) {
   const { moods, recordMood } = useStore();
   const picked = moods[sessionKey];
+  const dismissT = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  React.useEffect(() => () => { if (dismissT.current) clearTimeout(dismissT.current); }, []);
 
+  // Re-pickable (July 13): repeat completions show the previous mood pre-selected;
+  // choosing again updates it and re-schedules the dismiss.
   const pick = (i: number) => {
-    if (picked !== undefined) return;
     recordMood(sessionKey, i);
     api.recordExperience('me', null, `mood:${i}`);
-    setTimeout(onDone, timing.moodDismissMs);
+    if (dismissT.current) clearTimeout(dismissT.current);
+    dismissT.current = setTimeout(onDone, timing.moodDismissMs);
   };
 
   return (

@@ -137,6 +137,17 @@ export default function HomeScreen() {
     return () => { alive = false; };
   }, []);
 
+  // Repeat all-seven completions (mood already recorded today) auto-dismiss the
+  // celebration after a few seconds; tap-outside always dismisses (July 13 fix).
+  const moodKey = `home-${new Date().toDateString()}`;
+  const moodAlreadyPicked = store.moods[moodKey] !== undefined;
+  useEffect(() => {
+    if (!bigCeleb || !moodAlreadyPicked) return;
+    const t = setTimeout(() => setBigCeleb(false), 4000);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bigCeleb]);
+
   const clearTimers = () => {
     if (audioTimer.current) clearInterval(audioTimer.current);
     if (videoTimer.current) clearInterval(videoTimer.current);
@@ -507,6 +518,7 @@ export default function HomeScreen() {
           position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden',
           alignItems: 'center', justifyContent: 'center', zIndex: 40,
         }}>
+          <Pressable onPress={() => setBigCeleb(false)} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
           <Confetti />
           <BurstRing color={colors.gold} borderWidth={4} durMs={1100} />
           <BurstRing color={colors.teal} borderWidth={3} durMs={1300} delayMs={200} />
@@ -525,7 +537,7 @@ export default function HomeScreen() {
             backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 22,
             paddingVertical: 16, paddingHorizontal: 22, marginTop: 14,
           }}>
-            <MoodCheckIn sessionKey={`home-${new Date().toDateString()}`} onDone={() => setBigCeleb(false)} />
+            <MoodCheckIn sessionKey={moodKey} onDone={() => setBigCeleb(false)} />
           </ChipPop>
         </View>
       )}

@@ -31,15 +31,28 @@ function SkipIcon({ forward = false, color = colors.warmGray }: { forward?: bool
   );
 }
 
-/** The "all 7 complete" celebration overlay (audio: ink chip; movie: cream chip). */
-function PlayerCeleb({ dark, sessionKey, onDone }: { dark: boolean; sessionKey: string; onDone: () => void }) {
+/**
+ * The "all 7 complete" celebration overlay (audio: ink chip; movie: cream chip).
+ * Repeat completions (mood already recorded this session-day) auto-dismiss after
+ * a few seconds; tapping anywhere outside the mood card always dismisses.
+ */
+function PlayerCeleb({ dark, sessionKey, autoDismiss, onDone }: {
+  dark: boolean; sessionKey: string; autoDismiss: boolean; onDone: () => void;
+}) {
   const chipBg = dark ? colors.cream : colors.ink;
   const chipInk = dark ? colors.ink : colors.cream;
+  useEffect(() => {
+    if (!autoDismiss) return;
+    const t = setTimeout(onDone, 4000);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return (
     <View pointerEvents="box-none" style={{
       position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden',
       alignItems: 'center', justifyContent: 'center', zIndex: 40,
     }}>
+      <Pressable onPress={onDone} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
       <Confetti />
       <BurstRing color={colors.gold} borderWidth={4} durMs={1100} />
       <BurstRing color={colors.teal} borderWidth={3} durMs={1300} delayMs={200} />
@@ -399,6 +412,7 @@ export default function PlayerScreen({ route, navigation }: NativeStackScreenPro
         <PlayerCeleb
           dark={movie}
           sessionKey={`${mode}-${new Date().toDateString()}`}
+          autoDismiss={store.moods[`${mode}-${new Date().toDateString()}`] !== undefined}
           onDone={() => setBigCeleb(false)}
         />
       )}
