@@ -1,11 +1,10 @@
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
-import Animated, { ZoomIn } from 'react-native-reanimated';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { colors, fonts, timing } from '../theme';
 import { useStore } from '../store';
 import { api } from '../api/client';
-import { StarBurst } from './brandIcons';
+import { CelebStar } from './Celebration';
 
 /**
  * Post-session mood check-in (design's moodOpts, kept per July 12 decision).
@@ -63,9 +62,9 @@ export default function MoodCheckIn({ sessionKey, onDone, title = 'How do you fe
           return (
             <Pressable key={m.label} onPress={() => pick(i)} style={{ alignItems: 'center', gap: 6 }}>
               {on && (
-                <Animated.View entering={ZoomIn.duration(400)} style={{ position: 'absolute', top: -14, zIndex: 2 }}>
-                  <StarBurst size={16} />
-                </Animated.View>
+                <View pointerEvents="none" style={{ position: 'absolute', top: -12, left: '50%', marginLeft: -8, zIndex: 2 }}>
+                  <CelebStar size={16} durMs={1000} />
+                </View>
               )}
               <View style={{
                 width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',

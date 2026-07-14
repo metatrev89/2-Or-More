@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, ScrollView, TextInput } from 'react-native';
 import Animated, {
-  FadeIn, FadeInUp, ZoomIn, useAnimatedStyle, useSharedValue, withDelay, withSpring,
+  Easing, Extrapolation, FadeIn, FadeInUp, interpolate,
+  useAnimatedStyle, useSharedValue, withDelay, withTiming,
 } from 'react-native-reanimated';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
@@ -14,7 +15,7 @@ import {
   PauseFill, PencilIcon, PlayFill, StarBurst, VideoIcon, XIcon,
 } from '../components/brandIcons';
 import { DancingBars } from '../components/AnimatedBars';
-import { BurstRing, Confetti } from '../components/Celebration';
+import { BurstRing, CelebStar, ChipPop, Confetti } from '../components/Celebration';
 import MoodCheckIn from '../components/MoodCheckIn';
 import { affText, useStore } from '../store';
 import { api } from '../api/client';
@@ -119,14 +120,17 @@ export default function HomeScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Streak pill pop (design chipPop: 0.3s delay, springy overshoot from 0.55).
-  const pillScale = useSharedValue(1);
+  // Streak pill pop — design: chipPop 0.8s bezier(0.34,1.56,0.64,1) 0.3s both.
+  const pillT = useSharedValue(1);
   useEffect(() => {
     if (!streakCeleb) return;
-    pillScale.value = 0.55;
-    pillScale.value = withDelay(300, withSpring(1, { damping: 9, stiffness: 180 }));
-  }, [streakCeleb, pillScale]);
-  const pillStyle = useAnimatedStyle(() => ({ transform: [{ scale: pillScale.value }] }));
+    pillT.value = 0;
+    pillT.value = withDelay(300, withTiming(1, { duration: 800, easing: Easing.bezier(0.34, 1.56, 0.64, 1) }));
+  }, [streakCeleb, pillT]);
+  const pillStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(pillT.value, [0, 0.6], [0, 1], Extrapolation.CLAMP),
+    transform: [{ scale: interpolate(pillT.value, [0, 0.6, 1], [0.5, 1.1, 1], Extrapolation.CLAMP) }],
+  }));
 
   // Streak confetti on the first Home landing of each app session (per Trevor, July 13 —
   // session-scoped, not day-scoped; tabbing away and back does NOT re-fire).
@@ -151,7 +155,8 @@ export default function HomeScreen() {
   const completeCard = (i: number, autoplay: boolean, video: boolean) => {
     clearTimers();
     const done = useStore.getState().homeReadDone;
-    const nd = done.includes(i) ? done : [...done, i];
+    const wasDone = done.includes(i);
+    const nd = wasDone ? done : [...done, i];
     const next = i < affs.length - 1 ? i + 1 : -1;
     set({ homeReadDone: nd });
     audioPosRef.current = 0; videoPosRef.current = 0;
@@ -161,8 +166,10 @@ export default function HomeScreen() {
     setCelebIdx(i);
     setTimeout(() => setCelebIdx(c => (c === i ? -1 : c)), 1100);
     api.recordExperience('me', affs[i]?.id ?? null, video ? 'watched' : 'listened');
-    if (nd.length === affs.length) setBigCeleb(true);
-    else if (autoplay && next !== -1) (video ? playVideo : playAudio)(next);
+    // Session celebration fires only when THIS completion newly closes the final
+    // ring — replaying an already-completed card never re-triggers it.
+    if (!wasDone && nd.length === affs.length) setBigCeleb(true);
+    else if (autoplay && next !== -1 && nd.length < affs.length) (video ? playVideo : playAudio)(next);
   };
 
   const playAudio = (i: number) => {
@@ -270,9 +277,9 @@ export default function HomeScreen() {
               <FlameIcon size={15} />
               <Text style={{ fontFamily: fonts.monoMedium, fontSize: 16, color: colors.cream }}>{streakDays}</Text>
               {streakCeleb && (
-                <Animated.View entering={ZoomIn.delay(500).duration(400)} style={{ position: 'absolute', top: -12, left: '50%' }}>
-                  <StarBurst size={16} />
-                </Animated.View>
+                <View pointerEvents="none" style={{ position: 'absolute', top: -12, left: '50%', marginLeft: -8 }}>
+                  <CelebStar size={16} durMs={1200} delayMs={500} />
+                </View>
               )}
             </Animated.View>
             <Pressable onPress={() => { setNotifOpen(true); setNotifSeen(true); }} style={{
@@ -358,11 +365,11 @@ export default function HomeScreen() {
                       flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11,
                       borderBottomWidth: 1, borderBottomColor: i < affs.length - 1 ? colors.borderSoft : 'transparent',
                     }}>
-                      {/* completion star */}
+                      {/* completion star — design celebStar: rise 18px, overshoot, fade */}
                       {celebIdx === i && (
-                        <Animated.View entering={ZoomIn.duration(400)} style={{ position: 'absolute', right: 38, top: 4, zIndex: 2 }}>
-                          <StarBurst size={16} />
-                        </Animated.View>
+                        <View pointerEvents="none" style={{ position: 'absolute', right: 38, top: 4, zIndex: 2 }}>
+                          <CelebStar size={16} durMs={1000} />
+                        </View>
                       )}
                       {/* audio scrub along the row's bottom edge */}
                       {active && (
@@ -507,7 +514,7 @@ export default function HomeScreen() {
           <BurstRing color={colors.gold} borderWidth={4} durMs={1100} />
           <BurstRing color={colors.teal} borderWidth={3} durMs={1300} delayMs={200} />
           <BurstRing color={colors.gold} borderWidth={2} durMs={1500} delayMs={400} />
-          <Animated.View entering={ZoomIn.delay(200).springify().damping(11)} style={{
+          <ChipPop durMs={600} delayMs={200} style={{
             backgroundColor: colors.ink, borderRadius: 26, paddingVertical: 16, paddingHorizontal: 26,
             flexDirection: 'row', alignItems: 'center', gap: 12, maxWidth: '90%',
             shadowColor: colors.ink, shadowOpacity: 0.35, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 8,
@@ -516,13 +523,13 @@ export default function HomeScreen() {
             <Text style={{ flexShrink: 1, fontFamily: fonts.sansMedium, fontSize: 17, color: colors.cream }}>
               Congratulations! All 7 affirmations complete!
             </Text>
-          </Animated.View>
-          <Animated.View entering={ZoomIn.delay(450).springify().damping(11)} style={{
+          </ChipPop>
+          <ChipPop durMs={600} delayMs={450} style={{
             backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 22,
             paddingVertical: 16, paddingHorizontal: 22, marginTop: 14,
           }}>
             <MoodCheckIn sessionKey={`home-${new Date().toDateString()}`} onDone={() => setBigCeleb(false)} />
-          </Animated.View>
+          </ChipPop>
         </View>
       )}
 
