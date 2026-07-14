@@ -234,7 +234,8 @@ export default function HomeScreen() {
 
   return (
     <Animated.View entering={FadeIn.duration(400)} style={{ flex: 1, backgroundColor: colors.cream }}>
-      <ScrollView contentContainerStyle={{ paddingTop: 64, paddingHorizontal: 22, paddingBottom: 12 }}>
+      {/* frozen header — everything above the greeting stays pinned on scroll (Trevor, July 13) */}
+      <View style={{ paddingTop: 64, paddingHorizontal: 22, paddingBottom: 8, backgroundColor: colors.cream }}>
         {/* day-one welcome banner */}
         {welcome && (
           <Animated.View entering={FadeInUp.duration(500)} style={{
@@ -253,15 +254,10 @@ export default function HomeScreen() {
           </Animated.View>
         )}
 
-        {/* header */}
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-          <View>
-            <Text style={{ fontFamily: fonts.sans, fontSize: 15, color: colors.warmGray }}>{dateLabel}</Text>
-            <Text style={{ fontFamily: fonts.sansSemi, fontSize: 28, lineHeight: 34, color: colors.ink, letterSpacing: -0.5, marginTop: 2 }}>
-              {greeting()},{'\n'}{userName}
-            </Text>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 }}>
+        {/* date + streak/bell row (pinned) */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Text style={{ fontFamily: fonts.sans, fontSize: 15, color: colors.warmGray }}>{dateLabel}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             <Animated.View
               style={[pillStyle, {
                 backgroundColor: colors.ink, borderRadius: 22, paddingVertical: 9, paddingHorizontal: 15,
@@ -293,6 +289,13 @@ export default function HomeScreen() {
             </Pressable>
           </View>
         </View>
+      </View>
+
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 12 }}>
+        {/* greeting — first scrolling element */}
+        <Text style={{ fontFamily: fonts.sansSemi, fontSize: 28, lineHeight: 34, color: colors.ink, letterSpacing: -0.5, marginTop: 2 }}>
+          {greeting()},{'\n'}{userName}
+        </Text>
 
         {/* stat cards */}
         <View style={{ flexDirection: 'row', gap: 14, marginTop: 20 }}>
