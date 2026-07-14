@@ -60,3 +60,43 @@ export const AVATAR_STYLES = [
 export function initials(name: string): string {
   return name.split(' ').map(w => w[0]).slice(0, 2).join('');
 }
+
+/** Profile photos — verbatim AVATARS map from the design bundle. Names without an entry render initials. */
+export const AVATARS: Record<string, string> = {
+  'Marcus Hale': 'https://randomuser.me/api/portraits/men/32.jpg',
+  'Danielle Reyes': 'https://randomuser.me/api/portraits/women/65.jpg',
+  'Sam Whitfield': 'https://randomuser.me/api/portraits/men/22.jpg',
+  'Priya Natarajan': 'https://randomuser.me/api/portraits/women/47.jpg',
+  'Jon Castellano': 'https://randomuser.me/api/portraits/men/76.jpg',
+  'Grace Okafor': 'https://randomuser.me/api/portraits/women/26.jpg',
+  'Tom Beckett': 'https://randomuser.me/api/portraits/men/41.jpg',
+  'Alena Petrov': 'https://randomuser.me/api/portraits/women/33.jpg',
+  'Jordan Ellis': 'https://randomuser.me/api/portraits/men/57.jpg',
+  'Craig Judd': 'https://randomuser.me/api/portraits/men/11.jpg',
+  'Maya Lindqvist': 'https://randomuser.me/api/portraits/women/58.jpg',
+  'Robert Nguyen': 'https://randomuser.me/api/portraits/men/64.jpg',
+  'Braeden Spencer': 'https://randomuser.me/api/portraits/men/86.jpg',
+  'Jess Abara': 'https://randomuser.me/api/portraits/women/12.jpg',
+  'Modou Sonko': 'https://randomuser.me/api/portraits/men/94.jpg',
+  'Shapour Azari': 'https://randomuser.me/api/portraits/men/52.jpg',
+  'Lena Barnes': 'https://randomuser.me/api/portraits/women/79.jpg',
+  'Kellie Morton': 'https://randomuser.me/api/portraits/women/44.jpg',
+  'Dre Walker': 'https://randomuser.me/api/portraits/men/17.jpg',
+  'Robin Hale': 'https://randomuser.me/api/portraits/women/68.jpg',
+};
+
+export const INVITES = [
+  { name: 'Kellie Morton', sub: 'Invited you 3 days ago' },
+  { name: 'Dre Walker', sub: 'Invited you 1 week ago' },
+  { name: 'Robin Hale', sub: 'Invited you today' },
+];
+
+/** Per-screen avatar fallback palettes (design uses a different rotation per list). */
+export const FRIEND_AVATAR_STYLES = [
+  { bg: '#157A6E', ink: '#FAF4E8' }, { bg: '#EFE6D2', ink: '#26201A' },
+  { bg: '#E9B84C', ink: '#26201A' }, { bg: '#26201A', ink: '#FAF4E8' },
+  { bg: '#0E5A50', ink: '#FAF4E8' }, { bg: '#D9CBB0', ink: '#26201A' },
+];
+export const INVITE_AVATAR_STYLES = [
+  { bg: '#D9CBB0', ink: '#26201A' }, { bg: '#0E5A50', ink: '#FAF4E8' }, { bg: '#E9B84C', ink: '#26201A' },
+];

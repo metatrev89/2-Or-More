@@ -235,3 +235,66 @@ export function DoneMark({ size = 18 }: { size?: number }) {
     </Svg>
   );
 }
+
+/* ---- Feed / Friends glyphs (design sections 13-16) ---- */
+
+export function HeartIcon({ size = 14, color = colors.teal }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M12 20.5S4.5 15.9 2.5 11.4C1.3 8.3 3 5 6 5c1.9 0 3.2 1 4 2.3h4c.8-1.3 2.1-2.3 4-2.3 3 0 4.7 3.3 3.5 6.4-2 4.5-9.5 9.1-9.5 9.1z" />
+    </Svg>
+  );
+}
+
+export function BubbleIcon({ size = 14, color = colors.teal }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M21 12a8 8 0 0 1-8 8H4l2-3a8 8 0 1 1 15-5z" />
+    </Svg>
+  );
+}
+
+export function PersonPlusIcon({ size = 19, color = colors.ink }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <Circle cx={8.5} cy={7} r={4} />
+      <Path d="M20 8v6M23 11h-6" />
+    </Svg>
+  );
+}
+
+export function SearchIcon({ size = 17, color = colors.warmGray }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round">
+      <Circle cx={11} cy={11} r={7} />
+      <Path d="M21 21l-4.3-4.3" />
+    </Svg>
+  );
+}
+
+export function SortIcon({ size = 17, color = colors.ink }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3" />
+    </Svg>
+  );
+}
+
+export function LinkIcon({ size = 20, color = colors.ink }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7" />
+      <Path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7" />
+    </Svg>
+  );
+}
+
+export function MedalIcon({ size = 20, color = colors.ink }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+      <Circle cx={12} cy={9} r={6} />
+      <Path d="M8.5 14.5L7 22l5-3 5 3-1.5-7.5" />
+    </Svg>
+  );
+}
