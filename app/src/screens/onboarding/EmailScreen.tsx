@@ -111,7 +111,11 @@ export default function EmailScreen({ navigation, route }: NativeStackScreenProp
             </Text>
           )}
         </View>
-        {!isSignup && <Text style={{ fontFamily: fonts.sansMedium, fontSize: 14, color: colors.teal }}>Forgot password?</Text>}
+        {!isSignup && (
+          <Pressable onPress={() => navigation.navigate('Forgot')} hitSlop={8} style={{ alignSelf: 'flex-start' }}>
+            <Text style={{ fontFamily: fonts.sansMedium, fontSize: 14, color: colors.teal }}>Forgot password?</Text>
+          </Pressable>
+        )}
       </View>
 
       <View style={{ flex: 1 }} />

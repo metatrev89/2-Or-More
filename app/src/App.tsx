@@ -18,6 +18,7 @@ import { useStore } from './store';
 import IntroScreen from './screens/onboarding/IntroScreen';
 import SignupScreen from './screens/onboarding/SignupScreen';
 import EmailScreen from './screens/onboarding/EmailScreen';
+import ForgotScreen from './screens/onboarding/ForgotScreen';
 import IntakeScreen from './screens/onboarding/IntakeScreen';
 import BuildScreen from './screens/onboarding/BuildScreen';
 import ReviewScreen from './screens/onboarding/ReviewScreen';
@@ -33,6 +34,7 @@ export type RootStackParamList = {
   Intro: undefined;
   Signup: undefined;
   Email: { email?: string } | undefined;
+  Forgot: undefined;
   Intake: undefined;
   Build: undefined;
   Review: undefined;
@@ -98,6 +100,7 @@ function Root() {
         <Stack.Screen name="Intro" component={IntroScreen} />
         <Stack.Screen name="Signup" component={SignupScreen} />
         <Stack.Screen name="Email" component={EmailScreen} />
+        <Stack.Screen name="Forgot" component={ForgotScreen} />
         <Stack.Screen name="Intake" component={IntakeScreen} />
         <Stack.Screen name="Build" component={BuildScreen} />
         <Stack.Screen name="Review" component={ReviewScreen} />
