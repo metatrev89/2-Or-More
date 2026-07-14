@@ -132,9 +132,10 @@ export default function ProgressScreen() {
             </View>
           </View>
           <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
+            {/* flame sized to the streak numeral per Trevor's July 13 design update (was 17px) */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Text style={{ fontFamily: fonts.monoMedium, fontSize: 32, color: colors.ink }}>{streakDays}</Text>
-              <FlameIcon size={17} />
+              <FlameIcon size={26} />
             </View>
             <Text style={{ fontFamily: fonts.sans, fontSize: 14, color: colors.warmGray, marginTop: 2 }}>day streak</Text>
             <Text style={{ fontFamily: fonts.sans, fontSize: 13.5, color: colors.warmGray, lineHeight: 20, marginTop: 10 }}>
