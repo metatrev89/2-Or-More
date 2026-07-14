@@ -1,61 +1,101 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable, ScrollView } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../../App';
 import { colors, fonts } from '../../theme';
-import { Label, Mono } from '../../components/ui';
-import { AVATAR_STYLES, DISC_FOLLOWBACK, DISC_SUGGESTED, initials } from '../../api/socialMock';
+import { BackButton } from '../../components/ui';
+import { ContactsCardIcon, XIcon } from '../../components/brandIcons';
+import SocialAvatar from '../../components/Avatar';
+import { DISC_FOLLOWBACK, DISC_SUGGESTED, DISCOVER_AVATAR_STYLES } from '../../api/socialMock';
 
-/** Discover people (design screen: Discover) — suggestions + add-backs. */
+/** Discover people (design section 14) — connect contacts, suggestions, add-backs. */
 export default function DiscoverScreen() {
-  const nav = useNavigation();
-  const [added, setAdded] = useState<Record<string, boolean>>({ 'sug-1': true });
+  const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const [added, setAdded] = useState<Record<string, boolean>>({ 'sug-1': true }); // Craig Judd starts added
   const [dismissed, setDismissed] = useState<Record<string, boolean>>({});
+  const [connectRow, setConnectRow] = useState(true);
 
-  const section = (title: string, list: { name: string; sub: string }[], keyPrefix: string, cta: string) => (
-    <View style={{ marginTop: 22 }}>
-      <Label>{title}</Label>
-      <View style={{ gap: 12, marginTop: 12 }}>
-        {list.map((p, i) => {
-          const k = `${keyPrefix}-${i}`;
-          if (dismissed[k]) return null;
-          const av = AVATAR_STYLES[(keyPrefix === 'fb' ? i + 3 : i) % AVATAR_STYLES.length]!;
-          const isAdded = !!added[k];
-          return (
-            <View key={p.name} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 18, padding: 14 }}>
-              <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: av.bg, alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ fontFamily: fonts.sansSemi, fontSize: 14, color: av.ink }}>{initials(p.name)}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontFamily: fonts.sansMedium, fontSize: 15, color: colors.ink }}>{p.name}</Text>
-                <Mono size={11.5}>{p.sub}</Mono>
-              </View>
-              <Pressable onPress={() => setAdded({ ...added, [k]: !isAdded })} style={{
-                borderRadius: 16, paddingVertical: 7, paddingHorizontal: 14,
-                backgroundColor: isAdded ? colors.white : colors.ink,
-                borderWidth: 1, borderColor: isAdded ? colors.sand : colors.ink,
-              }}>
-                <Text style={{ fontFamily: fonts.sansMedium, fontSize: 13, color: isAdded ? colors.warmGray : colors.cream }}>
-                  {isAdded ? 'Added' : cta}
-                </Text>
-              </Pressable>
-              <Pressable onPress={() => setDismissed({ ...dismissed, [k]: true })}>
-                <Text style={{ fontSize: 16, color: colors.inactive }}>×</Text>
-              </Pressable>
-            </View>
-          );
-        })}
+  const row = (p: { name: string; sub: string }, i: number, keyPrefix: string, cta: string, ctaPad: number) => {
+    const k = `${keyPrefix}-${i}`;
+    if (dismissed[k]) return null;
+    const av = DISCOVER_AVATAR_STYLES[(keyPrefix === 'fb' ? i + 3 : i) % DISCOVER_AVATAR_STYLES.length]!;
+    const isAdded = !!added[k];
+    return (
+      <View key={p.name} style={{
+        flexDirection: 'row', alignItems: 'center', gap: 13, paddingVertical: 12,
+        borderBottomWidth: 1, borderBottomColor: colors.borderSoft,
+      }}>
+        <SocialAvatar name={p.name} size={52} bg={av.bg} ink={av.ink} fontSize={19} ringWidth={1} ringColor={colors.border} />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text numberOfLines={1} style={{ fontFamily: fonts.sansSemi, fontSize: 15.5, color: colors.ink }}>{p.name}</Text>
+          <Text style={{ fontFamily: fonts.sans, fontSize: 13.5, color: colors.warmGray, marginTop: 2 }}>{p.sub}</Text>
+        </View>
+        <Pressable onPress={() => setAdded({ ...added, [k]: !isAdded })} style={{
+          height: 34, paddingHorizontal: isAdded ? 16 : ctaPad, borderRadius: 17,
+          backgroundColor: isAdded ? '#EFE6D2' : colors.teal,
+          alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Text style={{
+            fontFamily: isAdded ? fonts.sans : fonts.sansMedium, fontSize: 13.5,
+            color: isAdded ? colors.ink : colors.white,
+          }}>
+            {isAdded ? 'Added' : cta}
+          </Text>
+        </Pressable>
+        <Pressable onPress={() => setDismissed({ ...dismissed, [k]: true })} hitSlop={6} style={{ padding: 6 }}>
+          <XIcon size={15} />
+        </Pressable>
       </View>
-    </View>
-  );
+    );
+  };
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: colors.cream }} contentContainerStyle={{ paddingTop: 60, paddingHorizontal: 22, paddingBottom: 40 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <Pressable onPress={() => nav.goBack()}><Text style={{ fontSize: 22, color: colors.ink }}>‹</Text></Pressable>
-        <Text style={{ fontFamily: fonts.sansSemi, fontSize: 24, color: colors.ink }}>Discover people</Text>
+    <Animated.View entering={FadeIn.duration(400)} style={{ flex: 1, backgroundColor: colors.cream }}>
+      {/* header: back + centered title */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: 60, paddingHorizontal: 22, paddingBottom: 12 }}>
+        <BackButton onPress={() => nav.goBack()} />
+        <Text style={{ flex: 1, textAlign: 'center', fontFamily: fonts.sansSemi, fontSize: 18, color: colors.ink }}>
+          Discover people
+        </Text>
+        <View style={{ width: 34 }} />
       </View>
-      {section('Suggested for you', DISC_SUGGESTED, 'sug', 'Add')}
-      {section('Added you', DISC_FOLLOWBACK, 'fb', 'Add back')}
-    </ScrollView>
+
+      <ScrollView contentContainerStyle={{ paddingTop: 4, paddingHorizontal: 22, paddingBottom: 12 }}>
+        {/* connect contacts */}
+        {connectRow && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 13, paddingTop: 10, paddingBottom: 16 }}>
+            <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: '#EFE6D2', alignItems: 'center', justifyContent: 'center' }}>
+              <ContactsCardIcon size={22} />
+            </View>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={{ fontFamily: fonts.sansSemi, fontSize: 15.5, color: colors.ink }}>Connect contacts</Text>
+              <Text style={{ fontFamily: fonts.sans, fontSize: 13.5, color: colors.warmGray, marginTop: 2 }}>Find people you know</Text>
+            </View>
+            <Pressable onPress={() => nav.navigate('Contacts')} style={{
+              height: 34, paddingHorizontal: 18, borderRadius: 17, backgroundColor: colors.teal,
+              alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Text style={{ fontFamily: fonts.sansMedium, fontSize: 13.5, color: colors.white }}>Connect</Text>
+            </Pressable>
+            <Pressable onPress={() => setConnectRow(false)} hitSlop={6} style={{ padding: 6 }}>
+              <XIcon size={15} />
+            </Pressable>
+          </View>
+        )}
+
+        <Text style={{ fontFamily: fonts.sansSemi, fontSize: 17, color: colors.ink, paddingTop: 8, paddingBottom: 4 }}>
+          Suggested for you
+        </Text>
+        {DISC_SUGGESTED.map((p, i) => row(p, i, 'sug', 'Add', 20))}
+
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingTop: 20, paddingBottom: 4 }}>
+          <Text style={{ fontFamily: fonts.sansSemi, fontSize: 17, color: colors.ink }}>Add back</Text>
+          <Text style={{ fontFamily: fonts.sansMedium, fontSize: 14, color: colors.teal }}>See all</Text>
+        </View>
+        {DISC_FOLLOWBACK.map((p, i) => row(p, i, 'fb', 'Add back', 16))}
+      </ScrollView>
+    </Animated.View>
   );
 }

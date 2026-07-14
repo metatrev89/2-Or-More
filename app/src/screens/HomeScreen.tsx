@@ -20,17 +20,11 @@ import MoodCheckIn from '../components/MoodCheckIn';
 import { affText, useStore } from '../store';
 import { api } from '../api/client';
 import { MOCK_AFFS } from '../api/mockData';
+import { NOTIFS } from '../api/socialMock';
+import SocialAvatar from '../components/Avatar';
 
 const AI_SPARK_PATH = 'M7 1v12M1 7h12M2.8 2.8l8.4 8.4M11.2 2.8l-8.4 8.4';
 
-/** Design's NOTIFS list (section 9 sheet). */
-const NOTIFS = [
-  { type: 'request', name: 'Marcus Hale', text: 'sent you a friend request.', time: '2m' },
-  { type: 'like', name: 'Grace Okafor', text: 'encouraged your affirmation “I am a present father…”', time: '1h' },
-  { type: 'comment', name: 'Sam Whitfield', text: 'commented on your post: “This one hit home.”', time: '3h' },
-  { type: 'like', name: 'Jon Castellano', text: 'celebrated your 12-day streak.', time: '5h' },
-  { type: 'request', name: 'Danielle Reyes', text: 'sent you a friend request.', time: '1d' },
-];
 const NOTIF_AV = [
   { bg: colors.teal, ink: colors.cream }, { bg: '#EFE6D2', ink: colors.ink },
   { bg: colors.gold, ink: colors.ink }, { bg: colors.tealDeep, ink: colors.cream },
@@ -560,11 +554,7 @@ export default function HomeScreen() {
                     borderBottomWidth: 1, borderBottomColor: colors.borderSoft,
                   }}>
                     <View>
-                      <View style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: av.bg, alignItems: 'center', justifyContent: 'center' }}>
-                        <Text style={{ fontFamily: fonts.serifItalic, fontSize: 17, color: av.ink }}>
-                          {n.name.split(' ').map(w => w[0]).slice(0, 2).join('')}
-                        </Text>
-                      </View>
+                      <SocialAvatar name={n.name} size={46} bg={av.bg} ink={av.ink} fontSize={17} />
                       <View style={{
                         position: 'absolute', right: -4, bottom: -4, width: 20, height: 20, borderRadius: 10,
                         backgroundColor: n.type === 'like' ? colors.gold : n.type === 'comment' ? colors.teal : colors.ink,

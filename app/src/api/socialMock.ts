@@ -100,3 +100,10 @@ export const FRIEND_AVATAR_STYLES = [
 export const INVITE_AVATAR_STYLES = [
   { bg: '#D9CBB0', ink: '#26201A' }, { bg: '#0E5A50', ink: '#FAF4E8' }, { bg: '#E9B84C', ink: '#26201A' },
 ];
+
+/** Discover-people avatar rotation (design mapDiscover; follow-back list offsets by 3). */
+export const DISCOVER_AVATAR_STYLES = [
+  { bg: '#EFE6D2', ink: '#26201A' }, { bg: '#157A6E', ink: '#FAF4E8' },
+  { bg: '#D9CBB0', ink: '#26201A' }, { bg: '#E9B84C', ink: '#26201A' },
+  { bg: '#0E5A50', ink: '#FAF4E8' }, { bg: '#26201A', ink: '#FAF4E8' },
+];

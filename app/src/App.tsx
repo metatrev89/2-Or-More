@@ -29,6 +29,7 @@ import MainTabs from './screens/MainTabs';
 import PlayerScreen from './screens/PlayerScreen';
 import FriendsScreen from './screens/social/FriendsScreen';
 import DiscoverScreen from './screens/social/DiscoverScreen';
+import ContactsScreen from './screens/social/ContactsScreen';
 
 export type RootStackParamList = {
   Intro: undefined;
@@ -45,6 +46,7 @@ export type RootStackParamList = {
   Player: { mode: 'audio' | 'movie' };
   Friends: undefined;
   Discover: undefined;
+  Contacts: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -111,6 +113,7 @@ function Root() {
         <Stack.Screen name="Player" component={PlayerScreen} options={{ animation: 'slide_from_bottom' }} />
         <Stack.Screen name="Friends" component={FriendsScreen} />
         <Stack.Screen name="Discover" component={DiscoverScreen} />
+        <Stack.Screen name="Contacts" component={ContactsScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

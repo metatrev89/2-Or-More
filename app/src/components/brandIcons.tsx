@@ -298,3 +298,15 @@ export function MedalIcon({ size = 20, color = colors.ink }: { size?: number; co
     </Svg>
   );
 }
+
+/** Contacts card (Discover "Connect contacts" row). */
+export function ContactsCardIcon({ size = 22, color = colors.ink }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <Rect x={5} y={2.5} width={15} height={19} rx={2.5} />
+      <Path d="M3 7h2M3 12h2M3 17h2" />
+      <Circle cx={12.5} cy={9.5} r={2.2} />
+      <Path d="M8.8 16.5c0-1.9 1.7-3 3.7-3s3.7 1.1 3.7 3" />
+    </Svg>
+  );
+}
