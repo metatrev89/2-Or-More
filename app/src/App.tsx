@@ -30,6 +30,7 @@ import PlayerScreen from './screens/PlayerScreen';
 import FriendsScreen from './screens/social/FriendsScreen';
 import DiscoverScreen from './screens/social/DiscoverScreen';
 import ContactsScreen from './screens/social/ContactsScreen';
+import SettingsScreen from './screens/SettingsScreen';
 
 export type RootStackParamList = {
   Intro: undefined;
@@ -47,6 +48,7 @@ export type RootStackParamList = {
   Friends: undefined;
   Discover: undefined;
   Contacts: undefined;
+  Settings: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -114,6 +116,7 @@ function Root() {
         <Stack.Screen name="Friends" component={FriendsScreen} />
         <Stack.Screen name="Discover" component={DiscoverScreen} />
         <Stack.Screen name="Contacts" component={ContactsScreen} />
+        <Stack.Screen name="Settings" component={SettingsScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
