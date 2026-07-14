@@ -136,3 +136,102 @@ export function LockIcon({ size = 14, color = colors.warmGray }: { size?: number
     </Svg>
   );
 }
+
+/* ---- Home screen glyphs (design section 9) ---- */
+
+export function FlameIcon({ size = 15, color = colors.gold }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+      <Path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
+    </Svg>
+  );
+}
+
+export function BellIcon({ size = 19, color = colors.ink }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+      <Path d="M13.7 21a2 2 0 0 1-3.4 0" />
+    </Svg>
+  );
+}
+
+/** The 4-point celebration star (celebStar / confetti / streak). */
+export function StarBurst({ size = 16, color = colors.gold }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+      <Path d="M12 2c.6 3.2 1.4 5.3 2.9 6.8C16.4 10.3 18.6 11.2 22 12c-3.4.8-5.6 1.7-7.1 3.2C13.4 16.7 12.6 18.8 12 22c-.6-3.2-1.4-5.3-2.9-6.8C7.6 13.7 5.4 12.8 2 12c3.4-.8 5.6-1.7 7.1-3.2C10.6 7.3 11.4 5.2 12 2z" />
+    </Svg>
+  );
+}
+
+export function HeadphonesIcon({ size = 14, color = colors.teal }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M4 14v-2a8 8 0 0 1 16 0v2" />
+      <Rect x={3} y={14} width={4} height={6} rx={1.6} />
+      <Rect x={17} y={14} width={4} height={6} rx={1.6} />
+    </Svg>
+  );
+}
+
+export function VideoIcon({ size = 14, color = colors.teal }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+      <Rect x={2.5} y={6} width={13} height={12} rx={2.5} />
+      <Path d="M15.5 12l6-3.5v7l-6-3.5z" />
+    </Svg>
+  );
+}
+
+export function ChevronDownIcon({ size = 16, color = colors.inactive }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M6 9l6 6 6-6" />
+    </Svg>
+  );
+}
+
+export function FilmIcon({ size = 19, color = colors.ink }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinejoin="round">
+      <Rect x={3} y={4} width={18} height={16} rx={3} />
+      <Path d="M3 9h18M8 4v5M16 4v5" />
+    </Svg>
+  );
+}
+
+export function PlayFill({ size = 11, color = colors.white }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+      <Path d="M6 4l14 8-14 8V4z" />
+    </Svg>
+  );
+}
+
+export function PauseFill({ size = 12, color = colors.white }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+      <Rect x={5} y={4} width={5} height={16} rx={1.5} />
+      <Rect x={14} y={4} width={5} height={16} rx={1.5} />
+    </Svg>
+  );
+}
+
+export function XIcon({ size = 16, color = colors.ink, strokeWidth = 2 }: { size?: number; color?: string; strokeWidth?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round">
+      <Path d="M18 6L6 18M6 6l12 12" />
+    </Svg>
+  );
+}
+
+/** Teal filled circle + cream check — the "experienced" done mark. */
+export function DoneMark({ size = 18 }: { size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Circle cx={12} cy={12} r={10} fill={colors.teal} />
+      <Path d="M17 9l-6.5 6.5L7 12" fill="none" stroke={colors.cream} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}

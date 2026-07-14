@@ -36,6 +36,8 @@ interface State {
   recState: 'idle' | 'recording' | 'done';
   profilePhotoUri: string | null;
   // daily practice
+  userName: string;
+  welcome: boolean; // day-one banner on Home, set when entering from creation
   streakDays: number;
   homeReadDone: number[];
   movieWatched: number[];
@@ -73,6 +75,8 @@ export const useStore = create<State>((set, get) => ({
   voiceSel: null,
   recState: 'idle',
   profilePhotoUri: null,
+  userName: 'Trevor',
+  welcome: false,
   streakDays: 12,
   homeReadDone: [],
   movieWatched: [],

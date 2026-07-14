@@ -276,7 +276,7 @@ export default function CreationScreen({ navigation }: NativeStackScreenProps<Ro
               <PillButton
                 label="Enter 2+" height={54}
                 bg={colors.gold} color={colors.ink}
-                onPress={() => navigation.reset({ index: 0, routes: [{ name: 'Main' }] })}
+                onPress={() => { set({ welcome: true }); navigation.reset({ index: 0, routes: [{ name: 'Main' }] }); }}
                 style={{ marginTop: 36, paddingHorizontal: 48 }}
               />
             </Animated.View>

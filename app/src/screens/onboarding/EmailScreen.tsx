@@ -25,8 +25,10 @@ export default function EmailScreen({ navigation, route }: NativeStackScreenProp
 
   const submit = () => {
     if (!valid) return;
-    if (isSignup) navigation.navigate('Intake');
-    else navigation.replace('Main');
+    if (isSignup) {
+      if (name.trim()) useStore.getState().set({ userName: name.trim().split(/\s+/)[0] });
+      navigation.navigate('Intake');
+    } else navigation.replace('Main');
   };
 
   const field = {
