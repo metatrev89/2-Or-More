@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, Pressable, ScrollView } from 'react-native';
+import { View, Text, Pressable, ScrollView, PanResponder } from 'react-native';
 import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
 import Svg, { Circle, Path } from 'react-native-svg';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -101,6 +101,23 @@ export default function PlayerScreen({ route, navigation }: NativeStackScreenPro
   const [speedSheet, setSpeedSheet] = useState(false);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const chromeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Draggable speed slider: live store update while dragging, persist on release.
+  const trackW = useRef(0);
+  const dragTo = useRef((x: number, commit: boolean) => {
+    if (!trackW.current) return;
+    const frac = Math.max(0, Math.min(1, x / trackW.current));
+    const v = Math.round((0.5 + frac * 2) * 20) / 20; // 0.5-2.5 in 0.05 steps
+    if (commit) useStore.getState().setSpeed(v);
+    else useStore.getState().set({ audioSpeed: v });
+  }).current;
+  const sliderPan = useRef(PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderGrant: e => dragTo(e.nativeEvent.locationX, false),
+    onPanResponderMove: e => dragTo(e.nativeEvent.locationX, false),
+    onPanResponderRelease: e => dragTo(e.nativeEvent.locationX, true),
+    onPanResponderTerminate: e => dragTo(e.nativeEvent.locationX, true),
+  })).current;
   const posRef = useRef(0);
   const sceneRef = useRef(0);
   const modeRef = useRef(mode);
@@ -439,14 +456,20 @@ export default function PlayerScreen({ route, navigation }: NativeStackScreenPro
               <Pressable onPress={() => setSpeed(audioSpeed - 0.05)} style={{ width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: colors.sand, alignItems: 'center', justifyContent: 'center' }}>
                 <Text style={{ fontSize: 20, color: colors.ink }}>−</Text>
               </Pressable>
-              <View style={{ flex: 1, height: 5, borderRadius: 3, backgroundColor: colors.border }}>
-                <View style={{ height: 5, borderRadius: 3, backgroundColor: colors.teal, width: `${Math.round(((audioSpeed - 0.5) / 2) * 100)}%` }} />
-                <View style={{
-                  position: 'absolute', top: -7.5, left: `${Math.round(((audioSpeed - 0.5) / 2) * 100)}%`, marginLeft: -10,
-                  width: 20, height: 20, borderRadius: 10, backgroundColor: colors.teal,
-                  borderWidth: 3, borderColor: colors.cream,
-                  shadowColor: colors.ink, shadowOpacity: 0.3, shadowRadius: 5, shadowOffset: { width: 0, height: 1 }, elevation: 3,
-                }} />
+              <View
+                style={{ flex: 1, height: 44, justifyContent: 'center' }}
+                onLayout={e => { trackW.current = e.nativeEvent.layout.width; }}
+                {...sliderPan.panHandlers}
+              >
+                <View pointerEvents="none" style={{ height: 5, borderRadius: 3, backgroundColor: colors.border }}>
+                  <View style={{ height: 5, borderRadius: 3, backgroundColor: colors.teal, width: `${Math.round(((audioSpeed - 0.5) / 2) * 100)}%` }} />
+                  <View style={{
+                    position: 'absolute', top: -7.5, left: `${Math.round(((audioSpeed - 0.5) / 2) * 100)}%`, marginLeft: -10,
+                    width: 20, height: 20, borderRadius: 10, backgroundColor: colors.teal,
+                    borderWidth: 3, borderColor: colors.cream,
+                    shadowColor: colors.ink, shadowOpacity: 0.3, shadowRadius: 5, shadowOffset: { width: 0, height: 1 }, elevation: 3,
+                  }} />
+                </View>
               </View>
               <Pressable onPress={() => setSpeed(audioSpeed + 0.05)} style={{ width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: colors.sand, alignItems: 'center', justifyContent: 'center' }}>
                 <Text style={{ fontSize: 20, color: colors.ink }}>+</Text>
