@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, ScrollView, TextInput } from 'react-native';
-import Animated, { FadeIn, FadeInUp, ZoomIn } from 'react-native-reanimated';
+import Animated, {
+  FadeIn, FadeInUp, ZoomIn, useAnimatedStyle, useSharedValue, withDelay, withSpring,
+} from 'react-native-reanimated';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -116,6 +118,15 @@ export default function HomeScreen() {
     if (!affirmations.length) set({ affirmations: MOCK_AFFS });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Streak pill pop (design chipPop: 0.3s delay, springy overshoot from 0.55).
+  const pillScale = useSharedValue(1);
+  useEffect(() => {
+    if (!streakCeleb) return;
+    pillScale.value = 0.55;
+    pillScale.value = withDelay(300, withSpring(1, { damping: 9, stiffness: 180 }));
+  }, [streakCeleb, pillScale]);
+  const pillStyle = useAnimatedStyle(() => ({ transform: [{ scale: pillScale.value }] }));
 
   // Streak confetti on the first Home landing of each app session (per Trevor, July 13 —
   // session-scoped, not day-scoped; tabbing away and back does NOT re-fire).
@@ -251,12 +262,10 @@ export default function HomeScreen() {
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 }}>
             <Animated.View
-              key={streakCeleb ? 'pop' : 'still'}
-              entering={streakCeleb ? ZoomIn.springify().damping(9) : undefined}
-              style={{
+              style={[pillStyle, {
                 backgroundColor: colors.ink, borderRadius: 22, paddingVertical: 9, paddingHorizontal: 15,
                 flexDirection: 'row', alignItems: 'center', gap: 8,
-              }}
+              }]}
             >
               <FlameIcon size={15} />
               <Text style={{ fontFamily: fonts.monoMedium, fontSize: 16, color: colors.cream }}>{streakDays}</Text>
@@ -275,7 +284,7 @@ export default function HomeScreen() {
                 <View style={{
                   position: 'absolute', top: -4, right: -4, minWidth: 18, height: 18, borderRadius: 9,
                   backgroundColor: colors.gold, borderWidth: 2, borderColor: colors.cream,
-                  alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3,
+                  alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5,
                 }}>
                   <Text style={{ fontFamily: fonts.sansSemi, fontSize: 11, color: colors.ink }}>{NOTIFS.length}</Text>
                 </View>
@@ -402,7 +411,10 @@ export default function HomeScreen() {
                       <Animated.View entering={FadeInUp.duration(350)} style={{ marginTop: 4, marginBottom: 12, borderRadius: 16, overflow: 'hidden', backgroundColor: colors.ink }}>
                         <View style={{ aspectRatio: 16 / 9, alignItems: 'center', justifyContent: 'center', padding: 20, overflow: 'hidden' }}>
                           <View style={{ position: 'absolute', top: -80, left: -60, width: 300, height: 220, borderRadius: 150, backgroundColor: '#3A4A2E', opacity: 0.55 }} />
-                          <Serif size={17} color={colors.cream} style={{ textAlign: 'center', lineHeight: 25 }}>“{text}”</Serif>
+                          {/* design: text fades in over 1.2s as the "scene" opens */}
+                          <Animated.View entering={FadeIn.duration(1200)}>
+                            <Serif size={17} color={colors.cream} style={{ textAlign: 'center', lineHeight: 25 }}>“{text}”</Serif>
+                          </Animated.View>
                           <View style={{ position: 'absolute', top: 12, right: 12 }}>
                             <DancingBars heights={[11, 11, 11]} color={colors.gold} width={2.5} gap={2.5} />
                           </View>
