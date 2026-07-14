@@ -265,10 +265,15 @@ export default function HomeScreen() {
           </Animated.View>
         )}
 
-        {/* date + streak/bell row (pinned) */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text style={{ fontFamily: fonts.sans, fontSize: 15, color: colors.warmGray }}>{dateLabel}</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        {/* header (pinned, greeting included — freeze line sits below it, July 13) */}
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <View>
+            <Text style={{ fontFamily: fonts.sans, fontSize: 15, color: colors.warmGray }}>{dateLabel}</Text>
+            <Text style={{ fontFamily: fonts.sansSemi, fontSize: 28, lineHeight: 34, color: colors.ink, letterSpacing: -0.5, marginTop: 2 }}>
+              {greeting()},{'\n'}{userName}
+            </Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 }}>
             <Animated.View
               style={[pillStyle, {
                 backgroundColor: colors.ink, borderRadius: 22, paddingVertical: 9, paddingHorizontal: 15,
@@ -303,13 +308,8 @@ export default function HomeScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 12 }}>
-        {/* greeting — first scrolling element */}
-        <Text style={{ fontFamily: fonts.sansSemi, fontSize: 28, lineHeight: 34, color: colors.ink, letterSpacing: -0.5, marginTop: 2 }}>
-          {greeting()},{'\n'}{userName}
-        </Text>
-
-        {/* stat cards */}
-        <View style={{ flexDirection: 'row', gap: 14, marginTop: 20 }}>
+        {/* stat cards — first scrolling element */}
+        <View style={{ flexDirection: 'row', gap: 14, marginTop: 12 }}>
           <View style={{ flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 20, padding: 18 }}>
             <Text style={{ fontFamily: fonts.monoMedium, fontSize: 24, color: colors.ink }}>{ringsDone}/{dailyRings}</Text>
             <Text style={{ fontFamily: fonts.sans, fontSize: 14, color: colors.warmGray, marginTop: 3 }}>Session rings today</Text>
