@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, ScrollView, TextInput } from 'react-native';
 import Animated, { FadeIn, FadeInUp, ZoomIn } from 'react-native-reanimated';
 import Svg, { Circle, Path } from 'react-native-svg';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../App';
@@ -56,6 +55,9 @@ function NotifBadge({ type }: { type: string }) {
 
 const RING_R = 9;
 const RING_C = 2 * Math.PI * RING_R;
+
+/** Module-scoped: resets only when the JS bundle reloads, i.e. once per app session. */
+let streakCelebFired = false;
 
 /** Small progress ring (design's per-affirmation ring + rings-today segments). */
 function Ring({ size, frac, stroke = colors.teal, track = colors.border, width = 3, fill = 'none' }: {
@@ -115,17 +117,14 @@ export default function HomeScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Once-a-day streak confetti on first Home visit (design's maybeStreakCeleb).
+  // Streak confetti on the first Home landing of each app session (per Trevor, July 13 —
+  // session-scoped, not day-scoped; tabbing away and back does NOT re-fire).
   useEffect(() => {
+    if (streakCelebFired) return;
+    streakCelebFired = true;
     let alive = true;
-    (async () => {
-      const today = new Date().toDateString();
-      const seen = await AsyncStorage.getItem('twoplus_streak_celeb_date');
-      if (seen === today) return;
-      await AsyncStorage.setItem('twoplus_streak_celeb_date', today);
-      setTimeout(() => { if (alive) setStreakCeleb(true); }, 400);
-      setTimeout(() => { if (alive) setStreakCeleb(false); }, 4600);
-    })();
+    setTimeout(() => { if (alive) setStreakCeleb(true); }, 400);
+    setTimeout(() => { if (alive) setStreakCeleb(false); }, 4600);
     return () => { alive = false; };
   }, []);
 
@@ -246,8 +245,8 @@ export default function HomeScreen() {
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
           <View>
             <Text style={{ fontFamily: fonts.sans, fontSize: 15, color: colors.warmGray }}>{dateLabel}</Text>
-            <Text style={{ fontFamily: fonts.sansSemi, fontSize: 28, color: colors.ink, letterSpacing: -0.5, marginTop: 2 }}>
-              {greeting()}, {userName}
+            <Text style={{ fontFamily: fonts.sansSemi, fontSize: 28, lineHeight: 34, color: colors.ink, letterSpacing: -0.5, marginTop: 2 }}>
+              {greeting()},{'\n'}{userName}
             </Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 }}>

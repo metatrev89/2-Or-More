@@ -16,7 +16,7 @@ Named for "wherever two or more are in agreement." Owner: Trevor Spencer.
 - Palette "Golden hour 2.0": cream #FAF4E8 canvas, ink #26201A, gold #E9B84C (achievement ONLY), teal #157A6E (AI actions ONLY — never decorative), AI tint #DFF0ED, warm gray #8A7A66, borders #E8DEC9.
 - No red anywhere. Feedback is encouraging, never condemning (streaks pause, never "break").
 - Serif italic = affirmation voice; sans = UI; mono = numbers/timestamps.
-- v1 bottom nav: Home, Progress, Profile only. Voice-first intake (mic primary).
+- Bottom nav (per final design bundle, supersedes the older 3-tab brand-doc note): Home, Feed, Progress, Friends, Profile. Each tab has its own active tint — Home ink, Feed gold, Progress teal, Friends #5C5142, Profile ink (avatar w/ ink ring). Inactive #B5A88F. Voice-first intake (mic primary).
 - "Show the work": label AI output (e.g. "Rewritten as I am" chips).
 
 ## Key implementation facts
@@ -26,7 +26,10 @@ Named for "wherever two or more are in agreement." Owner: Trevor Spencer.
 - Paywall placement: after the "I am" reveal, before media generation. 7-day auto-billing trial; mind movie generates ~day 2 of trial (engagement-gated), NOT at trial start.
 - Voice cloning requires explicit consent (BIPA) — enforced in `backend/src/services/mediaPipeline.ts`; don't route around it.
 
-## Current status (July 10, 2026)
+## Current status (July 13, 2026)
 - Backend v0.1 built + verified (mock providers; live adapters marked VERIFY need doc checks).
-- Front-end design finalized in Claude Design; handoff bundle expected in this folder.
-- Next: RN/Expo app build against the design bundle + backend API; then live service wiring (Supabase, R2, vendor keys, RevenueCat).
+- Design handoff bundle landed: `design-handoff/2-first-design-pass/project/2+ First-Run.dc.html` is the pixel source of truth.
+- RN/Expo app (`app/`, SDK 54 — do NOT upgrade; App Store Expo Go only runs 54) built in mock mode and iterating to match the design bundle. Ship loop: Trevor commits/pushes on his Mac → GitHub Action publishes via EAS Update → Expo Go.
+- Done so far: onboarding flow, auth (incl. forgot-password, mock), Home rebuilt to design, 5-tab nav w/ design icons. Feedback arrives as batched voice notes; fix in batches.
+- Gotchas learned: KeyboardAvoidingView (behavior=padding) zeroes its own paddingBottom — keep bottom padding on a parent; SafeAreaProvider must wrap the app root; sandbox can't run git (Trevor runs the commands).
+- Next: remaining screens to design fidelity (Player, Progress, Feed, Friends, Profile); then live service wiring (Supabase, R2, vendor keys, RevenueCat).
