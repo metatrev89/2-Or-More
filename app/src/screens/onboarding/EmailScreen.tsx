@@ -36,11 +36,17 @@ export default function EmailScreen({ navigation, route }: NativeStackScreenProp
   } as const;
 
   return (
-    <Animated.View entering={FadeIn.duration(400)} style={{ flex: 1, backgroundColor: colors.cream }}>
+    // Bottom padding lives on the outer view: RN's KeyboardAvoidingView (behavior=padding)
+    // overwrites its own paddingBottom with the keyboard height — 0 when closed — which is
+    // why the button kept getting cut off no matter what padding we gave the KAV itself.
+    <Animated.View
+      entering={FadeIn.duration(400)}
+      style={{ flex: 1, backgroundColor: colors.cream, paddingBottom: Math.max(insets.bottom, 34) + 24 }}
+    >
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={12}
-      style={{ flex: 1, paddingHorizontal: 28, paddingTop: 52, paddingBottom: Math.max(insets.bottom, 34) + 24 }}
+      style={{ flex: 1, paddingHorizontal: 28, paddingTop: 52 }}
     >
       <View style={{ alignItems: 'center', paddingVertical: 6 }}><Wordmark /></View>
       <BackButton onPress={() => navigation.goBack()} />
