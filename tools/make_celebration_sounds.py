@@ -185,10 +185,33 @@ def mood_c():  # warm low acknowledgment
     return c
 
 
+# ---------- 963 Hz variants (Trevor, Jul 14) ----------
+# Same gestures retuned so 963 Hz is the anchor tone: chords voiced in just
+# intonation on a 481.5 Hz root (= 963/2), with 963 Hz ringing on top.
+# Originals are untouched — these render to separate *-963 files.
+
+R963 = 963.0 / 2  # 481.5 Hz root; octave = exactly 963 Hz
+
+def all_seven_b_963():  # chord bloom on the 963 root: 481.5 · 601.9 (5/4) · 722.25 (3/2) · 963
+    c = np.zeros(int(1.8 * SR))
+    for i, n in enumerate([R963, R963 * 1.25, R963 * 1.5, 963.0]):
+        place(c, strike(n, 1.5, decay=3.2, amp=0.85), i * 0.045)
+    place(c, sparkle(0.7, amp=0.025, lo=5000, hi=9000, decay=6), 0.15)
+    return c
+
+def streak_b_963():  # two-note flame: 481.5 low, exactly 963 on the answer
+    c = np.zeros(int(1.1 * SR))
+    place(c, strike(R963, 0.9, decay=4.5, amp=0.9), 0)
+    place(c, strike(963.0, 0.9, decay=5, amp=0.75), 0.14)
+    place(c, sparkle(0.5, amp=0.02, lo=5000, hi=9000, decay=7), 0.12)
+    return c
+
+
 if __name__ == '__main__':
     for fn in [ring_close_a, ring_close_b, ring_close_c,
                all_seven_a, all_seven_b, all_seven_c,
                streak_a, streak_b, streak_c,
-               mood_a, mood_b, mood_c]:
+               mood_a, mood_b, mood_c,
+               all_seven_b_963, streak_b_963]:
         render(fn.__name__.replace('_', '-', 1).replace('_', '-'), fn())
     print('\nDone → sound-candidates/')
