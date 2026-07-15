@@ -8,8 +8,8 @@ import type { RootStackParamList } from '../../App';
 import { colors, fonts, timing } from '../../theme';
 import { CREATION_LINES } from '../../api/mockData';
 import { BackButton, Mono, PillButton, Serif } from '../../components/ui';
-import { CameraIcon, CheckIcon, LibraryIcon, MicIcon } from '../../components/brandIcons';
-import { DancingBars, StaticBars } from '../../components/AnimatedBars';
+import { CameraFrontIcon, CheckIcon, LibraryFrameIcon, MicIcon } from '../../components/brandIcons';
+import { DancingBars, PulseRing, StaticBars } from '../../components/AnimatedBars';
 import { useStore } from '../../store';
 
 type Step = 'voice' | 'photo' | 'photoAdd' | 'building';
@@ -113,7 +113,7 @@ export default function CreationScreen({ navigation }: NativeStackScreenProps<Ro
       {step === 'voice' && (
         <Animated.View entering={FadeInUp.duration(500)} style={{ flex: 1 }}>
           <Mono size={12} color={colors.gold} style={{ letterSpacing: 2 }}>1 OF 2</Mono>
-          <Serif size={28} color={colors.cream} style={{ marginTop: 14 }}>
+          <Serif size={28} color={colors.cream} style={{ marginTop: 14, lineHeight: 38 }}>
             Whose voice should carry your affirmations?
           </Serif>
           <View style={{ gap: 12, marginTop: 28 }}>
@@ -139,15 +139,17 @@ export default function CreationScreen({ navigation }: NativeStackScreenProps<Ro
                 backgroundColor: 'rgba(250,244,232,0.07)', borderWidth: 1, borderColor: 'rgba(250,244,232,0.2)',
                 borderRadius: 18, padding: 16, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', gap: 14,
               }}>
-                <Pressable onPress={startRec} style={{
-                  width: 46, height: 46, borderRadius: 23,
-                  backgroundColor: recState === 'done' ? colors.teal : colors.gold,
-                  alignItems: 'center', justifyContent: 'center',
-                }}>
-                  {recState === 'done'
-                    ? <CheckIcon size={20} />
-                    : <MicIcon size={19} color={colors.ink} />}
-                </Pressable>
+                <PulseRing size={46} color={recState === 'recording' ? colors.gold : 'transparent'}>
+                  <Pressable onPress={startRec} style={{
+                    width: 46, height: 46, borderRadius: 23,
+                    backgroundColor: recState === 'done' ? colors.teal : colors.gold,
+                    alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    {recState === 'done'
+                      ? <CheckIcon size={20} />
+                      : <MicIcon size={19} color={colors.ink} />}
+                  </Pressable>
+                </PulseRing>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontFamily: fonts.sansMedium, fontSize: 15, color: colors.cream }}>
                     {recState === 'recording' ? 'Listening…' : recState === 'done' ? 'Recording saved' : 'Record your voice'}
@@ -185,7 +187,7 @@ export default function CreationScreen({ navigation }: NativeStackScreenProps<Ro
             <BackButton onPress={() => setStep('voice')} color={colors.gold} />
             <Mono size={12} color={colors.gold} style={{ letterSpacing: 2 }}>2 OF 2</Mono>
           </View>
-          <Serif size={28} color={colors.cream} style={{ marginTop: 14 }}>
+          <Serif size={28} color={colors.cream} style={{ marginTop: 14, lineHeight: 38 }}>
             Want to see yourself in your goals?
           </Serif>
           <Text style={{ fontFamily: fonts.sans, fontSize: 15, color: 'rgba(250,244,232,0.65)', lineHeight: 22, marginTop: 14 }}>
@@ -197,7 +199,7 @@ export default function CreationScreen({ navigation }: NativeStackScreenProps<Ro
               flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
               opacity: pressed ? 0.85 : 1,
             })}>
-              <CameraIcon size={18} />
+              <CameraFrontIcon size={18} />
               <Text style={{ fontFamily: fonts.sansMedium, fontSize: 16, color: colors.ink }}>Add a photo</Text>
             </Pressable>
             <PillButton
@@ -218,7 +220,7 @@ export default function CreationScreen({ navigation }: NativeStackScreenProps<Ro
             <BackButton onPress={() => setStep('photo')} color={colors.gold} />
             <Mono size={12} color={colors.gold} style={{ letterSpacing: 2 }}>2 OF 2</Mono>
           </View>
-          <Serif size={28} color={colors.cream} style={{ marginTop: 14 }}>
+          <Serif size={28} color={colors.cream} style={{ marginTop: 14, lineHeight: 38 }}>
             Add your photo
           </Serif>
           <Text style={{ fontFamily: fonts.sans, fontSize: 15, color: 'rgba(250,244,232,0.65)', lineHeight: 22, marginTop: 14 }}>
@@ -230,7 +232,7 @@ export default function CreationScreen({ navigation }: NativeStackScreenProps<Ro
               flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
               opacity: pressed ? 0.85 : 1,
             })}>
-              <CameraIcon size={18} />
+              <CameraFrontIcon size={18} />
               <Text style={{ fontFamily: fonts.sansMedium, fontSize: 16, color: colors.ink }}>Take a selfie</Text>
             </Pressable>
             <Pressable onPress={pickFromLibrary} style={({ pressed }) => ({
@@ -239,7 +241,7 @@ export default function CreationScreen({ navigation }: NativeStackScreenProps<Ro
               flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
               opacity: pressed ? 0.85 : 1,
             })}>
-              <LibraryIcon size={18} color="rgba(250,244,232,0.85)" />
+              <LibraryFrameIcon size={18} color="rgba(250,244,232,0.85)" />
               <Text style={{ fontFamily: fonts.sansMedium, fontSize: 15, color: 'rgba(250,244,232,0.85)' }}>Choose from library</Text>
             </Pressable>
           </View>

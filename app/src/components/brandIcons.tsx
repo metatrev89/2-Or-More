@@ -310,3 +310,34 @@ export function ContactsCardIcon({ size = 22, color = colors.ink }: { size?: num
     </Svg>
   );
 }
+
+/** Front-camera glyph used on the creation photo buttons (distinct from the photo-sheet camera). */
+export function CameraFrontIcon({ size = 18, color = colors.ink }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <Rect x={2} y={6} width={20} height={14} rx={3} />
+      <Circle cx={12} cy={13} r={4} />
+      <Path d="M8 6l1.5-2.5h5L16 6" />
+    </Svg>
+  );
+}
+
+/** Photo-frame glyph used on the creation "Choose from library" button. */
+export function LibraryFrameIcon({ size = 18, color = colors.warmGray }: { size?: number; color?: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <Rect x={3} y={3} width={18} height={18} rx={3} />
+      <Circle cx={9} cy={9} r={2} />
+      <Path d="M21 15l-5-5-9 9" />
+    </Svg>
+  );
+}
+
+/** 13px hint check (email password rule). */
+export function HintCheck({ color = colors.inactive }: { color?: string }) {
+  return (
+    <Svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M20 6L9 17l-5-5" />
+    </Svg>
+  );
+}

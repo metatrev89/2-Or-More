@@ -6,7 +6,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
 import { colors, fonts } from '../../theme';
 import { BackButton, Label, PillButton, Wordmark } from '../../components/ui';
-import { EyeIcon } from '../../components/brandIcons';
+import { EyeIcon, HintCheck } from '../../components/brandIcons';
 import { useStore } from '../../store';
 
 export default function EmailScreen({ navigation, route }: NativeStackScreenProps<RootStackParamList, 'Email'>) {
@@ -66,7 +66,7 @@ export default function EmailScreen({ navigation, route }: NativeStackScreenProp
       <View style={{ gap: 16, marginTop: 26 }}>
         {isSignup ? (
           <View style={{ gap: 7 }}>
-            <Label>Name</Label>
+            <Label size={12} spacing={1.2}>Name</Label>
             <TextInput
               value={name} onChangeText={setName}
               placeholder="What should we call you?" placeholderTextColor={colors.inactive}
@@ -78,7 +78,7 @@ export default function EmailScreen({ navigation, route }: NativeStackScreenProp
           </View>
         ) : (
           <View style={{ gap: 7 }}>
-            <Label>Email</Label>
+            <Label size={12} spacing={1.2}>Email</Label>
             <TextInput
               value={email} onChangeText={setEmail}
               placeholder="you@example.com" placeholderTextColor={colors.inactive}
@@ -91,7 +91,7 @@ export default function EmailScreen({ navigation, route }: NativeStackScreenProp
           </View>
         )}
         <View style={{ gap: 7 }}>
-          <Label>Password</Label>
+          <Label size={12} spacing={1.2}>Password</Label>
           <View>
             <TextInput
               ref={passRef}
@@ -108,9 +108,12 @@ export default function EmailScreen({ navigation, route }: NativeStackScreenProp
             </Pressable>
           </View>
           {isSignup && (
-            <Text style={{ fontFamily: fonts.sans, fontSize: 13, color: pass.length >= 8 ? colors.teal : colors.inactive, marginTop: 2 }}>
-              ✓ At least 8 characters
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+              <HintCheck color={pass.length >= 8 ? colors.teal : colors.inactive} />
+              <Text style={{ fontFamily: fonts.sans, fontSize: 13, color: pass.length >= 8 ? colors.teal : colors.inactive }}>
+                At least 8 characters
+              </Text>
+            </View>
           )}
         </View>
         {!isSignup && (

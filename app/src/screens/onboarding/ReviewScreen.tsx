@@ -65,7 +65,7 @@ export default function ReviewScreen({ navigation }: NativeStackScreenProps<Root
           </Animated.Text>
         )}
 
-        <View style={{ backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 24, padding: 26, paddingBottom: 20 }}>
+        <View style={{ backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 24, paddingTop: 26, paddingHorizontal: 24, paddingBottom: 20 }}>
           {!editing ? (
             <Serif size={26}>“{text}”</Serif>
           ) : (

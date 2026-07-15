@@ -7,9 +7,10 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
 import { AREAS, colors, fonts, timing } from '../../theme';
 import { MOCK_SCRIPT } from '../../api/mockData';
+import Svg, { Path } from 'react-native-svg';
 import { AiSpark, BackButton, Mono, PillButton, SegmentBar, Wordmark } from '../../components/ui';
 import { CameraIcon, ClockIcon, LibraryIcon, MicIcon, PaperclipIcon } from '../../components/brandIcons';
-import { DancingBars, PulseRing } from '../../components/AnimatedBars';
+import { BlinkingDots, DancingBars, PulseRing } from '../../components/AnimatedBars';
 import { useStore } from '../../store';
 
 /**
@@ -118,7 +119,7 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
     <Animated.View entering={FadeIn.duration(400)} style={{ flex: 1, backgroundColor: colors.cream, paddingTop: 52 }}>
       <View style={{ alignItems: 'center', paddingVertical: 6 }}><Wordmark /></View>
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 22, paddingVertical: 2 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 22, paddingVertical: 2 }}>
         <BackButton onPress={() => navigation.goBack()} />
         <SegmentBar total={7} activeCount={areaIdx + 1} />
         <Mono>{areaIdx + 1}/7</Mono>
@@ -158,7 +159,7 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
           <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
             <AiSpark />
             <View style={{ backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 18, padding: 14, paddingHorizontal: 16 }}>
-              <Text style={{ color: colors.teal, fontSize: 16, letterSpacing: 2 }}>•••</Text>
+              <BlinkingDots />
             </View>
           </View>
         )}
@@ -182,7 +183,8 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
           <View style={{ paddingHorizontal: 18, paddingBottom: 30, paddingTop: 6 }}>
             <View style={{
               backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 26,
-              padding: 16, paddingBottom: 12, gap: 12,
+              paddingTop: 16, paddingRight: 14, paddingBottom: 12, paddingLeft: 18, gap: 12,
+              shadowColor: colors.ink, shadowOpacity: 0.07, shadowRadius: 24, shadowOffset: { width: 0, height: 8 }, elevation: 4,
             }}>
               <TextInput
                 value={draft} onChangeText={setDraft}
@@ -196,7 +198,9 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
                   width: 44, height: 44, borderRadius: 22, backgroundColor: colors.white,
                   borderWidth: 1, borderColor: colors.sand, alignItems: 'center', justifyContent: 'center',
                 }}>
-                  <Text style={{ fontSize: 20, color: colors.ink }}>+</Text>
+                  <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={colors.ink} strokeWidth={2} strokeLinecap="round">
+                    <Path d="M12 5v14M5 12h14" />
+                  </Svg>
                 </Pressable>
                 <View style={{ flex: 1 }} />
                 {draft.trim() ? (
@@ -204,7 +208,9 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
                     width: 44, height: 44, borderRadius: 22, backgroundColor: colors.ink,
                     alignItems: 'center', justifyContent: 'center',
                   }}>
-                    <Text style={{ color: colors.cream, fontSize: 18 }}>↑</Text>
+                    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={colors.cream} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                      <Path d="M12 19V5M5 12l7-7 7 7" />
+                    </Svg>
                   </Pressable>
                 ) : listening ? (
                   <PulseRing size={44} color={colors.teal}>

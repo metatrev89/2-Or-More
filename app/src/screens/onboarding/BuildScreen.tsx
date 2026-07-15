@@ -56,7 +56,7 @@ export default function BuildScreen({ navigation }: NativeStackScreenProps<RootS
           <Mono size={15} color={colors.gold} style={{ letterSpacing: 2, marginBottom: 16 }}>
             {MOCK_AFFS.length} / {MOCK_AFFS.length}
           </Mono>
-          <Serif size={30} color={colors.cream} style={{ textAlign: 'center' }}>
+          <Serif size={30} color={colors.cream} style={{ textAlign: 'center', lineHeight: 40 }}>
             Your affirmations{'\n'}are ready.
           </Serif>
           <PillButton

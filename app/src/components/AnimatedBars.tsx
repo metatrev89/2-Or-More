@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { View } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, withDelay, Easing } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming, withDelay, Easing } from 'react-native-reanimated';
+import { colors } from '../theme';
 
 /**
  * Dancing audio bars (design: barDance keyframes — scaleY 0.5→1→0.5, 0.7s,
@@ -57,4 +58,26 @@ export function PulseRing({ size, color, children }: { size: number; color: stri
       {children}
     </View>
   );
+}
+
+/** The AI typing indicator — three 6px teal dots (design dotBlink keyframes: 0.25→1→0.25, staggered). */
+export function BlinkingDots({ color = colors.teal, size = 6, gap = 5 }: { color?: string; size?: number; gap?: number }) {
+  return (
+    <View style={{ flexDirection: 'row', gap }}>
+      {[0, 200, 400].map(delay => <BlinkDot key={delay} color={color} size={size} delayMs={delay} />)}
+    </View>
+  );
+}
+
+function BlinkDot({ color, size, delayMs }: { color: string; size: number; delayMs: number }) {
+  const op = useSharedValue(0.25);
+  useEffect(() => {
+    op.value = withDelay(delayMs, withRepeat(
+      withSequence(
+        withTiming(1, { duration: 480 }),
+        withTiming(0.25, { duration: 720 }),
+      ), -1, false));
+  }, [op, delayMs]);
+  const style = useAnimatedStyle(() => ({ opacity: op.value }));
+  return <Animated.View style={[{ width: size, height: size, borderRadius: size / 2, backgroundColor: color }, style]} />;
 }

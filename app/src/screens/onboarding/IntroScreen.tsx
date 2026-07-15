@@ -129,7 +129,7 @@ export default function IntroScreen({ navigation }: NativeStackScreenProps<RootS
         <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'center' }}>
           {MANIFESTO_LINES.map((_, i) => (
             <View key={i} style={{
-              width: 22, height: 3, borderRadius: 1.5,
+              width: 22, height: 2, borderRadius: 1,
               backgroundColor: i <= page ? colors.ink : colors.sand,
             }} />
           ))}

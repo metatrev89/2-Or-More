@@ -63,9 +63,11 @@ export function Mono({ children, size = 13, color = colors.warmGray, style }: {
   return <Text style={[{ fontFamily: fonts.mono, fontSize: size, color }, style]}>{children}</Text>;
 }
 
-export function Label({ children, color = colors.warmGray }: { children: React.ReactNode; color?: string }) {
+export function Label({ children, color = colors.warmGray, size = 11.5, spacing = 2 }: {
+  children: React.ReactNode; color?: string; size?: number; spacing?: number;
+}) {
   return (
-    <Text style={{ fontFamily: fonts.sansSemi, fontSize: 11.5, letterSpacing: 2, color, textTransform: 'uppercase' }}>
+    <Text style={{ fontFamily: fonts.sansSemi, fontSize: size, letterSpacing: spacing, color, textTransform: 'uppercase' }}>
       {children}
     </Text>
   );

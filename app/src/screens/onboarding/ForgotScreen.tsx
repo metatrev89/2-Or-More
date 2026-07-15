@@ -6,7 +6,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
 import { colors, fonts } from '../../theme';
 import { BackButton, Label, Mono, PillButton, Wordmark } from '../../components/ui';
-import { EyeIcon, CheckIcon } from '../../components/brandIcons';
+import { EyeIcon, CheckIcon, HintCheck } from '../../components/brandIcons';
 
 type Step = 'email' | 'code' | 'reset' | 'done';
 
@@ -164,9 +164,12 @@ export default function ForgotScreen({ navigation }: NativeStackScreenProps<Root
                 <EyeIcon slashed={showPass} />
               </Pressable>
             </View>
-            <Text style={{ fontFamily: fonts.sans, fontSize: 13, color: passOk ? colors.teal : colors.inactive, marginTop: 2 }}>
-              ✓ At least 8 characters
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+              <HintCheck color={passOk ? colors.teal : colors.inactive} />
+              <Text style={{ fontFamily: fonts.sans, fontSize: 13, color: passOk ? colors.teal : colors.inactive }}>
+                At least 8 characters
+              </Text>
+            </View>
           </Animated.View>
         )}
 
