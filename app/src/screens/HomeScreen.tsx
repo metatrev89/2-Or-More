@@ -22,6 +22,7 @@ import { api } from '../api/client';
 import { MOCK_AFFS } from '../api/mockData';
 import { NOTIFS } from '../api/socialMock';
 import SocialAvatar from '../components/Avatar';
+import { playCelebrationLarge, playCelebrationSmall } from '../audio/sfx';
 
 const AI_SPARK_PATH = 'M7 1v12M1 7h12M2.8 2.8l8.4 8.4M11.2 2.8l-8.4 8.4';
 
@@ -132,7 +133,7 @@ export default function HomeScreen() {
     if (streakCelebFired) return;
     streakCelebFired = true;
     let alive = true;
-    setTimeout(() => { if (alive) setStreakCeleb(true); }, 400);
+    setTimeout(() => { if (alive) { setStreakCeleb(true); playCelebrationLarge(); } }, 400);
     setTimeout(() => { if (alive) setStreakCeleb(false); }, 4600);
     return () => { alive = false; };
   }, []);
@@ -173,8 +174,13 @@ export default function HomeScreen() {
     api.recordExperience('me', affs[i]?.id ?? null, video ? 'watched' : 'listened');
     // Session celebration fires only when THIS completion newly closes the final
     // ring — replaying an already-completed card never re-triggers it.
-    if (!wasDone && nd.length === affs.length) setBigCeleb(true);
-    else if (autoplay && next !== -1 && nd.length < affs.length) (video ? playVideo : playAudio)(next);
+    if (!wasDone && nd.length === affs.length) {
+      setBigCeleb(true);
+      playCelebrationLarge();
+    } else {
+      playCelebrationSmall();
+      if (autoplay && next !== -1 && nd.length < affs.length) (video ? playVideo : playAudio)(next);
+    }
   };
 
   const playAudio = (i: number) => {

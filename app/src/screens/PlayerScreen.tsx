@@ -12,6 +12,7 @@ import MoodCheckIn from '../components/MoodCheckIn';
 import { affText, useStore } from '../store';
 import { api } from '../api/client';
 import { MOCK_AFFS } from '../api/mockData';
+import { playCelebrationLarge, playCelebrationSmall } from '../audio/sfx';
 
 const AUDIO_DUR = 34;
 const sceneDur = (i: number) => 9 + ((i * 7) % 5); // design's illustrative timings; real scenes are audio-driven 3-8s
@@ -151,12 +152,14 @@ export default function PlayerScreen({ route, navigation }: NativeStackScreenPro
           sceneRef.current = idx + 1; posRef.current = 0;
           setSceneIdx(idx + 1); setPos(0);
           setMovieCelebIdx(idx);
+          playCelebrationSmall();
           setTimeout(() => setMovieCelebIdx(c => (c === idx ? -1 : c)), 1100);
           showChrome(true);
         } else {
           stop();
           posRef.current = d; setPos(d); setPlaying(false);
           setRingClosed(true); setMovieCelebIdx(idx); setBigCeleb(true);
+          playCelebrationLarge();
           setTimeout(() => setMovieCelebIdx(-1), 4200);
           showChrome(false);
           api.recordExperience('me', null, 'watched_movie');
@@ -165,6 +168,7 @@ export default function PlayerScreen({ route, navigation }: NativeStackScreenPro
         stop();
         posRef.current = d; setPos(d); setPlaying(false);
         setRingClosed(true); setCelebSeg(affs.length - 1); setBigCeleb(true);
+        playCelebrationLarge();
         setTimeout(() => setCelebSeg(-1), 4200);
         api.recordExperience('me', null, 'listened');
       }
@@ -175,6 +179,7 @@ export default function PlayerScreen({ route, navigation }: NativeStackScreenPro
         const after = Math.floor(p / unit);
         if (after > before && after < affs.length) {
           setCelebSeg(after - 1);
+          playCelebrationSmall();
           setTimeout(() => setCelebSeg(c => (c === after - 1 ? -1 : c)), 1100);
         }
       }
