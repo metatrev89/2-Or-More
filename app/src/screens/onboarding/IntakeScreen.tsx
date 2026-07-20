@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Keyboard, Platform, Alert } from 'react-native';
-import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
+import Animated, {
+  Easing, FadeIn, FadeInUp, useAnimatedStyle, useSharedValue, withRepeat, withTiming,
+} from 'react-native-reanimated';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -9,9 +11,25 @@ import { AREAS, colors, fonts, timing } from '../../theme';
 import { MOCK_SCRIPT } from '../../api/mockData';
 import Svg, { Path } from 'react-native-svg';
 import { AiSpark, BackButton, Mono, PillButton, SegmentBar, Wordmark } from '../../components/ui';
-import { CameraIcon, ClockIcon, LibraryIcon, MicIcon, PaperclipIcon } from '../../components/brandIcons';
+import { CameraIcon, ChevronDownIcon, ClockIcon, LibraryIcon, MicIcon, PaperclipIcon, StarBurst } from '../../components/brandIcons';
+import { BurstRing, ChipPop, Confetti } from '../../components/Celebration';
+import { playCelebrationLarge } from '../../audio/sfx';
 import { BlinkingDots, DancingBars, PulseRing } from '../../components/AnimatedBars';
 import { CelebStar } from '../../components/Celebration';
+
+/** Gentle bobbing chevron directing attention to the CTA below. */
+function BobbingArrow() {
+  const y = useSharedValue(0);
+  useEffect(() => {
+    y.value = withRepeat(withTiming(6, { duration: 600, easing: Easing.inOut(Easing.ease) }), -1, true);
+  }, [y]);
+  const style = useAnimatedStyle(() => ({ transform: [{ translateY: y.value }] }));
+  return (
+    <Animated.View style={style}>
+      <ChevronDownIcon size={22} color={colors.ink} />
+    </Animated.View>
+  );
+}
 import { useStore } from '../../store';
 
 /**
@@ -25,8 +43,20 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
   const [chips, setChips] = useState<string[]>([]);
   const [photoSheet, setPhotoSheet] = useState(false);
   const [barCeleb, setBarCeleb] = useState(-1);
+  const [doneCeleb, setDoneCeleb] = useState(false);
   const prevArea = useRef(-1);
+  const doneCelebFired = useRef(false);
   const scrollRef = useRef<ScrollView>(null);
+
+  // All seven areas answered → big celebration (no mood check-in), auto-dismisses.
+  useEffect(() => {
+    if (!intakeDone || doneCelebFired.current) return;
+    doneCelebFired.current = true;
+    setDoneCeleb(true);
+    playCelebrationLarge();
+    const t = setTimeout(() => setDoneCeleb(false), 4200);
+    return () => clearTimeout(t);
+  }, [intakeDone]);
 
   // Star fires over each progress bar as it lights — including the first on entry
   // (Trevor, Jul 15: make the intake feel like progress is being won).
@@ -258,11 +288,37 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
         ) : (
           <View style={{ paddingHorizontal: 22, paddingBottom: 34, paddingTop: 6 }}>
             <Animated.View entering={FadeInUp.duration(400)}>
+              <View style={{ alignItems: 'center', marginBottom: 8 }}>
+                <BobbingArrow />
+              </View>
               <PillButton label="Build my affirmations" onPress={() => navigation.navigate('Build')} bg={colors.gold} color={colors.ink} />
             </Animated.View>
           </View>
         )}
       </KeyboardAvoidingView>
+
+      {/* all-seven-areas celebration — notification only, hands-off, auto-dismisses */}
+      {doneCeleb && (
+        <View pointerEvents="none" style={{
+          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden',
+          alignItems: 'center', justifyContent: 'center', zIndex: 50,
+        }}>
+          <Confetti />
+          <BurstRing color={colors.gold} borderWidth={4} durMs={1100} />
+          <BurstRing color={colors.teal} borderWidth={3} durMs={1300} delayMs={200} />
+          <BurstRing color={colors.gold} borderWidth={2} durMs={1500} delayMs={400} />
+          <ChipPop durMs={600} delayMs={200} style={{
+            backgroundColor: colors.ink, borderRadius: 26, paddingVertical: 16, paddingHorizontal: 26,
+            flexDirection: 'row', alignItems: 'center', gap: 12, maxWidth: '88%',
+            shadowColor: colors.ink, shadowOpacity: 0.35, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 8,
+          }}>
+            <StarBurst size={22} />
+            <Text style={{ flexShrink: 1, fontFamily: fonts.sansMedium, fontSize: 17, color: colors.cream }}>
+              Great job! Now let's build your affirmations.
+            </Text>
+          </ChipPop>
+        </View>
+      )}
 
       {/* photo sheet — the design's intermediate step before the system picker */}
       {photoSheet && (
