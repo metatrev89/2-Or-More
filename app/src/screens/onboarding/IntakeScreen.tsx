@@ -11,6 +11,7 @@ import Svg, { Path } from 'react-native-svg';
 import { AiSpark, BackButton, Mono, PillButton, SegmentBar, Wordmark } from '../../components/ui';
 import { CameraIcon, ClockIcon, LibraryIcon, MicIcon, PaperclipIcon } from '../../components/brandIcons';
 import { BlinkingDots, DancingBars, PulseRing } from '../../components/AnimatedBars';
+import { CelebStar } from '../../components/Celebration';
 import { useStore } from '../../store';
 
 /**
@@ -23,7 +24,20 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
   const [draft, setDraft] = useState('');
   const [chips, setChips] = useState<string[]>([]);
   const [photoSheet, setPhotoSheet] = useState(false);
+  const [barCeleb, setBarCeleb] = useState(-1);
+  const prevArea = useRef(-1);
   const scrollRef = useRef<ScrollView>(null);
+
+  // Star fires over each progress bar as it lights — including the first on entry
+  // (Trevor, Jul 15: make the intake feel like progress is being won).
+  useEffect(() => {
+    if (areaIdx === prevArea.current) return;
+    const first = prevArea.current === -1;
+    prevArea.current = areaIdx;
+    const show = setTimeout(() => setBarCeleb(areaIdx), first ? 600 : 0);
+    const hide = setTimeout(() => setBarCeleb(c => (c === areaIdx ? -1 : c)), (first ? 600 : 0) + 1100);
+    return () => { clearTimeout(show); clearTimeout(hide); };
+  }, [areaIdx]);
 
   const scrollDown = () => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
 
@@ -121,7 +135,16 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
 
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 22, paddingVertical: 2 }}>
         <BackButton onPress={() => navigation.goBack()} />
-        <SegmentBar total={7} activeCount={areaIdx + 1} />
+        <View style={{ flex: 1 }}>
+          <SegmentBar total={7} activeCount={areaIdx + 1} />
+          {barCeleb >= 0 && (
+            <View pointerEvents="none" style={{
+              position: 'absolute', top: -14, left: `${((barCeleb + 0.5) / 7) * 100}%`, marginLeft: -8, zIndex: 2,
+            }}>
+              <CelebStar key={barCeleb} size={16} durMs={1000} />
+            </View>
+          )}
+        </View>
         <Mono>{areaIdx + 1}/7</Mono>
       </View>
 

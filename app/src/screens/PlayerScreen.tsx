@@ -15,6 +15,9 @@ import { MOCK_AFFS } from '../api/mockData';
 import { playCelebrationLarge, playCelebrationSmall } from '../audio/sfx';
 
 const AUDIO_DUR = 34;
+/** Mock daily-progress figure shown in the session-complete chip (live: from stats/summary). */
+const SESSIONS_TODAY = '3 of 7';
+const SESSION_CHIP_MS = 5200; // linger through the celebration, then slip away
 const sceneDur = (i: number) => 9 + ((i * 7) % 5); // design's illustrative timings; real scenes are audio-driven 3-8s
 const PLAYER_HEIGHTS = [10, 22, 15, 34, 20, 42, 26, 14, 30, 18, 38, 24, 12, 28, 16, 36, 22, 10, 26, 15, 33, 19, 12, 24, 40, 17, 29, 13, 35, 21, 11, 25, 16, 31, 18, 12];
 const SPEED_CHIPS = [0.7, 1, 1.2, 1.5, 1.7, 2];
@@ -29,6 +32,22 @@ function SkipIcon({ forward = false, color = colors.warmGray }: { forward?: bool
     <Svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
       <Path d={forward ? 'M5 4l10 8-10 8V4zM19 5v14' : 'M19 20L9 12l10-8v16zM5 19V5'} />
     </Svg>
+  );
+}
+
+/** Session-complete chip — the day's progress report (same styling both players). */
+function SessionChip({ onDark = false }: { onDark?: boolean }) {
+  return (
+    <View style={{
+      flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.ink,
+      borderRadius: 18, paddingVertical: 8, paddingHorizontal: 16,
+      borderWidth: onDark ? 1 : 0, borderColor: 'rgba(250,244,232,0.18)',
+    }}>
+      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.gold }} />
+      <Text style={{ fontFamily: fonts.sans, fontSize: 13, color: colors.gold }}>
+        Session complete — <Mono size={13} color={colors.gold}>{SESSIONS_TODAY}</Mono> sessions today
+      </Text>
+    </View>
   );
 }
 
@@ -97,6 +116,7 @@ export default function PlayerScreen({ route, navigation }: NativeStackScreenPro
   const [celebSeg, setCelebSeg] = useState(-1);
   const [movieCelebIdx, setMovieCelebIdx] = useState(-1);
   const [ringClosed, setRingClosed] = useState(false);
+  const [sessionChip, setSessionChip] = useState(false);
   const [bigCeleb, setBigCeleb] = useState(false);
   const [chrome, setChrome] = useState(true);
   const [speedSheet, setSpeedSheet] = useState(false);
@@ -130,6 +150,11 @@ export default function PlayerScreen({ route, navigation }: NativeStackScreenPro
   const stop = () => { if (timer.current) clearInterval(timer.current); timer.current = null; };
   useEffect(() => () => { stop(); if (chromeTimer.current) clearTimeout(chromeTimer.current); }, []);
 
+  const showSessionChip = () => {
+    setSessionChip(true);
+    setTimeout(() => setSessionChip(false), SESSION_CHIP_MS);
+  };
+
   const showChrome = (isPlaying: boolean) => {
     if (chromeTimer.current) clearTimeout(chromeTimer.current);
     setChrome(true);
@@ -159,6 +184,7 @@ export default function PlayerScreen({ route, navigation }: NativeStackScreenPro
           stop();
           posRef.current = d; setPos(d); setPlaying(false);
           setRingClosed(true); setMovieCelebIdx(idx); setBigCeleb(true);
+          showSessionChip();
           playCelebrationLarge();
           setTimeout(() => setMovieCelebIdx(-1), 4200);
           showChrome(false);
@@ -168,6 +194,7 @@ export default function PlayerScreen({ route, navigation }: NativeStackScreenPro
         stop();
         posRef.current = d; setPos(d); setPlaying(false);
         setRingClosed(true); setCelebSeg(affs.length - 1); setBigCeleb(true);
+        showSessionChip();
         playCelebrationLarge();
         setTimeout(() => setCelebSeg(-1), 4200);
         api.recordExperience('me', null, 'listened');
@@ -338,18 +365,18 @@ export default function PlayerScreen({ route, navigation }: NativeStackScreenPro
               <Pressable onPress={() => skip(true)} hitSlop={6}><SkipIcon forward /></Pressable>
               <View style={{ width: 46 }} />
             </View>
-            {!ringClosed ? (
-              <Text style={{ fontFamily: fonts.sans, fontSize: 13, color: colors.warmGray, textAlign: 'center', marginTop: 20 }}>
-                Listening through closes ring <Mono size={13} color={colors.warmGray}>7</Mono> automatically.
-              </Text>
-            ) : (
-              <Animated.View entering={FadeInUp.duration(500)} style={{ alignItems: 'center', marginTop: 20 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.ink, borderRadius: 18, paddingVertical: 8, paddingHorizontal: 16 }}>
-                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.gold }} />
-                  <Text style={{ fontFamily: fonts.sans, fontSize: 13, color: colors.gold }}>Ring 7 closed — 7 of 7 today</Text>
-                </View>
-              </Animated.View>
-            )}
+            {/* fixed-height slot: hint before completion, daily progress report after (auto-dismisses) */}
+            <View style={{ minHeight: 54, alignItems: 'center', justifyContent: 'center', marginTop: 6 }}>
+              {!ringClosed ? (
+                <Text style={{ fontFamily: fonts.sans, fontSize: 13, color: colors.warmGray, textAlign: 'center' }}>
+                  Listening through closes ring <Mono size={13} color={colors.warmGray}>7</Mono> automatically.
+                </Text>
+              ) : sessionChip ? (
+                <Animated.View entering={FadeInUp.duration(500)}>
+                  <SessionChip />
+                </Animated.View>
+              ) : null}
+            </View>
           </View>
         </>
       ) : (
@@ -427,6 +454,17 @@ export default function PlayerScreen({ route, navigation }: NativeStackScreenPro
             })}
           </View>
         </ScrollView>
+      )}
+
+      {/* session-complete chip in the movie theater (audio mode has its inline slot) */}
+      {movie && sessionChip && (
+        <Animated.View
+          entering={FadeInUp.duration(500)}
+          pointerEvents="none"
+          style={{ position: 'absolute', left: 0, right: 0, bottom: 48, alignItems: 'center', zIndex: 30 }}
+        >
+          <SessionChip onDark />
+        </Animated.View>
       )}
 
       {/* all-complete celebration */}
