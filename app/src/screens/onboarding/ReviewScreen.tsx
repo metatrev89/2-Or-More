@@ -6,6 +6,8 @@ import type { RootStackParamList } from '../../App';
 import { colors, fonts } from '../../theme';
 import { BackButton, Label, PillButton, Serif, Wordmark } from '../../components/ui';
 import { PencilIcon, RewordIcon } from '../../components/brandIcons';
+import { CelebStar } from '../../components/Celebration';
+import { playCelebrationSmall } from '../../audio/sfx';
 import { affText, useStore } from '../../store';
 
 /** Affirmation review — the "want → I am" reveal (design screen 5). */
@@ -13,6 +15,7 @@ export default function ReviewScreen({ navigation }: NativeStackScreenProps<Root
   const { affirmations, reviewIndex, reworded, edits, set } = useStore();
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState('');
+  const [dotCeleb, setDotCeleb] = useState(-1);
 
   const aff = affirmations[reviewIndex];
   if (!aff) return null;
@@ -20,8 +23,15 @@ export default function ReviewScreen({ navigation }: NativeStackScreenProps<Root
   const isReworded = !!reworded[reviewIndex] && !edits[reviewIndex];
 
   const keepIt = () => {
+    // Each confirmed affirmation earns its star + chime (voice note, Jul 20).
+    playCelebrationSmall();
     if (reviewIndex >= affirmations.length - 1) navigation.navigate('Schedule');
-    else { set({ reviewIndex: reviewIndex + 1 }); setEditing(false); }
+    else {
+      set({ reviewIndex: reviewIndex + 1 });
+      setEditing(false);
+      setDotCeleb(reviewIndex);
+      setTimeout(() => setDotCeleb(c => (c === reviewIndex ? -1 : c)), 1100);
+    }
   };
 
   const rewordIt = () => {
@@ -108,10 +118,19 @@ export default function ReviewScreen({ navigation }: NativeStackScreenProps<Root
       <Text style={{ textAlign: 'center', fontFamily: fonts.sans, fontSize: 13, color: colors.inactive, marginTop: 10 }}>
         Reword · Edit
       </Text>
-      <View style={{ flexDirection: 'row', gap: 7, paddingTop: 20, paddingBottom: 34 }}>
-        {affirmations.map((_, i) => (
-          <View key={i} style={{ flex: 1, height: 7, borderRadius: 4, backgroundColor: i <= reviewIndex ? colors.gold : colors.border }} />
-        ))}
+      <View style={{ paddingTop: 20, paddingBottom: 34 }}>
+        <View style={{ flexDirection: 'row', gap: 7 }}>
+          {affirmations.map((_, i) => (
+            <View key={i} style={{ flex: 1, height: 7, borderRadius: 4, backgroundColor: i <= reviewIndex ? colors.gold : colors.border }} />
+          ))}
+        </View>
+        {dotCeleb >= 0 && (
+          <View pointerEvents="none" style={{
+            position: 'absolute', top: 6, left: `${((dotCeleb + 0.5) / affirmations.length) * 100}%`, marginLeft: -8, zIndex: 2,
+          }}>
+            <CelebStar key={dotCeleb} size={16} durMs={1000} />
+          </View>
+        )}
       </View>
     </Animated.View>
   );

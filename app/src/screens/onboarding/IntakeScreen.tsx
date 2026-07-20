@@ -13,7 +13,7 @@ import Svg, { Path } from 'react-native-svg';
 import { AiSpark, BackButton, Mono, PillButton, SegmentBar, Wordmark } from '../../components/ui';
 import { CameraIcon, ChevronDownIcon, ClockIcon, LibraryIcon, MicIcon, PaperclipIcon, StarBurst } from '../../components/brandIcons';
 import { BurstRing, ChipPop, Confetti } from '../../components/Celebration';
-import { playCelebrationLarge } from '../../audio/sfx';
+import { playCelebrationLarge, playCelebrationSmall } from '../../audio/sfx';
 import { BlinkingDots, DancingBars, PulseRing } from '../../components/AnimatedBars';
 import { CelebStar } from '../../components/Celebration';
 
@@ -64,7 +64,7 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
     if (areaIdx === prevArea.current) return;
     const first = prevArea.current === -1;
     prevArea.current = areaIdx;
-    const show = setTimeout(() => setBarCeleb(areaIdx), first ? 600 : 0);
+    const show = setTimeout(() => { setBarCeleb(areaIdx); playCelebrationSmall(); }, first ? 600 : 0);
     const hide = setTimeout(() => setBarCeleb(c => (c === areaIdx ? -1 : c)), (first ? 600 : 0) + 1100);
     return () => { clearTimeout(show); clearTimeout(hide); };
   }, [areaIdx]);

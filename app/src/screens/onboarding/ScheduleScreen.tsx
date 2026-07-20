@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable, ScrollView } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
+import * as Notifications from 'expo-notifications';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
@@ -128,7 +129,16 @@ export default function ScheduleScreen({ navigation }: NativeStackScreenProps<Ro
         </View>
 
         <View style={{ paddingTop: 22 }}>
-          <PillButton label="Set my schedule" onPress={() => navigation.navigate('Paywall')} />
+          <PillButton
+            label="Set my schedule"
+            onPress={async () => {
+              // The moment the user commits to a cadence is the natural moment to
+              // ask for notification permission (voice note, Jul 20). Proceed
+              // regardless of the answer — delivery settings can re-prompt later.
+              try { await Notifications.requestPermissionsAsync(); } catch { /* never block onboarding */ }
+              navigation.navigate('Paywall');
+            }}
+          />
         </View>
       </ScrollView>
     </Animated.View>
