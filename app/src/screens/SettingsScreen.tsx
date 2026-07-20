@@ -7,6 +7,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../App';
 import { colors, fonts } from '../theme';
 import { BackButton } from '../components/ui';
+import { signOutUser } from '../api/auth';
 import { useStore } from '../store';
 
 function ChevronRight() {
@@ -86,7 +87,10 @@ export default function SettingsScreen() {
         <SectionLabel>SUPPORT</SectionLabel>
         <Card>
           <Row label="Help & support" chevron />
-          <Row label="Sign out" last onPress={() => nav.reset({ index: 0, routes: [{ name: 'Intro' }] })} />
+          <Row label="Sign out" last onPress={async () => {
+            await signOutUser(); // clears the persisted Supabase session in live mode
+            nav.reset({ index: 0, routes: [{ name: 'Intro' }] });
+          }} />
         </Card>
       </ScrollView>
     </Animated.View>

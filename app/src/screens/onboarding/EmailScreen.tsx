@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, TextInput, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, Pressable, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -7,6 +7,7 @@ import type { RootStackParamList } from '../../App';
 import { colors, fonts } from '../../theme';
 import { BackButton, Label, PillButton, Wordmark } from '../../components/ui';
 import { EyeIcon, HintCheck } from '../../components/brandIcons';
+import { signInWithEmail, signUpWithEmail } from '../../api/auth';
 import { useStore } from '../../store';
 
 export default function EmailScreen({ navigation, route }: NativeStackScreenProps<RootStackParamList, 'Email'>) {
@@ -17,18 +18,33 @@ export default function EmailScreen({ navigation, route }: NativeStackScreenProp
   const [email, setEmail] = useState('');
   const [pass, setPass] = useState('');
   const [showPass, setShowPass] = useState(false);
+  const [busy, setBusy] = useState(false);
   const passRef = useRef<TextInput>(null);
   const insets = useSafeAreaInsets();
 
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const valid = isSignup ? pass.length >= 8 && name.trim().length > 0 : emailOk && pass.length > 0;
 
-  const submit = () => {
-    if (!valid) return;
+  const submit = async () => {
+    if (!valid || busy) return;
+    setBusy(true);
     if (isSignup) {
+      const res = await signUpWithEmail(name.trim(), continuingEmail || email, pass);
+      setBusy(false);
+      if (!res.ok) { Alert.alert('Sign up failed', res.message); return; }
       if (name.trim()) useStore.getState().set({ userName: name.trim().split(/\s+/)[0] });
+      if (res.needsEmailConfirm) {
+        Alert.alert('Confirm your email', 'We sent a confirmation link to your inbox. Tap it, then come back and sign in.');
+        return;
+      }
       navigation.navigate('Intake');
-    } else navigation.replace('Main');
+    } else {
+      const res = await signInWithEmail(email, pass);
+      setBusy(false);
+      if (!res.ok) { Alert.alert('Sign in failed', res.message); return; }
+      if (res.displayName) useStore.getState().set({ userName: res.displayName.split(/\s+/)[0] });
+      navigation.replace('Main');
+    }
   };
 
   const field = {
@@ -130,11 +146,11 @@ export default function EmailScreen({ navigation, route }: NativeStackScreenProp
         </Text>
       )}
       <PillButton
-        label={isSignup ? 'Create account' : 'Sign in'}
+        label={busy ? (isSignup ? 'Creating account…' : 'Signing in…') : isSignup ? 'Create account' : 'Sign in'}
         onPress={submit}
-        disabled={!valid}
-        bg={valid ? colors.ink : colors.border}
-        color={valid ? colors.cream : colors.inactive}
+        disabled={!valid || busy}
+        bg={valid && !busy ? colors.ink : colors.border}
+        color={valid && !busy ? colors.cream : colors.inactive}
       />
     </KeyboardAvoidingView>
     </Animated.View>

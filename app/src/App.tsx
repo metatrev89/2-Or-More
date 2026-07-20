@@ -14,6 +14,8 @@ import { Newsreader_400Regular_Italic, Newsreader_500Medium_Italic } from '@expo
 import { SplineSansMono_400Regular, SplineSansMono_500Medium } from '@expo-google-fonts/spline-sans-mono';
 import { colors } from './theme';
 import { useStore } from './store';
+import { isLiveMode } from './api/supabase';
+import { restoreSession } from './api/auth';
 
 import IntroScreen from './screens/onboarding/IntroScreen';
 import SignupScreen from './screens/onboarding/SignupScreen';
@@ -79,6 +81,15 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { err
 
 function Root() {
   const hydrate = useStore(s => s.hydrate);
+  // Live mode: restore a persisted Supabase session and land signed-in users on Main.
+  const [authState, setAuthState] = React.useState<'checking' | 'in' | 'out'>(isLiveMode ? 'checking' : 'out');
+  useEffect(() => {
+    if (!isLiveMode) return;
+    restoreSession().then(r => {
+      if (r.displayName) useStore.getState().set({ userName: r.displayName.split(/\s+/)[0] });
+      setAuthState(r.signedIn ? 'in' : 'out');
+    });
+  }, []);
   const [fontsLoaded, fontError] = useFonts({
     InstrumentSans_400Regular,
     InstrumentSans_500Medium,
@@ -92,13 +103,15 @@ function Root() {
   useEffect(() => { hydrate(); }, [hydrate]);
 
   // Proceed on font error too — system fonts beat a stuck splash.
-  if (!fontsLoaded && !fontError) return <View style={{ flex: 1, backgroundColor: colors.cream }} />;
+  if ((!fontsLoaded && !fontError) || authState === 'checking') {
+    return <View style={{ flex: 1, backgroundColor: colors.cream }} />;
+  }
 
   return (
     <NavigationContainer theme={navTheme}>
       <StatusBar style="dark" />
       <Stack.Navigator
-        initialRouteName="Intro"
+        initialRouteName={authState === 'in' ? 'Main' : 'Intro'}
         screenOptions={{ headerShown: false, animation: 'fade', animationDuration: 400 }}
       >
         <Stack.Screen name="Intro" component={IntroScreen} />

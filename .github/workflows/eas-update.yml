@@ -26,3 +26,7 @@ jobs:
         run: npx eas-cli update --branch preview --message "${{ github.event.head_commit.message }}" --non-interactive
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          # Supabase publishable config — inlined into the bundle at publish time.
+          # Set these under repo Settings → Secrets and variables → Actions → Variables.
+          EXPO_PUBLIC_SUPABASE_URL: ${{ vars.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
