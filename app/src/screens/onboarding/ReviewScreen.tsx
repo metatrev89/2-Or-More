@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { View, Text, TextInput, Pressable, ScrollView } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -6,8 +6,9 @@ import type { RootStackParamList } from '../../App';
 import { colors, fonts } from '../../theme';
 import { BackButton, Label, PillButton, Serif, Wordmark } from '../../components/ui';
 import { PencilIcon, RewordIcon } from '../../components/brandIcons';
-import { CelebStar } from '../../components/Celebration';
-import { playCelebrationSmall } from '../../audio/sfx';
+import { BurstRing, CelebStar, ChipPop, Confetti } from '../../components/Celebration';
+import { StarBurst } from '../../components/brandIcons';
+import { playCelebrationLarge, playCelebrationSmall } from '../../audio/sfx';
 import { affText, useStore } from '../../store';
 
 /** Affirmation review — the "want → I am" reveal (design screen 5). */
@@ -16,6 +17,15 @@ export default function ReviewScreen({ navigation }: NativeStackScreenProps<Root
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState('');
   const [dotCeleb, setDotCeleb] = useState(-1);
+  const [doneCeleb, setDoneCeleb] = useState(false);
+  const advanced = useRef(false);
+
+  const goNext = () => {
+    if (advanced.current) return;
+    advanced.current = true;
+    setDoneCeleb(false);
+    navigation.navigate('Schedule');
+  };
 
   const aff = affirmations[reviewIndex];
   if (!aff) return null;
@@ -23,10 +33,17 @@ export default function ReviewScreen({ navigation }: NativeStackScreenProps<Root
   const isReworded = !!reworded[reviewIndex] && !edits[reviewIndex];
 
   const keepIt = () => {
-    // Each confirmed affirmation earns its star + chime (voice note, Jul 20).
-    playCelebrationSmall();
-    if (reviewIndex >= affirmations.length - 1) navigation.navigate('Schedule');
-    else {
+    if (reviewIndex >= affirmations.length - 1) {
+      // 7 of 7 kept — big celebration first, then on to scheduling
+      // (auto-advances when it ends, or on tap; Trevor, Jul 20).
+      advanced.current = false;
+      setEditing(false);
+      setDoneCeleb(true);
+      playCelebrationLarge();
+      setTimeout(goNext, 4200);
+    } else {
+      // Each confirmed affirmation earns its star + chime (voice note, Jul 20).
+      playCelebrationSmall();
       set({ reviewIndex: reviewIndex + 1 });
       setEditing(false);
       setDotCeleb(reviewIndex);
@@ -132,6 +149,32 @@ export default function ReviewScreen({ navigation }: NativeStackScreenProps<Root
           </View>
         )}
       </View>
+
+      {/* 7-of-7 celebration — auto-advances to Schedule, or tap anywhere to continue */}
+      {doneCeleb && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 50 }}>
+          <Pressable onPress={goNext} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
+          <View pointerEvents="none" style={{
+            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden',
+            alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Confetti />
+            <BurstRing color={colors.gold} borderWidth={4} durMs={1100} />
+            <BurstRing color={colors.teal} borderWidth={3} durMs={1300} delayMs={200} />
+            <BurstRing color={colors.gold} borderWidth={2} durMs={1500} delayMs={400} />
+            <ChipPop durMs={600} delayMs={200} style={{
+              backgroundColor: colors.ink, borderRadius: 26, paddingVertical: 16, paddingHorizontal: 26,
+              flexDirection: 'row', alignItems: 'center', gap: 12, maxWidth: '88%',
+              shadowColor: colors.ink, shadowOpacity: 0.35, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 8,
+            }}>
+              <StarBurst size={22} />
+              <Text style={{ flexShrink: 1, fontFamily: fonts.sansMedium, fontSize: 17, color: colors.cream }}>
+                All 7 affirmations — yours. Let's set your schedule.
+              </Text>
+            </ChipPop>
+          </View>
+        </View>
+      )}
     </Animated.View>
   );
 }
