@@ -6,6 +6,6 @@ declare module 'expo-image-picker' {
     quality?: number;
     allowsEditing?: boolean;
   }): Promise<ImagePickerResult>;
-  export function launchCameraAsync(options?: { quality?: number; cameraType?: string }): Promise<ImagePickerResult>;
+  export function launchCameraAsync(options?: { quality?: number; cameraType?: string; allowsEditing?: boolean }): Promise<ImagePickerResult>;
   export function requestCameraPermissionsAsync(): Promise<{ granted: boolean; status: string }>;
 }

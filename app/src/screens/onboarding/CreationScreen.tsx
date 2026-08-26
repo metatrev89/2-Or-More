@@ -72,7 +72,7 @@ export default function CreationScreen({ navigation }: NativeStackScreenProps<Ro
   const pickFromLibrary = async () => {
     const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
     const uri = res.assets?.[0]?.uri;
-    if (uri) { set({ profilePhotoUri: uri }); runBuild(); }
+    if (uri) { useStore.getState().setProfilePhoto(uri); runBuild(); }
   };
 
   const takeSelfie = async () => {
@@ -83,7 +83,7 @@ export default function CreationScreen({ navigation }: NativeStackScreenProps<Ro
     }
     const res = await ImagePicker.launchCameraAsync({ quality: 0.8, cameraType: 'front' });
     const uri = res.assets?.[0]?.uri;
-    if (uri) { set({ profilePhotoUri: uri }); runBuild(); }
+    if (uri) { useStore.getState().setProfilePhoto(uri); runBuild(); }
   };
 
   const voiceCard = (key: 'aria' | 'james', name: string, desc: string) => (

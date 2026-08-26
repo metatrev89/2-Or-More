@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable, ScrollView, Image } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import { View, Text, Pressable, ScrollView, Image, Alert } from 'react-native';
+import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
+import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../App';
 import { colors, fonts } from '../theme';
 import { Mono } from '../components/ui';
+import { CameraFrontIcon, LibraryFrameIcon, XIcon } from '../components/brandIcons';
 import { affText, useStore } from '../store';
 import { MOCK_AFFS } from '../api/mockData';
 
@@ -62,9 +65,34 @@ function ShareCircle({ state }: { state: 'all' | 'some' | 'none' }) {
 export default function ProfileScreen() {
   const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const store = useStore();
-  const { profilePhotoUri, userName, shareSel, set } = store;
+  const { profilePhotoUri, userName, shareSel, set, setProfilePhoto } = store;
   const affs = store.affirmations.length ? store.affirmations : MOCK_AFFS;
   const [privacyMode, setPrivacyMode] = useState(false);
+  const [photoSheet, setPhotoSheet] = useState(false);
+
+  /** Copy the picked image out of the picker's temp cache so it survives restarts. */
+  const persistPhoto = async (uri: string) => {
+    try {
+      const dest = `${FileSystem.documentDirectory}profile-photo-${Date.now()}.jpg`;
+      await FileSystem.copyAsync({ from: uri, to: dest });
+      setProfilePhoto(dest);
+    } catch {
+      setProfilePhoto(uri); // cache path still works for this session
+    }
+  };
+
+  const pickPhoto = async (source: 'camera' | 'library') => {
+    setPhotoSheet(false);
+    if (source === 'camera') {
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (!perm.granted) { Alert.alert('Camera access needed', 'Enable camera access in Settings to take a selfie.'); return; }
+    }
+    const res = source === 'camera'
+      ? await ImagePicker.launchCameraAsync({ quality: 0.8, cameraType: 'front', allowsEditing: true })
+      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8, allowsEditing: true });
+    const uri = res.assets?.[0]?.uri;
+    if (uri) persistPhoto(uri);
+  };
 
   const onCount = (i: number) => SHARE_OPTS.filter(o => shareSel[`${i}-${o.key}`]).length;
   const allShared = affs.every((_, i) => onCount(i) === SHARE_OPTS.length);
@@ -89,17 +117,26 @@ export default function ProfileScreen() {
   return (
     <Animated.View entering={FadeIn.duration(400)} style={{ flex: 1, backgroundColor: colors.cream }}>
       <ScrollView contentContainerStyle={{ paddingTop: 64, paddingHorizontal: 22, paddingBottom: 12 }}>
-        {/* header */}
+        {/* header — avatar is tappable; the little camera badge is the edit affordance */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-          {profilePhotoUri ? (
-            <Image source={{ uri: profilePhotoUri }} style={{ width: 58, height: 58, borderRadius: 29 }} />
-          ) : (
-            <View style={{ width: 58, height: 58, borderRadius: 29, backgroundColor: colors.ink, alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontFamily: fonts.sansSemi, fontSize: 23, color: colors.cream }}>
-                {(userName || 'T').charAt(0).toUpperCase()}
-              </Text>
+          <Pressable onPress={() => setPhotoSheet(true)} hitSlop={4} style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}>
+            {profilePhotoUri ? (
+              <Image source={{ uri: profilePhotoUri }} style={{ width: 58, height: 58, borderRadius: 29 }} />
+            ) : (
+              <View style={{ width: 58, height: 58, borderRadius: 29, backgroundColor: colors.ink, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontFamily: fonts.sansSemi, fontSize: 23, color: colors.cream }}>
+                  {(userName || 'T').charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            )}
+            <View style={{
+              position: 'absolute', right: -3, bottom: -3, width: 22, height: 22, borderRadius: 11,
+              backgroundColor: colors.ink, borderWidth: 2, borderColor: colors.cream,
+              alignItems: 'center', justifyContent: 'center',
+            }}>
+              <CameraFrontIcon size={11} color={colors.cream} />
             </View>
-          )}
+          </Pressable>
           <View style={{ flex: 1 }}>
             <Text style={{ fontFamily: fonts.sansSemi, fontSize: 23, color: colors.ink }}>{userName}</Text>
             <Text style={{ fontFamily: fonts.sans, fontSize: 13.5, color: colors.warmGray, marginTop: 2 }}>
@@ -210,6 +247,53 @@ export default function ProfileScreen() {
           })}
         </View>
       </ScrollView>
+
+      {/* profile photo sheet */}
+      {photoSheet && (
+        <>
+          <Pressable onPress={() => setPhotoSheet(false)} style={{
+            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(38,32,26,0.4)',
+          }} />
+          <Animated.View entering={FadeInUp.duration(300)} style={{
+            position: 'absolute', left: 8, right: 8, bottom: 8,
+            backgroundColor: colors.cream, borderRadius: 30, paddingTop: 22, paddingHorizontal: 20, paddingBottom: 14,
+          }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4, paddingBottom: 8 }}>
+              <Text style={{ fontFamily: fonts.sansSemi, fontSize: 18, color: colors.ink }}>Profile photo</Text>
+              <Pressable onPress={() => setPhotoSheet(false)} hitSlop={8}>
+                <XIcon size={16} />
+              </Pressable>
+            </View>
+            <View style={{ backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 22, paddingHorizontal: 18, paddingVertical: 4 }}>
+              <Pressable onPress={() => pickPhoto('camera')} style={{
+                flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 15,
+                borderBottomWidth: 1, borderBottomColor: colors.borderSoft,
+              }}>
+                <CameraFrontIcon size={20} />
+                <Text style={{ fontFamily: fonts.sans, fontSize: 16, color: colors.ink }}>Take a selfie</Text>
+              </Pressable>
+              <Pressable onPress={() => pickPhoto('library')} style={{
+                flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 15,
+                borderBottomWidth: profilePhotoUri ? 1 : 0, borderBottomColor: colors.borderSoft,
+              }}>
+                <LibraryFrameIcon size={20} color={colors.ink} />
+                <Text style={{ fontFamily: fonts.sans, fontSize: 16, color: colors.ink }}>Choose from library</Text>
+              </Pressable>
+              {profilePhotoUri && (
+                <Pressable onPress={() => { setProfilePhoto(null); setPhotoSheet(false); }} style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 15,
+                }}>
+                  <XIcon size={18} color={colors.warmGray} />
+                  <Text style={{ fontFamily: fonts.sans, fontSize: 16, color: colors.warmGray }}>Remove photo</Text>
+                </Pressable>
+              )}
+            </View>
+            <Text style={{ fontFamily: fonts.sans, fontSize: 12.5, color: colors.warmGray, textAlign: 'center', marginTop: 12, lineHeight: 18 }}>
+              Your photo stays private to your practice.
+            </Text>
+          </Animated.View>
+        </>
+      )}
     </Animated.View>
   );
 }

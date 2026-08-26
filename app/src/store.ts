@@ -48,6 +48,7 @@ interface State {
   shareSel: Record<string, boolean>;
   // actions
   set: (partial: Partial<State>) => void;
+  setProfilePhoto: (uri: string | null) => void;
   addMsg: (m: Msg) => void;
   completeCard: (i: number) => void;
   recordMood: (sessionKey: string, mood: number) => void;
@@ -86,6 +87,14 @@ export const useStore = create<State>((set, get) => ({
   shareSel: {},
 
   set: (partial) => set(partial),
+
+  /** Sets + persists the profile photo (survives app restarts; cloud sync lands with R2). */
+  setProfilePhoto: (uri) => {
+    set({ profilePhotoUri: uri });
+    if (uri) AsyncStorage.setItem('twoplus_profile_photo', uri).catch(() => {});
+    else AsyncStorage.removeItem('twoplus_profile_photo').catch(() => {});
+  },
+
   addMsg: (m) => set({ msgs: [...get().msgs, m] }),
 
   completeCard: (i) => {
@@ -107,6 +116,8 @@ export const useStore = create<State>((set, get) => ({
       const v = parseFloat(sp);
       if (!isNaN(v) && v >= 0.5 && v <= 2.5) set({ audioSpeed: v });
     }
+    const photo = await AsyncStorage.getItem('twoplus_profile_photo');
+    if (photo) set({ profilePhotoUri: photo });
   },
 }));
 

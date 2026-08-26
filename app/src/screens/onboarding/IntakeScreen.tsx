@@ -153,8 +153,8 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
       set({
         typing: false,
         msgs: [...st.msgs, { isAi: true, text: 'What a beautiful photo. I’ll weave it into your mind movie scenes so they feel like your real life.' }],
-        profilePhotoUri: uri,
       });
+      st.setProfilePhoto(uri);
       scrollDown();
     }, timing.typingDelayMs);
   };
