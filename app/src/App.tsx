@@ -85,7 +85,13 @@ function Root() {
   const [authState, setAuthState] = React.useState<'checking' | 'in' | 'out'>(isLiveMode ? 'checking' : 'out');
   useEffect(() => {
     if (!isLiveMode) return;
-    restoreSession().then(r => {
+    // restoreSession is storage-only (instant); the 3s race is a belt-and-
+    // suspenders cap so a blank launch screen is impossible either way.
+    Promise.race([
+      restoreSession(),
+      new Promise<{ signedIn: boolean; displayName?: string }>(res =>
+        setTimeout(() => res({ signedIn: false }), 3000)),
+    ]).then(r => {
       if (r.displayName) useStore.getState().set({ userName: r.displayName.split(/\s+/)[0] });
       setAuthState(r.signedIn ? 'in' : 'out');
     });
