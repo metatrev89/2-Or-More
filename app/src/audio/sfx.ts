@@ -8,11 +8,25 @@
  * lazily and reused; failures are swallowed (sound is garnish, never a crash).
  */
 import { AudioPlayer, createAudioPlayer } from 'expo-audio';
+import * as Haptics from 'expo-haptics';
+
+/**
+ * Haptics ride along with every chime (trial feature, Aug 21 — flip this
+ * to false to silence all vibration in one place if Trevor cuts it).
+ * small = light tap · large = "success" double-pulse.
+ */
+const HAPTICS_ENABLED = true;
 
 let large: AudioPlayer | null = null;
 let small: AudioPlayer | null = null;
 
 function play(which: 'large' | 'small') {
+  if (HAPTICS_ENABLED) {
+    try {
+      if (which === 'large') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      else Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch { /* haptics unavailable — sound still plays */ }
+  }
   try {
     if (which === 'large') {
       if (!large) large = createAudioPlayer(require('../../assets/sounds/celebration-large.wav'));
