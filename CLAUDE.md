@@ -29,7 +29,7 @@ Named for "wherever two or more are in agreement." Owner: Trevor Spencer.
 ## Current status (July 13, 2026)
 - Backend v0.1 built + verified (mock providers; live adapters marked VERIFY need doc checks).
 - Design handoff bundle landed: `design-handoff/2-first-design-pass/project/2+ First-Run.dc.html` is the pixel source of truth.
-- RN/Expo app (`app/`, SDK 54 — do NOT upgrade; App Store Expo Go only runs 54) built in mock mode and iterating to match the design bundle. Ship loop: Trevor commits/pushes on his Mac → GitHub Action publishes via EAS Update → Expo Go.
+- RN/Expo app (`app/`, **SDK 57** as of Aug 26 — tracks whatever SDK the App Store Expo Go runs; when Expo Go updates again, re-align via expo/bundledNativeModules.json) built in mock mode and iterating to match the design bundle. Ship loop: Trevor commits/pushes on his Mac → GitHub Action publishes via EAS Update → Expo Go.
 - Done so far: onboarding flow, auth (incl. forgot-password, mock), Home rebuilt to design, 5-tab nav w/ design icons. Feedback arrives as batched voice notes; fix in batches.
 - Gotchas learned: KeyboardAvoidingView (behavior=padding) zeroes its own paddingBottom — keep bottom padding on a parent; SafeAreaProvider must wrap the app root; sandbox can't run git (Trevor runs the commands).
 - July 15 EOD: STAGE 1 COMPLETE (design/mock build). All screens at design fidelity + exactness audit passed; celebration sounds shipped (963 Hz synthesized pair, expo-audio, generator in tools/, candidates preserved in sound-candidates/); session chip = daily progress report w/ auto-dismiss; intake bar celebrations + all-seven celebration + bobbing CTA arrow.
