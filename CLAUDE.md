@@ -7,6 +7,7 @@ photo-real goal images, and a stitched "mind movie."
 Named for "wherever two or more are in agreement." Owner: Trevor Spencer.
 
 ## Read these before building anything
+- `UI-UX Backlog.md` — running list of polish tweaks to revisit (e.g. token streaming in intake chat). Add UX items here, don't lose them in chat.
 - `First-Run Experience.md` — the product spec: full flow from first open → onboarding → paywall → home.
 - `2+ Product Overview.pdf` / Confluence page "2+" (Trevor's personal space) — user stories US-1..US-25, roadmap, brand.
 - `Architecture & Cost Model.md` — system design + unit economics. The staged media build and hard paywall are load-bearing business decisions, not suggestions.
