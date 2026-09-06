@@ -10,6 +10,28 @@ import { config } from '../../config.js';
  * DATA TERMS before sending real user goals. Fallback: Claude (Anthropic).
  */
 
+/**
+ * ── Meta tier guardrail (Sept 2026, see "Meta API Terms Review.md") ──
+ * Meta selects its data-training "Contributor" tier VIA THE MODEL ID STRING
+ * (e.g. muse-spark-1.3-contributor). Contributor tier grants Meta training
+ * rights on prompts/outputs and is categorically banned for 2+ user data.
+ * Every Meta call goes through museModel(), which hard-fails on anything
+ * outside this allowlist. Update the list deliberately; never interpolate.
+ */
+const MUSE_ALLOWED_MODELS = ['muse-spark-1.3', 'muse-spark-1.1'] as const;
+
+function museModel(model: string): string {
+  if (model.toLowerCase().includes('contributor')) {
+    throw new Error(`BLOCKED: Meta Contributor tier (training-rights) model requested: "${model}" — see Meta API Terms Review.md`);
+  }
+  if (!(MUSE_ALLOWED_MODELS as readonly string[]).includes(model)) {
+    throw new Error(`BLOCKED: Meta model "${model}" is not on MUSE_ALLOWED_MODELS — verify its data tier before allowlisting`);
+  }
+  return model;
+}
+
+const SPARK_MODEL = 'muse-spark-1.3'; // standard tier — Trevor's Sept feel-test winner
+
 const INTAKE_SYSTEM = `You are the 2+ onboarding interviewer — a wise, warm coach.
 You are interviewing the user about one life area at a time to understand what they
 want to experience and accomplish, and why. Rules:
@@ -43,11 +65,11 @@ export class SparkIntakeLLM implements IntakeLLM {
       { role: 'user' as const, content: `Current life area: ${area}. Goals already captured: ${context.priorGoals.join('; ') || 'none yet'}.` },
       ...turns.map(t => ({ role: t.role, content: t.content })),
     ];
-    return openAICompatChat(config.metaApiBase, config.metaApiKey, 'muse-spark-1.1', INTAKE_SYSTEM, messages);
+    return openAICompatChat(config.metaApiBase, config.metaApiKey, museModel(SPARK_MODEL), INTAKE_SYSTEM, messages);
   }
   async extractGoal(turns: IntakeTurn[], area: string) {
     const convo = turns.map(t => `${t.role}: ${t.content}`).join('\n');
-    const raw = await openAICompatChat(config.metaApiBase, config.metaApiKey, 'muse-spark-1.1', EXTRACT_SYSTEM, [
+    const raw = await openAICompatChat(config.metaApiBase, config.metaApiKey, museModel(SPARK_MODEL), EXTRACT_SYSTEM, [
       { role: 'user', content: `Area: ${area}\n${convo}` },
     ]);
     return JSON.parse(raw) as { rawText: string; whyText: string; actionItems: string[] };

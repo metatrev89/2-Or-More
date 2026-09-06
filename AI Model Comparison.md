@@ -3,6 +3,36 @@
 **Purpose:** side-by-side of every serious candidate for each of the five AI jobs in 2+, so the stack is chosen deliberately. Pricing verified July 9, 2026 (all prices move — re-verify before contracts).
 **Companion docs:** Architecture & Cost Model.md (unit economics assume the "recommended" column) · First-Run Experience.md (what each job powers).
 
+---
+
+## ★ FINAL STACK DECISION — September 2026 (supersedes tables below where they differ)
+
+Pricing re-verified Sept 2026. Four of five jobs are **locked**; video needs one eyeball round before production spend.
+
+| Job | LOCKED PICK | Verified price | Backup | Status |
+|---|---|---|---|---|
+| 1. Intake conversation | **Muse Spark 1.3, STANDARD tier only (Meta Model API)** — Trevor's Sept feel-test passed: warmth + I-am reformatting judged solid on a real intake | $1.25/$4.25 per 1M (~$0.15/user, once) | Claude Sonnet-class (~$0.35) — adapter switch, kept warm as fallback | ✅ FINAL pending ONE gate: read standard-tier data terms (no-training/retention). Contributor tier categorically banned |
+| 2. Rewriting + daily copy | **DeepSeek V4 Flash via US host (Together)** | $0.22/$0.66 per 1M; still pennies/user | Qwen3-30B · (Spark here costs ~5x DeepSeek — consolidation not worth it) | ✅ FINAL |
+| 3. Affirmation voice | **v1 = user RECORDING (no AI processing — stored media only) + Fish Audio s2-pro for PRESET voices (Aria/James)** — voice CLONING CUT from v1 (Trevor, Sept): recording is the better product ritual AND deletes the BIPA voiceprint regime; zero user voice data ever reaches a vendor | Presets: ~$15/1M chars; recordings: R2 storage only (~free) | ElevenLabs (presets) | ✅ FINAL — cloning deferred to v2 ("your voice, infinitely") behind attorney groundwork; consent flow/schema kept dormant. HARD RULE: recordings are played back, never analyzed — no feature extraction, ours or vendors' |
+| 4. Goal images | **FLUX.2 [pro] via fal** | confirmed $0.03/image (1MP), $0.045 @1080p-class | **NEW challenger: Muse Image — dev API opened Sept 1 on fal at $0.01/image** | ✅ FINAL as primary; test Muse Image (3x cheaper) for likeness quality + people-generation policy before any switch |
+| 5. Mind movies | **LTX-2.5 Fast @ 720p portrait** | $0.09/s ($4.05 per 45s); 1080p $0.13/s | **Wan 2.7 via fal — flat $0.10/s incl. 1080p ($4.50)** · **Grok Imagine (xAI, added Sept): $0.07/s @720p ≈ $3.62/45s incl. input fees, reference-to-video w/ up to 7 identity images, but 720p max + API-only + xAI policy-drift/brand risk + terms unread** · Kling 3.0 benchmark only | ⚠️ LOCKED PENDING eyeball round — now three-way (see below) |
+
+**What changed since July:**
+- **Video repriced upward ~2x at quality tiers.** July's $0.05–0.06/s figures map to 480p/older tiers. Current 45s reality: LTX-2.5 Fast $4.05 (720p) / $5.85 (1080p); Wan 2.5 $4.50 (720p) / $6.75 (1080p); **Wan 2.7 flat $0.10/s = cheapest 1080p at $4.50**; Wan 3 1080p $9.00 (out). LTX-2.3 superseded by LTX-2.5 (Fast/Pro). 480p ($2.25, Wan 3) exists as a budget lever but undercuts the photo-real promise — not recommended.
+- **LTX strategic advantages held:** A2V endpoint now $0.10/s, Retake $0.10/s, portrait-native, open weights → self-host path. That plus cheapest-720p keeps LTX the favorite; Wan 2.7 wins if we want 1080p at launch or its motion beats LTX on our content.
+- **Muse Image opened its developer API** (Sept 1, via fal, $0.01/image) — the July watch-list item landed. API exposes reference-image conditioning for subject consistency (the consumer-app likeness mechanism). Enters the image bake-off as challenger; FLUX.2's proven multi-reference likeness keeps primary until Muse proves identity quality AND its policy tolerates real-person likeness generation. Muse Video: still preview, no API — watch list (Trevor's consumer-app results suggest it enters the video bake-off on merit whenever it opens).
+- **⚠️ Meta "Contributor tier" warning (Sept 2026):** Meta now offers discounted API tiers in exchange for TRAINING RIGHTS on prompts/outputs (seen on Spark 1.3). For 2+ — user selfies + intimate goals — any data-sharing tier is categorically disqualified. If we adopt any Meta API, standard tier only, with the no-training terms read and saved.
+- DeepSeek first-party pricing rose (~$0.22/$0.66, off-peak less); job 2 cost impact per user is still ~a penny. No change.
+- Fish Audio confirmed at ~$15/1M chars with cloning included in API access — slightly better than July's assumption.
+
+**Intake decision note (Sept 2026):** Trevor personally ran the warmth feel-test via Meta AI (Spark-family) — intake conversation + I-am reformatting judged genuinely solid. Job 1 flipped to Spark 1.3 standard on that evidence (~$0.20/user cheaper as a bonus; savings apply to ALL intake completers → blended acquisition COGS ~$9.70 → ~$8.15 staged). Remaining gate before production keys: read Meta Model API standard-tier retention/training terms and archive them. First live-mode integration should A/B a handful of real intakes against the Claude adapter to confirm API behavior matches the consumer-app feel (system prompts differ from Meta AI's).
+
+**Remaining bake-off (narrowed, ~$50, one afternoon):** (1) Video, three-way: same 45s movie on LTX-2.5 Fast, Wan 2.7, and Grok Imagine 720p (reference-to-video mode w/ user photos) — score identity/motion/portrait/artifacts; also test LTX A2V vs stitched I2V, and read xAI's retention/training terms before sending any real face. (2) Images: FLUX.2 vs Muse Image vs Qwen-Image on the 7 prompts w/ reference photos (diverse faces). Voice round optional. Jobs 1–2 need no further testing. Note: "Grok $0.50/10s @1080p" circulating via Google AI summaries is wrong — that price is 480p; Grok tops out at 720p.
+
+**Disclosure note:** the intake pick is an Anthropic model and this recommendation was written by Claude — but it restates the July analysis, which stands on criteria (warmth, contract maturity, tiny volume) that GPT-class also satisfies; swap freely if a bake-off feel-test disagrees.
+
+---
+
 **Evaluation criteria used throughout:**
 1. Quality for our use (not benchmarks — mind movies, warm conversation, identity likeness)
 2. Cost per unit → cost per onboarded subscriber

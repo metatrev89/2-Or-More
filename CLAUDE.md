@@ -2,7 +2,8 @@
 
 2+ is a mobile app (React Native/Expo, iOS + Android) for AI-driven affirmations:
 conversational goal intake → present-tense "I am" statements → daily delivery as
-text, cloned-voice audio, photo-real goal images, and a stitched "mind movie."
+text, audio in the user's own recorded voice (or a preset AI voice — no cloning in v1),
+photo-real goal images, and a stitched "mind movie."
 Named for "wherever two or more are in agreement." Owner: Trevor Spencer.
 
 ## Read these before building anything
@@ -24,7 +25,7 @@ Named for "wherever two or more are in agreement." Owner: Trevor Spencer.
 - Rings/tracking: any completed session (read / listened / watched) closes a ring — reading is a deliberate full-screen card-by-card session with per-card dwell minimums, not passive scrolling. Home list is untracked library.
 - Media: every affirmation has its own scene clip + audio segment; the full mind movie is stitched from the same clips. Scene video length follows its audio duration (clamped 3–8s).
 - Paywall placement: after the "I am" reveal, before media generation. 7-day auto-billing trial; mind movie generates ~day 2 of trial (engagement-gated), NOT at trial start.
-- Voice cloning requires explicit consent (BIPA) — enforced in `backend/src/services/mediaPipeline.ts`; don't route around it.
+- Voice (DECIDED Sept 2026): v1 has NO cloning — users either RECORD their own voice (stored media only: played back, never analyzed/feature-extracted, never sent to AI vendors) or pick a preset AI voice (Fish TTS, no user audio involved). This deletes v1's BIPA voiceprint exposure by design — do not add any voice-analysis feature without reopening legal review. Cloning is a possible v2 premium feature; its consent flow (BIPA written release, enforced in `backend/src/services/mediaPipeline.ts`) and schema stay dormant — don't route around them if it returns.
 
 ## Current status (July 13, 2026)
 - Backend v0.1 built + verified (mock providers; live adapters marked VERIFY need doc checks).

@@ -59,6 +59,15 @@ export class MediaPipeline {
     let cost = 0;
     const assets: MediaAsset[] = [];
 
+    // ── VOICE POLICY (DECIDED Sept 2026, see CLAUDE.md + Meta API Terms Review.md) ──
+    // v1 ships WITHOUT cloning: affirmation audio is either (a) the user's own
+    // RECORDING — stored media only: uploaded to R2, trimmed/normalized for
+    // playback, NEVER analyzed or feature-extracted, NEVER sent to AI vendors
+    // (this is what keeps recordings outside the BIPA voiceprint regime — do not
+    // add voice analysis without reopening legal review) — or (b) a PRESET AI
+    // voice (Fish TTS stock voices; no user audio involved). The clone path
+    // below stays dormant for a possible v2; its consent gate must never be
+    // bypassed if it returns.
     // Voice clone (only with explicit verified consent — BIPA gate in code)
     let voiceId: string | null = null;
     if (opts.voiceSample) {

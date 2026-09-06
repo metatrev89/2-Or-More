@@ -63,6 +63,22 @@ Rationale: frontier model only where quality is *felt* (the intake conversation 
 | Buffer (failed generations, retries ~20%) | | $0.60 |
 | **Total per trial start** | | **≈ $3.65** |
 
+### 3a-bis. SEPTEMBER 2026 REPRICING (final stack — supersedes 3a's video line)
+
+Video repriced upward industry-wide since July; final stack locks **LTX-2.5 Fast @ 720p portrait** ($0.09/s; Wan 2.7 flat $0.10/s incl. 1080p as alternate). Revised onboarding COGS per trial start:
+
+| Item | Sept 2026 (rev. 2 — Spark intake + no-cloning decisions) | Cost |
+|---|---|---|
+| Intake conversation | Muse Spark 1.3 standard (feel-test winner; was Claude $0.35) | $0.15 |
+| Rewriting | DeepSeek Flash | $0.01 |
+| Affirmation voice | **Cloning CUT from v1.** User recording (R2 only, ~free) or preset TTS (~$0.05); blended | $0.03 |
+| 7 goal images + retries | FLUX.2 | $0.30 |
+| Mind movie — 45s | LTX-2.5 Fast 720p @ $0.09/s | $4.05 |
+| Retry buffer (~15%; LTX Retake trims July's 20%) | | $0.70 |
+| **Total per trial start** | | **≈ $5.25** (stage-1 pre-movie ≈ $0.49) |
+
+Funnel impact (same 30%/50% rates): blended acquisition COGS per paying subscriber ≈ **$13.50 unstaged / ~$9.70 staged** (was $9.70/$6.60). Against ~$51 net first-year revenue ($59.99 minus Apple small-business 15%), margins hold, but the **engagement-gated day-2 mind movie is now even more load-bearing** — early cancellers cost $0.81 staged vs $5.55 unstaged. Levers if COGS pressure appears: Muse Image at $0.01/image (−$0.20), Wan 3 480p movie at $2.25 (quality tradeoff — hold in reserve), self-host paths (LTX weights / Fish Speech) at volume.
+
 ### 3b. Trial funnel — blended acquisition COGS per paying subscriber
 
 Hard paywall, 7-day free trial, auto-bills. Funnel assumptions (industry-typical for hard paywalls; replace with real data ASAP):
