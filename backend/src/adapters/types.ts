@@ -9,7 +9,7 @@ import type { IntakeTurn } from '../types.js';
 
 export interface IntakeLLM {
   /** Next interviewer message given conversation so far. */
-  nextMessage(turns: IntakeTurn[], area: string, context: { priorGoals: string[] }): Promise<string>;
+  nextMessage(turns: IntakeTurn[], area: string, context: { priorGoals: string[]; userName?: string; isFirstMessage?: boolean }): Promise<string>;
   /** Extract a structured goal from the completed area conversation. */
   extractGoal(turns: IntakeTurn[], area: string): Promise<{ rawText: string; whyText: string; actionItems: string[] }>;
 }

@@ -39,6 +39,7 @@ export function createApp() {
   // convenience fallback only.
   const sessionSchema = z.object({
     userId: z.string(),
+    name: z.string().optional(),
     areaIndex: z.number(),
     turns: z.array(z.object({ role: z.enum(['assistant', 'user']), content: z.string() })),
     goals: z.array(z.object({
@@ -49,9 +50,9 @@ export function createApp() {
   });
 
   app.post('/intake/start', async c => {
-    const { userId } = z.object({ userId: z.string() }).parse(await c.req.json());
+    const { userId, name } = z.object({ userId: z.string(), name: z.string().max(80).optional() }).parse(await c.req.json());
     const intake = new IntakeService(await getIntakeLLM());
-    const session = intake.newSession(userId);
+    const session = intake.newSession(userId, name);
     const question = await intake.nextQuestion(session);
     sessions.set(userId, session);
     return c.json({ area: intake.currentArea(session), question, areaIndex: session.areaIndex, session });

@@ -12,8 +12,8 @@ const MAX_QUESTIONS_PER_AREA = 3;
 export class IntakeService {
   constructor(private llm: IntakeLLM) {}
 
-  newSession(userId: string): IntakeSession {
-    return { userId, areaIndex: 0, turns: [], goals: [], completed: false };
+  newSession(userId: string, name?: string): IntakeSession {
+    return { userId, name, areaIndex: 0, turns: [], goals: [], completed: false };
   }
 
   currentArea(session: IntakeSession): LifeArea {
@@ -23,7 +23,8 @@ export class IntakeService {
   async nextQuestion(session: IntakeSession): Promise<string> {
     const area = this.currentArea(session);
     const priorGoals = session.goals.map(g => g.rawText);
-    const q = await this.llm.nextMessage(session.turns, area, { priorGoals });
+    const isFirstMessage = session.areaIndex === 0 && session.turns.length === 0;
+    const q = await this.llm.nextMessage(session.turns, area, { priorGoals, userName: session.name, isFirstMessage });
     session.turns.push({ role: 'assistant', content: q });
     return q;
   }

@@ -80,13 +80,13 @@ async function post<T>(path: string, body: unknown): Promise<T> {
 }
 
 export const api = {
-  async intakeStart(userId: string): Promise<IntakeStep> {
+  async intakeStart(userId: string, name?: string): Promise<IntakeStep> {
     if (!apiLive) {
       const s = MOCK_SCRIPT[0]!;
       return { area: s.area, ai: s.ai, chips: s.chips, done: false };
     }
     const uid = await resolveUserId(userId);
-    const r = await post<{ areaIndex: number; question: string; session?: unknown }>('/intake/start', { userId: uid });
+    const r = await post<{ areaIndex: number; question: string; session?: unknown }>('/intake/start', { userId: uid, name: name?.trim() || undefined });
     intakeSession = r.session ?? null;
     return { area: r.areaIndex, ai: [r.question], chips: null, done: false };
   },

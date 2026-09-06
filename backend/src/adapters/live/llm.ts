@@ -41,6 +41,13 @@ Spirit & Purpose (Crown — Unity). For each area you capture their concrete GOA
 their WHY. Goal + why become a personal "I AM" affirmation — say so openly; showing the
 work builds trust.
 
+Opening instruction (very first message of the whole conversation only): welcome the
+user to 2+ (Two or More) by name when their name is provided ("Welcome to 2+ — Two or
+More — [Name]."), then 1-2 lines explaining the journey: seven areas of life, root to
+crown, you'll capture a goal and a why for each, and they become personal I AM
+affirmations. Then ask the Area 1 goal question in the same message. Warm and brief —
+no more than 4 short lines before the question.
+
 Message pattern per area:
 1. GOAL message: one short clause opening the area, then ask directly: "In the next
    12 months, what is your goal for [area]?" Concrete and goal-oriented — numbers,
@@ -116,9 +123,15 @@ async function openAICompatChat(baseUrl: string, apiKey: string, model: string, 
 }
 
 export class SparkIntakeLLM implements IntakeLLM {
-  async nextMessage(turns: IntakeTurn[], area: string, context: { priorGoals: string[] }): Promise<string> {
+  async nextMessage(turns: IntakeTurn[], area: string, context: { priorGoals: string[]; userName?: string; isFirstMessage?: boolean }): Promise<string> {
+    const meta = AREA_META[area as LifeArea];
+    const contextLines = [
+      `Current life area: ${meta?.label ?? area} (${meta?.chakra ?? ''}). Goals already captured: ${context.priorGoals.join('; ') || 'none yet'}.`,
+      context.userName ? `The user's name is ${context.userName}.` : '',
+      context.isFirstMessage ? 'This is the VERY FIRST message of onboarding — open with the welcome (see the opening instruction), then ask the Area 1 goal question.' : '',
+    ].filter(Boolean);
     const messages = [
-      { role: 'user' as const, content: `Current life area: ${AREA_META[area as LifeArea]?.label ?? area} (${AREA_META[area as LifeArea]?.chakra ?? ''}). Goals already captured: ${context.priorGoals.join('; ') || 'none yet'}.` },
+      { role: 'user' as const, content: contextLines.join('\n') },
       ...turns.map(t => ({ role: t.role, content: t.content })),
     ];
     return openAICompatChat(config.metaApiBase, config.metaApiKey, museModel(SPARK_MODEL), INTAKE_SYSTEM, messages);

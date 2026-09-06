@@ -40,6 +40,7 @@ import { useStore } from '../../store';
  */
 export default function IntakeScreen({ navigation }: NativeStackScreenProps<RootStackParamList, 'Intake'>) {
   const { msgs, scriptIdx, areaIdx, typing, listening, intakeDone, addMsg, set } = useStore();
+  const userName = useStore(s => s.userName);
   const [draft, setDraft] = useState('');
   const [chips, setChips] = useState<string[]>([]);
   const [photoSheet, setPhotoSheet] = useState(false);
@@ -78,7 +79,7 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
   const liveStart = async () => {
     set({ typing: true });
     try {
-      const step = await api.intakeStart('me');
+      const step = await api.intakeStart('me', userName);
       liveStarted.current = true;
       useStore.getState().set({
         typing: false,

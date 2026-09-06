@@ -60,6 +60,8 @@ export interface IntakeTurn {
 
 export interface IntakeSession {
   userId: string;
+  /** Display name from profile creation — used for the personalized welcome. */
+  name?: string;
   areaIndex: number;
   turns: IntakeTurn[];
   goals: Goal[];
