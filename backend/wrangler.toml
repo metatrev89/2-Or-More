@@ -23,6 +23,9 @@ compatibility_flags = ["nodejs_compat"]
 # image = "./Dockerfile"
 # instance_type = "standard"
 
+[observability]
+enabled = true
+
 [vars]
 PROVIDER_INTAKE_LLM = "live"   # Spark 1.3 — META_MODEL_API_KEY secret set Sept 5 2026
 PROVIDER_REWRITE_LLM = "live"  # Spark 1.3 "I am" rewrites (same key)

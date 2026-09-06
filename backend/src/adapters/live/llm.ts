@@ -70,7 +70,12 @@ async function openAICompatChat(baseUrl: string, apiKey: string, model: string, 
     headers: { 'content-type': 'application/json', authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({ model, messages: [{ role: 'system', content: system }, ...messages] }),
   });
-  if (!res.ok) throw new Error(`LLM ${model} error ${res.status}: ${await res.text()}`);
+  if (!res.ok) {
+    // Key fingerprint (length + first 4 chars) is safe to log and pinpoints
+    // missing/truncated/whitespace-damaged secrets without exposing them.
+    console.error(`LLM ${model} HTTP ${res.status}; keyLen=${apiKey.length} keyPrefix=${apiKey.slice(0, 4)}; body=${(await res.clone().text()).slice(0, 300)}`);
+    throw new Error(`LLM ${model} error ${res.status}: ${await res.text()}`);
+  }
   const data = await res.json() as { choices: { message: { content: string } }[] };
   return data.choices[0]?.message?.content ?? '';
 }

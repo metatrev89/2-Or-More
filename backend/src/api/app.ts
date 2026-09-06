@@ -25,6 +25,12 @@ export function createApp() {
   const app = new Hono();
   app.use('*', cors()); // mobile app + dev tools; tighten origins at production hardening
 
+  // Surface real failure causes in Workers Observability; response stays generic.
+  app.onError((err, c) => {
+    console.error(`API error on ${c.req.method} ${c.req.path}: ${err.message}`);
+    return c.json({ error: 'internal' }, 500);
+  });
+
   app.get('/health', c => c.json({ ok: true, service: 'twoplus-backend' }));
 
   // ── Intake ──────────────────────────────────────────────────────────

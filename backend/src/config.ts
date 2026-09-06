@@ -13,13 +13,16 @@ export const config = {
   },
   videoVendor: env('VIDEO_VENDOR', 'ltx') as 'ltx' | 'wan',
 
-  metaApiKey: env('META_MODEL_API_KEY'),
+  // Secrets are read lazily (getters): on Workers, process.env is populated
+  // from bindings and module-init timing must never bake in a stale/empty
+  // value. Trim guards against paste artifacts (trailing newline/space).
+  get metaApiKey() { return env('META_MODEL_API_KEY').trim(); },
   metaApiBase: env('META_MODEL_API_BASE', 'https://api.meta.ai/v1'),
-  anthropicApiKey: env('ANTHROPIC_API_KEY'),
-  togetherApiKey: env('TOGETHER_API_KEY'),
-  fishApiKey: env('FISH_AUDIO_API_KEY'),
-  falApiKey: env('FAL_API_KEY'),
-  ltxApiKey: env('LTX_API_KEY'),
+  get anthropicApiKey() { return env('ANTHROPIC_API_KEY').trim(); },
+  get togetherApiKey() { return env('TOGETHER_API_KEY').trim(); },
+  get fishApiKey() { return env('FISH_AUDIO_API_KEY').trim(); },
+  get falApiKey() { return env('FAL_API_KEY').trim(); },
+  get ltxApiKey() { return env('LTX_API_KEY').trim(); },
 
   supabaseUrl: env('SUPABASE_URL'),
   supabaseAnonKey: env('SUPABASE_ANON_KEY'),
