@@ -1,6 +1,7 @@
 # 2+ Mobile App (React Native / Expo)
 
 Translated from the Claude Design handoff bundle (`../design-handoff/`), wired to the backend API shape in `../backend/`.
+Live backend: https://twoplus-backend.trevorspencer89.workers.dev (set `EXPO_PUBLIC_API_URL` to enable live intake).
 
 ## Run it
 
