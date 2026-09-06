@@ -28,37 +28,54 @@ export function createApp() {
   app.get('/health', c => c.json({ ok: true, service: 'twoplus-backend' }));
 
   // ── Intake ──────────────────────────────────────────────────────────
+  // Sessions round-trip through the client (stateless — safe on Workers where
+  // requests may hit different isolates). The in-memory Map remains a local-dev
+  // convenience fallback only.
+  const sessionSchema = z.object({
+    userId: z.string(),
+    areaIndex: z.number(),
+    turns: z.array(z.object({ role: z.enum(['assistant', 'user']), content: z.string() })),
+    goals: z.array(z.object({
+      id: z.string(), userId: z.string(), area: z.string(),
+      rawText: z.string(), whyText: z.string().optional(), actionItems: z.array(z.string()),
+    })),
+    completed: z.boolean(),
+  });
+
   app.post('/intake/start', async c => {
     const { userId } = z.object({ userId: z.string() }).parse(await c.req.json());
     const intake = new IntakeService(await getIntakeLLM());
     const session = intake.newSession(userId);
     const question = await intake.nextQuestion(session);
     sessions.set(userId, session);
-    return c.json({ area: intake.currentArea(session), question, areaIndex: session.areaIndex });
+    return c.json({ area: intake.currentArea(session), question, areaIndex: session.areaIndex, session });
   });
 
   app.post('/intake/answer', async c => {
-    const { userId, answer, skip } = z.object({
+    const body = z.object({
       userId: z.string(), answer: z.string().default(''), skip: z.boolean().default(false),
+      session: sessionSchema.optional(),
     }).parse(await c.req.json());
-    const session = sessions.get(userId);
+    const session = (body.session as IntakeSession | undefined) ?? sessions.get(body.userId);
     if (!session) return c.json({ error: 'no active session' }, 404);
 
     const intake = new IntakeService(await getIntakeLLM());
-    if (skip) await intake.skipArea(session);
-    else await intake.submitAnswer(session, answer);
+    if (body.skip) await intake.skipArea(session);
+    else await intake.submitAnswer(session, body.answer);
+    sessions.set(body.userId, session);
 
     if (session.completed) {
-      return c.json({ completed: true, goals: session.goals });
+      return c.json({ completed: true, goals: session.goals, session });
     }
     const question = await intake.nextQuestion(session);
-    return c.json({ completed: false, area: intake.currentArea(session), question, areaIndex: session.areaIndex });
+    return c.json({ completed: false, area: intake.currentArea(session), question, areaIndex: session.areaIndex, session });
   });
 
   // ── Affirmations (the reveal — pre-paywall, text only) ─────────────
   app.post('/affirmations/generate', async c => {
-    const { userId } = z.object({ userId: z.string() }).parse(await c.req.json());
-    const session = sessions.get(userId);
+    const body = z.object({ userId: z.string(), session: sessionSchema.optional() }).parse(await c.req.json());
+    const { userId } = body;
+    const session = (body.session as IntakeSession | undefined) ?? sessions.get(userId);
     if (!session?.completed) return c.json({ error: 'intake not complete' }, 400);
 
     const svc = new AffirmationService(await getRewriteLLM());
@@ -75,9 +92,9 @@ export function createApp() {
 
   // Fresh alternative phrasing for one affirmation (review screen's Reword button).
   app.post('/affirmations/reword', async c => {
-    const { userId, goalId } = z.object({ userId: z.string(), goalId: z.string() }).parse(await c.req.json());
-    const session = sessions.get(userId);
-    const goal = session?.goals.find(g => g.id === goalId);
+    const body = z.object({ userId: z.string(), goalId: z.string(), session: sessionSchema.optional() }).parse(await c.req.json());
+    const session = (body.session as IntakeSession | undefined) ?? sessions.get(body.userId);
+    const goal = session?.goals.find(g => g.id === body.goalId);
     if (!goal) return c.json({ error: 'goal not found' }, 404);
     const svc = new AffirmationService(await getRewriteLLM());
     const fresh = await svc.rewriteGoal({ ...goal, rawText: `${goal.rawText} (Offer a different, equally beautiful phrasing than before.)` });

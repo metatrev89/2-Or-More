@@ -7,29 +7,29 @@ main = "src/cf/entry.ts"          # Worker entry: exports Hono fetch + Workflow 
 compatibility_date = "2026-07-01"
 compatibility_flags = ["nodejs_compat"]
 
-[[workflows]]
-binding = "MIND_MOVIE_WORKFLOW"
-name = "mind-movie"
-class_name = "MindMovieWorkflow"
+# [[workflows]]
+# binding = "MIND_MOVIE_WORKFLOW"
+# name = "mind-movie"
+# class_name = "MindMovieWorkflow"
 
-[[r2_buckets]]
-binding = "MEDIA"
-bucket_name = "twoplus-media"
+# [[r2_buckets]]
+# binding = "MEDIA"
+# bucket_name = "twoplus-media"
 
 # Container for ffmpeg stitching (Dockerfile at repo root).
 # Sizing note: 45s 1080p concat is modest — standard instance is sufficient.
-[[containers]]
-name = "stitcher"
-image = "./Dockerfile"
-instance_type = "standard"
+# [[containers]]
+# name = "stitcher"
+# image = "./Dockerfile"
+# instance_type = "standard"
 
 [vars]
-PROVIDER_INTAKE_LLM = "live"
-PROVIDER_REWRITE_LLM = "live"
-PROVIDER_TTS = "live"
-PROVIDER_IMAGE = "live"
-PROVIDER_VIDEO = "live"
-PROVIDER_STORAGE = "r2"
+PROVIDER_INTAKE_LLM = "mock"   # flip to "live" when META_MODEL_API_KEY secret is set
+PROVIDER_REWRITE_LLM = "mock"  # flip with intake
+PROVIDER_TTS = "mock"
+PROVIDER_IMAGE = "mock"
+PROVIDER_VIDEO = "mock"
+PROVIDER_STORAGE = "local"        # r2 at media-pipeline deploy
 VIDEO_VENDOR = "ltx"              # bake-off winner
 
 # Secrets (set via `wrangler secret put`): META_MODEL_API_KEY, TOGETHER_API_KEY,

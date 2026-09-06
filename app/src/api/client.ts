@@ -66,6 +66,9 @@ async function resolveUserId(fallback: string): Promise<string> {
   }
 }
 
+/** Intake session blob — round-tripped so the backend stays stateless on Workers. */
+let intakeSession: unknown = null;
+
 async function post<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
     method: 'POST',
@@ -83,7 +86,8 @@ export const api = {
       return { area: s.area, ai: s.ai, chips: s.chips, done: false };
     }
     const uid = await resolveUserId(userId);
-    const r = await post<{ areaIndex: number; question: string }>('/intake/start', { userId: uid });
+    const r = await post<{ areaIndex: number; question: string; session?: unknown }>('/intake/start', { userId: uid });
+    intakeSession = r.session ?? null;
     return { area: r.areaIndex, ai: [r.question], chips: null, done: false };
   },
 
@@ -94,8 +98,9 @@ export const api = {
       return { area: next.area, ai: next.ai, chips: next.chips, done: !next.user };
     }
     const uid = await resolveUserId(userId);
-    const r = await post<{ completed: boolean; areaIndex?: number; question?: string }>(
-      '/intake/answer', { userId: uid, answer, skip });
+    const r = await post<{ completed: boolean; areaIndex?: number; question?: string; session?: unknown }>(
+      '/intake/answer', { userId: uid, answer, skip, session: intakeSession ?? undefined });
+    intakeSession = r.session ?? intakeSession;
     if (r.completed) return { area: 6, ai: [], chips: null, done: true };
     return { area: r.areaIndex ?? 0, ai: [r.question ?? ''], chips: null, done: false };
   },
@@ -105,7 +110,7 @@ export const api = {
     const uid = await resolveUserId(userId);
     const r = await post<{ affirmations: {
       id: string; goalId?: string; statement: string; isIdentity: boolean; area?: string; youSaid?: string;
-    }[] }>('/affirmations/generate', { userId: uid });
+    }[] }>('/affirmations/generate', { userId: uid, session: intakeSession ?? undefined });
     return r.affirmations.map(a => ({
       id: a.id,
       goalId: a.goalId,
@@ -122,7 +127,7 @@ export const api = {
     if (!apiLive) return null;
     try {
       const uid = await resolveUserId(userId);
-      const r = await post<{ statement: string }>('/affirmations/reword', { userId: uid, goalId });
+      const r = await post<{ statement: string }>('/affirmations/reword', { userId: uid, goalId, session: intakeSession ?? undefined });
       return r.statement;
     } catch {
       return null; // reword is enhancement, never a blocker
