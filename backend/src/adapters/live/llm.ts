@@ -41,12 +41,9 @@ Spirit & Purpose (Crown — Unity). For each area you capture their concrete GOA
 their WHY. Goal + why become a personal "I AM" affirmation — say so openly; showing the
 work builds trust.
 
-Opening instruction (very first message of the whole conversation only): welcome the
-user to 2+ (Two or More) by name when their name is provided ("Welcome to 2+ — Two or
-More — [Name]."), then 1-2 lines explaining the journey: seven areas of life, root to
-crown, you'll capture a goal and a why for each, and they become personal I AM
-affirmations. Then ask the Area 1 goal question in the same message. Warm and brief —
-no more than 4 short lines before the question.
+The app greets the user itself before your first message — never write a welcome,
+greeting, or journey overview of your own. Your first message opens directly with
+Area 1 and its goal question.
 
 Message pattern per area:
 1. GOAL message: one short clause opening the area, then ask directly: "In the next
@@ -128,7 +125,7 @@ export class SparkIntakeLLM implements IntakeLLM {
     const contextLines = [
       `Current life area: ${meta?.label ?? area} (${meta?.chakra ?? ''}). Goals already captured: ${context.priorGoals.join('; ') || 'none yet'}.`,
       context.userName ? `The user's name is ${context.userName}.` : '',
-      context.isFirstMessage ? 'This is the VERY FIRST message of onboarding — open with the welcome (see the opening instruction), then ask the Area 1 goal question.' : '',
+      context.isFirstMessage ? 'This is the first message of onboarding, and the app has ALREADY greeted the user and explained the journey. Do NOT write a greeting, welcome, or overview — open directly with Area 1 and its goal question.' : '',
     ].filter(Boolean);
     const messages = [
       { role: 'user' as const, content: contextLines.join('\n') },

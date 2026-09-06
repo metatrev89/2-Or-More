@@ -5,6 +5,16 @@ import { LIFE_AREAS } from '../types.js';
 const MAX_QUESTIONS_PER_AREA = 3;
 
 /**
+ * Code-authored welcome (hybrid copy rule: structural copy = code, conversation = AI).
+ * Guarantees the exact "2+ (Two or More)" phrasing and the user's name every time —
+ * the LLM is instructed NOT to write its own greeting.
+ */
+function welcomeLine(name?: string): string {
+  const hello = name?.trim() ? `Welcome to 2+ (Two or More), ${name.trim()}.` : 'Welcome to 2+ (Two or More).';
+  return `${hello} We're going to walk through seven areas of your life, root to crown. For each one I'll capture your goal and your why — and turn them into your personal I AM affirmations.`;
+}
+
+/**
  * Conversational intake state machine (US-1, US-15, US-16).
  * The LLM asks questions; this service owns pacing, area progression,
  * skip handling, and goal extraction. Deterministic control, warm content.
@@ -25,8 +35,9 @@ export class IntakeService {
     const priorGoals = session.goals.map(g => g.rawText);
     const isFirstMessage = session.areaIndex === 0 && session.turns.length === 0;
     const q = await this.llm.nextMessage(session.turns, area, { priorGoals, userName: session.name, isFirstMessage });
-    session.turns.push({ role: 'assistant', content: q });
-    return q;
+    const message = isFirstMessage ? `${welcomeLine(session.name)}\n\n${q}` : q;
+    session.turns.push({ role: 'assistant', content: message });
+    return message;
   }
 
   /** Handle a user answer; returns whether the current area is complete. */
