@@ -77,21 +77,28 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
 
   // ── Live path (apiLive): the conversation is Spark, via the backend. ──
   const liveStart = async () => {
-    set({ typing: true });
+    // Code-authored welcome renders INSTANTLY (no waiting on the model) —
+    // typing dots then cover only Spark's first question.
+    const hello = userName?.trim() ? `Welcome to 2+ (Two or More), ${userName.trim()}.` : 'Welcome to 2+ (Two or More).';
+    const welcome = `${hello} We're going to walk through seven areas of your life, root to crown. For each one I'll capture your goal and your why — and turn them into your personal I AM affirmations.`;
+    set({ typing: true, msgs: [{ isAi: true, text: welcome }] });
+    scrollDown();
     try {
       const step = await api.intakeStart('me', userName);
       liveStarted.current = true;
-      useStore.getState().set({
+      const st = useStore.getState();
+      st.set({
         typing: false,
-        msgs: step.ai.map(t => ({ isAi: true, text: t })),
+        msgs: [...st.msgs, ...step.ai.map(t => ({ isAi: true, text: t }))],
         areaIdx: step.area,
         intakeDone: step.done,
       });
       scrollDown();
     } catch {
-      useStore.getState().set({
+      const st = useStore.getState();
+      st.set({
         typing: false,
-        msgs: [{ isAi: true, text: 'I’m having trouble connecting right now. Check your connection, then send me a message and we’ll pick it up.' }],
+        msgs: [...st.msgs, { isAi: true, text: 'I’m having trouble connecting right now. Check your connection, then send me a message and we’ll pick it up.' }],
       });
     }
   };
