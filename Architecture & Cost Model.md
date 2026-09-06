@@ -70,7 +70,7 @@ Video repriced upward industry-wide since July; final stack locks **LTX-2.5 Fast
 | Item | Sept 2026 (rev. 2 — Spark intake + no-cloning decisions) | Cost |
 |---|---|---|
 | Intake conversation | Muse Spark 1.3 standard (feel-test winner; was Claude $0.35) | $0.15 |
-| Rewriting | DeepSeek Flash | $0.01 |
+| "I am" creation | Muse Spark 1.3 standard (Trevor pref: same model as intake; DeepSeek = cost fallback) | $0.04 |
 | Affirmation voice | **Cloning CUT from v1.** User recording (R2 only, ~free) or preset TTS (~$0.05); blended | $0.03 |
 | 7 goal images + retries | FLUX.2 | $0.30 |
 | Mind movie — 45s | LTX-2.5 Fast 720p @ $0.09/s | $4.05 |

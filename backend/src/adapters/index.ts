@@ -21,8 +21,10 @@ export async function getIntakeLLM(): Promise<IntakeLLM> {
 
 export async function getRewriteLLM(): Promise<RewriteLLM> {
   if (config.providers.rewriteLLM === 'live') {
-    const { DeepSeekRewriteLLM } = await import('./live/llm.js');
-    return new DeepSeekRewriteLLM();
+    // Spark primary (same model/voice as intake — Trevor, Sept 2026);
+    // DeepSeekRewriteLLM remains available as the cost fallback.
+    const { SparkRewriteLLM } = await import('./live/llm.js');
+    return new SparkRewriteLLM();
   }
   return new MockRewriteLLM();
 }

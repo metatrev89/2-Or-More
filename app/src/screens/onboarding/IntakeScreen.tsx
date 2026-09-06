@@ -9,6 +9,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
 import { AREAS, colors, fonts, timing } from '../../theme';
 import { MOCK_SCRIPT } from '../../api/mockData';
+import { api, apiLive } from '../../api/client';
 import Svg, { Path } from 'react-native-svg';
 import { AiSpark, BackButton, Mono, PillButton, SegmentBar, Wordmark } from '../../components/ui';
 import { CameraIcon, ChevronDownIcon, ClockIcon, LibraryIcon, MicIcon, PaperclipIcon, StarBurst } from '../../components/brandIcons';
@@ -46,7 +47,9 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
   const [doneCeleb, setDoneCeleb] = useState(false);
   const prevArea = useRef(-1);
   const doneCelebFired = useRef(false);
+  const liveStarted = useRef(false);
   const scrollRef = useRef<ScrollView>(null);
+  const inputRef = useRef<TextInput>(null);
 
   // All seven areas answered → big celebration (no mood check-in), auto-dismisses.
   useEffect(() => {
@@ -71,8 +74,60 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
 
   const scrollDown = () => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
 
+  // ── Live path (apiLive): the conversation is Spark, via the backend. ──
+  const liveStart = async () => {
+    set({ typing: true });
+    try {
+      const step = await api.intakeStart('me');
+      liveStarted.current = true;
+      useStore.getState().set({
+        typing: false,
+        msgs: step.ai.map(t => ({ isAi: true, text: t })),
+        areaIdx: step.area,
+        intakeDone: step.done,
+      });
+      scrollDown();
+    } catch {
+      useStore.getState().set({
+        typing: false,
+        msgs: [{ isAi: true, text: 'I’m having trouble connecting right now. Check your connection, then send me a message and we’ll pick it up.' }],
+      });
+    }
+  };
+
+  const liveAnswer = async (text: string, skip = false) => {
+    if (!liveStarted.current) {
+      await liveStart();
+      if (!liveStarted.current || skip) return;
+    }
+    addMsg({ isAi: false, text: skip ? 'Not this season.' : text });
+    set({ typing: true, listening: false });
+    setChips([]);
+    setDraft('');
+    scrollDown();
+    try {
+      const step = await api.intakeAnswer('me', text, scriptIdx, skip);
+      const st = useStore.getState();
+      st.set({
+        typing: false,
+        msgs: [...st.msgs, ...step.ai.map(t => ({ isAi: true, text: t }))],
+        areaIdx: step.done ? 6 : step.area,
+        intakeDone: step.done,
+      });
+      scrollDown();
+    } catch {
+      const st = useStore.getState();
+      st.set({
+        typing: false,
+        msgs: [...st.msgs, { isAi: true, text: 'Hmm — that one didn’t reach me. Mind sending it again?' }],
+      });
+      scrollDown();
+    }
+  };
+
   useEffect(() => {
     if (msgs.length === 0) {
+      if (apiLive) { liveStart(); return; }
       set({ typing: true });
       setTimeout(() => {
         const step = MOCK_SCRIPT[0]!;
@@ -85,6 +140,11 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
   }, []);
 
   const answer = (text?: string) => {
+    if (apiLive) {
+      const t = (text ?? draft).trim();
+      if (t) liveAnswer(t);
+      return;
+    }
     const step = MOCK_SCRIPT[scriptIdx];
     if (!step?.user) return;
     addMsg({ isAi: false, text: text || step.user });
@@ -111,11 +171,18 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
 
   const micTap = () => {
     if (listening || typing || intakeDone) return;
+    if (apiLive) {
+      // Real dictation lands with the STT pass; until then the keyboard's own
+      // mic is the voice path — focus the input so it's one tap away.
+      inputRef.current?.focus();
+      return;
+    }
     set({ listening: true });
     setTimeout(() => answer(), 1400);
   };
 
   const skipArea = () => {
+    if (apiLive) { liveAnswer('', true); return; }
     let j = scriptIdx;
     while (j < MOCK_SCRIPT.length && MOCK_SCRIPT[j]!.area === areaIdx) j++;
     if (j >= MOCK_SCRIPT.length) j = MOCK_SCRIPT.length - 1;
@@ -240,6 +307,7 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
               shadowColor: colors.ink, shadowOpacity: 0.07, shadowRadius: 24, shadowOffset: { width: 0, height: 8 }, elevation: 4,
             }}>
               <TextInput
+                ref={inputRef}
                 value={draft} onChangeText={setDraft}
                 placeholder={listening ? 'Listening…' : 'Type or speak…'}
                 placeholderTextColor={colors.inactive}

@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import { z } from 'zod';
 import { getIntakeLLM, getRewriteLLM } from '../adapters/index.js';
 import { IntakeService } from '../services/intake.js';
@@ -22,6 +23,7 @@ const sessions = new Map<string, IntakeSession>();
 
 export function createApp() {
   const app = new Hono();
+  app.use('*', cors()); // mobile app + dev tools; tighten origins at production hardening
 
   app.get('/health', c => c.json({ ok: true, service: 'twoplus-backend' }));
 
@@ -62,7 +64,24 @@ export function createApp() {
     const svc = new AffirmationService(await getRewriteLLM());
     const affirmations = await svc.rewriteAll(session.goals);
     const identity = svc.identityStatements(userId);
-    return c.json({ affirmations: [...affirmations, ...identity] });
+    // Enrich with goal context the review screen renders (area chip + "You said").
+    const byGoal = new Map(session.goals.map(g => [g.id, g]));
+    const dto = [...affirmations, ...identity].map(a => {
+      const g = a.goalId ? byGoal.get(a.goalId) : undefined;
+      return { ...a, area: g?.area ?? 'identity', youSaid: g?.rawText ?? '' };
+    });
+    return c.json({ affirmations: dto });
+  });
+
+  // Fresh alternative phrasing for one affirmation (review screen's Reword button).
+  app.post('/affirmations/reword', async c => {
+    const { userId, goalId } = z.object({ userId: z.string(), goalId: z.string() }).parse(await c.req.json());
+    const session = sessions.get(userId);
+    const goal = session?.goals.find(g => g.id === goalId);
+    if (!goal) return c.json({ error: 'goal not found' }, 404);
+    const svc = new AffirmationService(await getRewriteLLM());
+    const fresh = await svc.rewriteGoal({ ...goal, rawText: `${goal.rawText} (Offer a different, equally beautiful phrasing than before.)` });
+    return c.json({ statement: fresh.statement });
   });
 
   // ── Scheduling ──────────────────────────────────────────────────────

@@ -76,8 +76,23 @@ export class SparkIntakeLLM implements IntakeLLM {
   }
 }
 
+/** PRIMARY rewrite adapter (Trevor, Sept 2026): same Spark model as intake —
+ *  one voice from interview → "I am" statements. Cost accepted over DeepSeek. */
+export class SparkRewriteLLM implements RewriteLLM {
+  async toIAmStatement(rawGoal: string, whyText?: string): Promise<string> {
+    return openAICompatChat(config.metaApiBase, config.metaApiKey, museModel(SPARK_MODEL), REWRITE_SYSTEM, [
+      { role: 'user', content: `Goal: ${rawGoal}\nWhy: ${whyText ?? ''}` },
+    ]);
+  }
+  async encouragement(stats: { completed: number; target: number }): Promise<string> {
+    return openAICompatChat(config.metaApiBase, config.metaApiKey, museModel(SPARK_MODEL),
+      'Write one short, warm, encouraging end-of-day message. Never condemning, no shame, no red-alert energy.',
+      [{ role: 'user', content: `User experienced affirmations ${stats.completed} of ${stats.target} times today.` }]);
+  }
+}
+
 export class DeepSeekRewriteLLM implements RewriteLLM {
-  // Via US host (Together) — never api.deepseek.com for user data.
+  // COST FALLBACK. Via US host (Together) — never api.deepseek.com for user data.
   async toIAmStatement(rawGoal: string, whyText?: string): Promise<string> {
     return openAICompatChat('https://api.together.xyz/v1', config.togetherApiKey, 'deepseek-ai/deepseek-v4-flash', REWRITE_SYSTEM, [
       { role: 'user', content: `Goal: ${rawGoal}\nWhy: ${whyText ?? ''}` },

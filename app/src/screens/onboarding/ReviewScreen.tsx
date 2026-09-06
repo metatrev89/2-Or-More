@@ -9,6 +9,7 @@ import { PencilIcon, RewordIcon } from '../../components/brandIcons';
 import { BurstRing, CelebStar, ChipPop, Confetti } from '../../components/Celebration';
 import { StarBurst } from '../../components/brandIcons';
 import { playCelebrationLarge, playCelebrationSmall } from '../../audio/sfx';
+import { api, apiLive } from '../../api/client';
 import { affText, useStore } from '../../store';
 
 /** Affirmation review — the "want → I am" reveal (design screen 5). */
@@ -51,7 +52,17 @@ export default function ReviewScreen({ navigation }: NativeStackScreenProps<Root
     }
   };
 
-  const rewordIt = () => {
+  const rewordIt = async () => {
+    // Live: first reword fetches a fresh Spark phrasing into `alt`; after that
+    // the button toggles between versions exactly like mock mode.
+    if (apiLive && aff.goalId && !reworded[reviewIndex]) {
+      const fresh = await api.rewordAffirmation('me', aff.goalId);
+      if (fresh) {
+        const affs = [...affirmations];
+        affs[reviewIndex] = { ...aff, alt: fresh };
+        set({ affirmations: affs });
+      }
+    }
     set({ reworded: { ...reworded, [reviewIndex]: !reworded[reviewIndex] }, edits: { ...edits, [reviewIndex]: undefined as never } });
     setEditing(false);
   };

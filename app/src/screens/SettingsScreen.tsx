@@ -9,6 +9,7 @@ import { colors, fonts } from '../theme';
 import { BackButton } from '../components/ui';
 import { signOutUser } from '../api/auth';
 import { isLiveMode } from '../api/supabase';
+import { apiLive } from '../api/client';
 import { useStore } from '../store';
 
 function ChevronRight() {
@@ -96,7 +97,7 @@ export default function SettingsScreen() {
 
         {/* Stage 2 diagnostic — shows whether this bundle carries Supabase config */}
         <Text style={{ textAlign: 'center', fontFamily: fonts.sans, fontSize: 12, color: colors.inactive, marginTop: 20 }}>
-          Backend: {isLiveMode ? 'Live (Supabase)' : 'Mock mode'}
+          Auth: {isLiveMode ? 'Live (Supabase)' : 'Mock'} · Intake: {apiLive ? 'Live (Spark)' : 'Mock'}
         </Text>
       </ScrollView>
     </Animated.View>
