@@ -34,7 +34,7 @@
 
 ## 4. Trevor's console checklist (at API-key creation)
 
-**Updated Sept 2026 with clause-level targets, per guidance obtained from Meta's own assistant (verify everything against the actual console — the assistant's claims are a map, not evidence). Console: api.llama.com / llama.developer.meta.com. ToS terminology: "Standard Services" (no training) vs "Discounted Services" (training by default) — the latter is what reporting calls the Contributor tier.**
+**Updated Sept 2026 with clause-level targets, per guidance obtained from Meta's own assistant (verify everything against the actual console — the assistant's claims are a map, not evidence). Console: **https://dev.meta.ai** (docs at dev.meta.ai/docs; linked from developer.meta.com → Model API). Earlier api.llama.com / llama.developer.meta.com references were the pre-rebrand console and no longer resolve. API base: https://api.meta.ai/v1 (already the backend default). ToS terminology: "Standard Services" (no training) vs "Discounted Services" (training by default) — the latter is what reporting calls the Contributor tier.**
 
 - [ ] **No-training evidence:** Console → Docs → Legal → ToS; screenshot **§5.1** ("Meta will not use Content from Standard Services to train Meta Models") + the Privacy/Data Use page, URL bar visible. PDF both.
 - [ ] **Tier + model ID proof:** Dashboard → Project Settings/Billing — screenshot showing **Standard Services** (NOT Discounted); copy the **exact model ID string** from the dashboard/playground. → Then update `MUSE_ALLOWED_MODELS` in `backend/src/adapters/live/llm.ts` to that exact verified string (the guard hard-fails unknown strings until we do — by design).

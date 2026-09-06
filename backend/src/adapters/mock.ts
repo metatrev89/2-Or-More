@@ -12,14 +12,15 @@ import { join, dirname } from 'node:path';
  * stitch step generates real test clips via ffmpeg when available.
  */
 
+// Chakra-mapped areas, root→crown (see types.ts AREA_META).
 const AREA_QUESTIONS: Record<string, string[]> = {
-  spiritual: ['What does your spiritual life look like at its best?', 'Why does that matter to you?'],
-  financial: ['What are you aiming for financially this season?', 'Who are you building that for?'],
-  relationships: ['What relationship do you most want to strengthen?', 'What would "strengthened" feel like day to day?'],
-  family: ['What do you want your family life to look like?', 'Why now?'],
-  social: ['What kind of community do you want around you?', 'What would that change for you?'],
-  fitness_health: ['Where is your health journey headed?', 'What does the finish line look like?'],
-  business: ['What are you building in your work or business?', 'What would delight your customers most?'],
+  health_body: ['Your foundation first — where is your health and body headed in the next 12 months?', 'Why does that level of health matter to you?'],
+  emotions_creativity: ['How do you want to feel and flow day to day — what are you working on emotionally or creatively?', 'What would keeping that peace change for you?'],
+  career_purpose: ['What are you building in your career or business — what does it look like at full power?', 'What does that unlock for you and the people you love?'],
+  relationships_love: ['What do you want love and your closest relationships to look like?', 'Why does that matter to your daily life?'],
+  communication_expression: ['What message or voice do you want to bring into the world?', 'Who is it for — what happens when they hear it?'],
+  mindset_growth: ['What vision are you growing toward — what does the next level of you look like?', 'What legacy does that growth create?'],
+  spirit_purpose: ['Last one, the crown — what does alignment with spirit and purpose look like for you?', 'Why is that the truest measure of a full life for you?'],
 };
 
 export class MockIntakeLLM implements IntakeLLM {

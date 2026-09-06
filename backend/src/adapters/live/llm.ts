@@ -1,5 +1,5 @@
 import type { IntakeLLM, RewriteLLM } from '../types.js';
-import type { IntakeTurn } from '../../types.js';
+import { AREA_META, type IntakeTurn, type LifeArea } from '../../types.js';
 import { config } from '../../config.js';
 
 /**
@@ -33,20 +33,36 @@ function museModel(model: string): string {
 const SPARK_MODEL = 'muse-spark-1.3'; // standard tier — Trevor's Sept feel-test winner
 
 const INTAKE_SYSTEM = `You are the 2+ onboarding interviewer — a wise, warm coach.
-You are interviewing the user about one life area at a time to understand what they
-want to experience and accomplish, and why. Rules:
+You are guiding the user through seven life areas in a deliberate root-to-crown arc,
+each mapped to a chakra: Health & Body (Root — Foundation), Emotions & Creativity
+(Sacral — Flow), Career, Purpose & Power (Solar Plexus — Drive), Relationships & Love
+(Heart — Connection), Communication & Expression (Throat — Voice), Mindset, Vision &
+Growth (Third Eye — Clarity), Spirit & Purpose (Crown — Unity). For each area you are
+capturing what they want to experience in the next 12 months, and why. Rules:
 - Ask ONE question at a time. At most 2-3 questions per area.
+- First question captures the 12-month vision for the area; second captures the why
+  (who and what it serves); optional third goes deeper only if invited.
+- You may gently reference the area's chakra theme (foundation, flow, drive,
+  connection, voice, clarity, unity) to frame the question — lightly, never lecturing.
 - Reference what the user already told you (including earlier areas) to show you're listening.
-- First question captures the goal; second captures the why; optional third goes deeper only if invited.
 - Warm, direct, never preachy. Never use alarm or shame.`;
 
 const EXTRACT_SYSTEM = `Extract from the conversation a JSON object:
 {"rawText": "<the user's goal in their own words>", "whyText": "<their why>", "actionItems": ["<1-2 small starter actions>"]}
 Return ONLY JSON.`;
 
-const REWRITE_SYSTEM = `You rewrite goals as present-tense, identity-based "I am" statements.
-Rules: no want/hope/will language; no separation or lack between the person and the goal;
-succinct and beautiful; first person present tense. Return only the statement.`;
+const REWRITE_SYSTEM = `You rewrite goals as present-tense, identity-based "I AM" statements.
+Rules:
+- First person, present tense, already true. No want/hope/will/trying language; no separation or lack between the person and the goal.
+- Write "I AM" fully capitalized when it opens a claim.
+- 2-4 sentences. Open with the identity claims, then weave the person's WHY into the statement itself ("I have this because...", "I live this way because...") so the statement ends on purpose and meaning, not on the goal.
+- Keep the user's own specifics (numbers, names, phrases) — precision makes it real.
+- Beautiful, grounded, never generic. Return only the statement.
+
+Example of the target form:
+Goal: In 12 months I would like to be 175 pounds, excellent bloodwork, high energy, working out 5 days a week, waking well rested.
+Why: So I have energy and longevity for myself, my children, my work, and life.
+Statement: I AM 175 pounds with excellent bloodwork and vibrant health. I AM strong and getting stronger, working out 5 days a week, sleeping deeply and waking well-rested with high energy every day. I have this because it gives me longevity and peace of mind to be fully present for myself, my children, my work, and my mission.`;
 
 async function openAICompatChat(baseUrl: string, apiKey: string, model: string, system: string, messages: { role: string; content: string }[]): Promise<string> {
   const res = await fetch(`${baseUrl}/chat/completions`, {
@@ -62,7 +78,7 @@ async function openAICompatChat(baseUrl: string, apiKey: string, model: string, 
 export class SparkIntakeLLM implements IntakeLLM {
   async nextMessage(turns: IntakeTurn[], area: string, context: { priorGoals: string[] }): Promise<string> {
     const messages = [
-      { role: 'user' as const, content: `Current life area: ${area}. Goals already captured: ${context.priorGoals.join('; ') || 'none yet'}.` },
+      { role: 'user' as const, content: `Current life area: ${AREA_META[area as LifeArea]?.label ?? area} (${AREA_META[area as LifeArea]?.chakra ?? ''}). Goals already captured: ${context.priorGoals.join('; ') || 'none yet'}.` },
       ...turns.map(t => ({ role: t.role, content: t.content })),
     ];
     return openAICompatChat(config.metaApiBase, config.metaApiKey, museModel(SPARK_MODEL), INTAKE_SYSTEM, messages);

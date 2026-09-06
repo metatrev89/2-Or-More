@@ -1,10 +1,29 @@
+/**
+ * Chakra-mapped life areas (Trevor, Sept 2026 — adopted from his Meta AI
+ * reference conversation, backend/reference/meta-intake-reference.json).
+ * Canonical order is root→crown: foundation first, unity last. The app's
+ * AREAS list (app/src/theme.ts) MUST match this order — areaIndex crosses
+ * the API as a plain number.
+ */
 export type LifeArea =
-  | 'spiritual' | 'financial' | 'relationships' | 'family'
-  | 'social' | 'fitness_health' | 'business';
+  | 'health_body' | 'emotions_creativity' | 'career_purpose' | 'relationships_love'
+  | 'communication_expression' | 'mindset_growth' | 'spirit_purpose';
 
 export const LIFE_AREAS: LifeArea[] = [
-  'spiritual', 'financial', 'relationships', 'family', 'social', 'fitness_health', 'business',
+  'health_body', 'emotions_creativity', 'career_purpose', 'relationships_love',
+  'communication_expression', 'mindset_growth', 'spirit_purpose',
 ];
+
+/** Display metadata per area — label + chakra framing used in prompts and UI. */
+export const AREA_META: Record<LifeArea, { label: string; chakra: string }> = {
+  health_body: { label: 'Health & Body', chakra: 'Root · Foundation' },
+  emotions_creativity: { label: 'Emotions & Creativity', chakra: 'Sacral · Flow' },
+  career_purpose: { label: 'Career, Purpose & Power', chakra: 'Solar Plexus · Drive' },
+  relationships_love: { label: 'Relationships & Love', chakra: 'Heart · Connection' },
+  communication_expression: { label: 'Communication & Expression', chakra: 'Throat · Voice' },
+  mindset_growth: { label: 'Mindset, Vision & Growth', chakra: 'Third Eye · Clarity' },
+  spirit_purpose: { label: 'Spirit & Purpose', chakra: 'Crown · Unity' },
+};
 
 export interface Goal {
   id: string;

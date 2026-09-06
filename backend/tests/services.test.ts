@@ -33,7 +33,7 @@ describe('AffirmationService', () => {
   it('never lets want-language reach the user', async () => {
     const svc = new AffirmationService(new MockRewriteLLM());
     const aff = await svc.rewriteGoal({
-      id: 'g1', userId: 'u1', area: 'business',
+      id: 'g1', userId: 'u1', area: 'career_purpose',
       rawText: 'I want to make a seven-figure income from my business',
       actionItems: [],
     });

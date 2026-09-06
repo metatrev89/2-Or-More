@@ -7,7 +7,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
-import { AREAS, colors, fonts, timing } from '../../theme';
+import { AREAS, AREA_CHAKRAS, colors, fonts, timing } from '../../theme';
 import { MOCK_SCRIPT } from '../../api/mockData';
 import { api, apiLive } from '../../api/client';
 import Svg, { Path } from 'react-native-svg';
@@ -246,9 +246,14 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
       </View>
 
       <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingHorizontal: 22, paddingVertical: 6 }}>
-        <Text style={{ fontFamily: fonts.sansSemi, fontSize: 12, letterSpacing: 1.8, color: colors.warmGray, textTransform: 'uppercase' }}>
-          {AREAS[areaIdx]}
-        </Text>
+        <View style={{ flexShrink: 1, paddingRight: 8 }}>
+          <Text style={{ fontFamily: fonts.sansSemi, fontSize: 12, letterSpacing: 1.8, color: colors.warmGray, textTransform: 'uppercase' }}>
+            {AREAS[areaIdx]}
+          </Text>
+          <Text style={{ fontFamily: fonts.serifItalic, fontSize: 11.5, color: colors.inactive, marginTop: 1 }}>
+            {AREA_CHAKRAS[areaIdx]}
+          </Text>
+        </View>
         {!intakeDone && (
           <Pressable onPress={skipArea}>
             <Text style={{ fontFamily: fonts.sans, fontSize: 13, color: colors.warmGray }}>Not this season</Text>

@@ -25,13 +25,13 @@ import { join } from 'node:path';
 const USER = 'demo-user';
 
 const CANNED_ANSWERS: Record<string, string[]> = {
-  spiritual: ['Stay present in God\'s presence daily', 'It keeps me grounded and sane'],
-  financial: ['I want to make seven figures this year from my business', 'For my kids and my freedom'],
-  relationships: ['I want to smooth out my relationship with my kids\' mom', 'Peace at home changes everything'],
-  family: ['I want to be with my children daily and active in their life', 'They are why I do all of it'],
-  social: ['I want to grow my subscriber list to 100,000 followers', 'To reach people who need this'],
-  fitness_health: ['I want to lose 20 more pounds and keep my bloodwork immaculate', 'Energy and longevity for my kids'],
-  business: ['I want my customers ecstatic — outcomes, experience, professionalism', 'Reputation compounds'],
+  health_body: ['I want to lose 20 more pounds and keep my bloodwork immaculate', 'Energy and longevity for my kids'],
+  emotions_creativity: ['I want my peace to be mine — steady, not reactive', 'So no one else\'s choices decide my emotions'],
+  career_purpose: ['I want to make seven figures this year from my business', 'For my kids and my freedom'],
+  relationships_love: ['I want to be with my children daily and at peace with their mom', 'They are why I do all of it'],
+  communication_expression: ['I want to grow my audience to 100,000 people who hear my message', 'To reach people who need this'],
+  mindset_growth: ['I want a mindset of continual growth I can hand down', 'So my kids start further along than I did'],
+  spirit_purpose: ['Stay present in God\'s presence daily', 'It keeps me grounded and sane'],
 };
 
 async function main() {

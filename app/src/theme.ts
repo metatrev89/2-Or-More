@@ -48,4 +48,24 @@ export const timing = {
   moodDismissMs: 1500,
 } as const;
 
-export const AREAS = ['Spiritual', 'Financial', 'Fitness & health', 'Business', 'Relationships', 'Family', 'Social'] as const;
+/** Chakra-mapped life areas, root→crown — order MUST match backend LIFE_AREAS (areaIndex crosses the API). */
+export const AREAS = [
+  'Health & Body',
+  'Emotions & Creativity',
+  'Career, Purpose & Power',
+  'Relationships & Love',
+  'Communication & Expression',
+  'Mindset, Vision & Growth',
+  'Spirit & Purpose',
+] as const;
+
+/** Chakra framing per area (subtitle line under the area chip). */
+export const AREA_CHAKRAS = [
+  'Root · Foundation',
+  'Sacral · Flow',
+  'Solar Plexus · Drive',
+  'Heart · Connection',
+  'Throat · Voice',
+  'Third Eye · Clarity',
+  'Crown · Unity',
+] as const;

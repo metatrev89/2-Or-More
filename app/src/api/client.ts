@@ -32,15 +32,15 @@ export interface AffirmationDTO {
   isIdentity: boolean;
 }
 
-/** Backend life_area → display names used across the app. */
+/** Backend life_area → display names used across the app (chakra set, root→crown). */
 const AREA_LABELS: Record<string, string> = {
-  spiritual: 'Spiritual',
-  financial: 'Financial',
-  relationships: 'Relationships',
-  family: 'Family',
-  social: 'Social',
-  fitness_health: 'Fitness & health',
-  business: 'Business',
+  health_body: 'Health & Body',
+  emotions_creativity: 'Emotions & Creativity',
+  career_purpose: 'Career, Purpose & Power',
+  relationships_love: 'Relationships & Love',
+  communication_expression: 'Communication & Expression',
+  mindset_growth: 'Mindset, Vision & Growth',
+  spirit_purpose: 'Spirit & Purpose',
   identity: 'Identity',
 };
 
