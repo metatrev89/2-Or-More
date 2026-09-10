@@ -14,7 +14,7 @@ import Svg, { Path } from 'react-native-svg';
 import { AiSpark, BackButton, Mono, PillButton, SegmentBar, Wordmark } from '../../components/ui';
 import { CameraIcon, ChevronDownIcon, ClockIcon, LibraryIcon, MicIcon, PaperclipIcon, StarBurst } from '../../components/brandIcons';
 import { BurstRing, ChipPop, Confetti } from '../../components/Celebration';
-import { playCelebrationLarge, playCelebrationSmall } from '../../audio/sfx';
+import { playCelebrationLarge, playCelebrationSmall, primeCelebrationSounds } from '../../audio/sfx';
 import { BlinkingDots, DancingBars, PulseRing } from '../../components/AnimatedBars';
 import { CelebStar } from '../../components/Celebration';
 
@@ -134,6 +134,7 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
   };
 
   useEffect(() => {
+    primeCelebrationSounds(); // load both chimes before the first star fires at 600ms
     if (msgs.length === 0) {
       if (apiLive) { liveStart(); return; }
       set({ typing: true });
