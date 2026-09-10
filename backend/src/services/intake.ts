@@ -14,10 +14,36 @@ const MAX_QUESTIONS_PER_AREA = 3;
 const OPEN_CAPTURE: LifeArea = 'open_capture';
 
 /**
- * "Nothing more" replies to the catch-all. Matched whole-answer only, so
- * "No — but I do want..." still counts as an answer, not a decline.
+ * Words that can only ever be part of a brush-off ("no thanks", "nope, that's
+ * everything", "I'm good for now"). A whole-answer regex was too brittle here:
+ * it caught a bare "no" but not "No, that's it" — the way people actually
+ * decline — and would have turned the refusal itself into an 8th affirmation.
  */
-const DECLINE = /^\s*(no|nope|nah|none|nothing|nothing else|n\/?a|skip|pass|i'?m good|im good|we'?re good|that'?s it|that is it|thats it|all good|all set|good to go|done|that'?s all|thats all)\b[\s.!,]*$/i;
+const DECLINE_TOKENS = new Set([
+  'no', 'nope', 'nah', 'none', 'nothing', 'na', 'not', 'never', 'skip', 'pass',
+  'i', 'im', 'we', 're', 'were', 'you', 'my', 'me',
+  'that', 'thats', 'this', 'it', 'is', 'was', 'all', 'else', 'everything', 'enough',
+  'good', 'great', 'fine', 'ok', 'okay', 'cool', 'set', 'done', 'complete', 'covered', 'covers', 'got',
+  'thanks', 'thank', 'appreciate', 'yeah', 'yep', 'yes', 'sure',
+  'for', 'now', 'the', 'and', 'but', 'just', 'only', 'right', 'so', 'think', 'guess', 'believe',
+]);
+
+/**
+ * True when the catch-all answer is a decline rather than a new goal. Words-only
+ * comparison: every word must be brush-off vocabulary, and anything longer than
+ * a short phrase is treated as a real answer regardless.
+ */
+function isDecline(answer: string): boolean {
+  const words = answer
+    .toLowerCase()
+    .replace(/['’]/g, '')          // "that's" -> "thats" so it matches as one token
+    .replace(/[^a-z\s]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
+  if (words.length === 0) return true;
+  if (words.length > 8) return false; // too much said to be a brush-off
+  return words.every(w => DECLINE_TOKENS.has(w));
+}
 
 // NOTE (hybrid copy rule): the welcome/greeting is code-authored and rendered
 // CLIENT-SIDE (app IntakeScreen) so it appears instantly with no model latency.
@@ -60,7 +86,7 @@ export class IntakeService {
     // Catch-all: exactly one question. Something real becomes the 8th goal;
     // "no thanks" finishes the intake with the seven they already gave.
     if (this.isCatchAll(session)) {
-      if (!answer.trim() || DECLINE.test(answer)) this.advance(session, null);
+      if (isDecline(answer)) this.advance(session, null);
       else await this.completeArea(session);
       return { areaComplete: true, sessionComplete: session.completed };
     }

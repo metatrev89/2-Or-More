@@ -33,6 +33,36 @@ describe('IntakeService', () => {
     expect(session.goals.some(g => g.area === 'open_capture')).toBe(false);
   });
 
+  // Real users don't answer with a bare "no" — they write "No, that's it".
+  it.each([
+    'no', 'Nope', "No, that's it", "Nope, that's everything", "I'm good, thanks",
+    'nothing else for now', 'That covers it', '   ', 'all set',
+  ])('treats %j as a decline (no 8th goal)', async (answer) => {
+    const svc = new IntakeService(new MockIntakeLLM());
+    const session = svc.newSession('u1');
+    session.areaIndex = LIFE_AREAS.length;
+    await svc.nextQuestion(session);
+    await svc.submitAnswer(session, answer);
+    expect(session.completed).toBe(true);
+    expect(session.goals.length).toBe(0);
+  });
+
+  // ...but a real answer that merely starts with "no" is still an answer.
+  it.each([
+    'No — I want to finish writing my book this year',
+    'Yes, I want to buy a home for my family',
+    'One more thing: I want to run a marathon',
+  ])('treats %j as a real 8th goal', async (answer) => {
+    const svc = new IntakeService(new MockIntakeLLM());
+    const session = svc.newSession('u1');
+    session.areaIndex = LIFE_AREAS.length;
+    await svc.nextQuestion(session);
+    await svc.submitAnswer(session, answer);
+    expect(session.completed).toBe(true);
+    expect(session.goals.length).toBe(1);
+    expect(session.goals[0]!.area).toBe('open_capture');
+  });
+
   it('the catch-all asks exactly once', async () => {
     const svc = new IntakeService(new MockIntakeLLM());
     const session = svc.newSession('u1');
