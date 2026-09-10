@@ -536,7 +536,7 @@ export default function HomeScreen() {
           }}>
             <StarBurst size={22} />
             <Text style={{ flexShrink: 1, fontFamily: fonts.sansMedium, fontSize: 17, color: colors.cream }}>
-              Congratulations! All 7 affirmations complete!
+              Congratulations! All {affs.length} affirmations complete!
             </Text>
           </ChipPop>
           <ChipPop durMs={600} delayMs={450} style={{

@@ -52,7 +52,7 @@ function SessionChip({ onDark = false }: { onDark?: boolean }) {
 }
 
 /**
- * The "all 7 complete" celebration overlay (audio: ink chip; movie: cream chip).
+ * The "all complete" celebration overlay (audio: ink chip; movie: cream chip).
  * Repeat completions (mood already recorded this session-day) auto-dismiss after
  * a few seconds; tapping anywhere outside the mood card always dismisses.
  */
@@ -61,6 +61,8 @@ function PlayerCeleb({ dark, sessionKey, autoDismiss, onDone }: {
 }) {
   const chipBg = dark ? colors.cream : colors.ink;
   const chipInk = dark ? colors.ink : colors.cream;
+  // 7, or 8 when the intake's catch-all was answered — never hardcode the count.
+  const affCount = useStore(s => s.affirmations.length) || MOCK_AFFS.length;
   useEffect(() => {
     if (!autoDismiss) return;
     const t = setTimeout(onDone, 4000);
@@ -84,7 +86,7 @@ function PlayerCeleb({ dark, sessionKey, autoDismiss, onDone }: {
       }}>
         <StarBurst size={22} />
         <Text style={{ flexShrink: 1, fontFamily: fonts.sansMedium, fontSize: 17, color: chipInk }}>
-          Congratulations! All 7 affirmations complete!
+          Congratulations! All {affCount} affirmations complete!
         </Text>
       </ChipPop>
       <ChipPop durMs={600} delayMs={450} style={{

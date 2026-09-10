@@ -10,11 +10,20 @@ import { useStore } from '../store';
 const DAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 const WEEK_BIG_HEIGHTS = [30, 42, 12, 52, 44, 36, 16];
 
-/** Design's daySessions: 7 scheduled sessions, per-session ring completion. */
-const DAY_SESSIONS = ['7:00 AM', '9:30 AM', '12:00 PM', '3:00 PM', '5:30 PM', '8:00 PM', '9:45 PM']
-  .map((time, i) => ({ time, done: [7, 7, 7, 7, 3, 0, 0][i]! }));
+/**
+ * Design's daySessions: 7 scheduled sessions, per-session ring completion.
+ * `done` counts affirmation RINGS closed in that session, so it scales with the
+ * user's affirmation count (7, or 8 when the intake's catch-all was answered).
+ * The session times themselves are the schedule cadence — a different number
+ * from the affirmation count, and deliberately not tied to it.
+ */
+const SESSION_TIMES = ['7:00 AM', '9:30 AM', '12:00 PM', '3:00 PM', '5:30 PM', '8:00 PM', '9:45 PM'];
+const daySessionsFor = (affCount: number) =>
+  SESSION_TIMES.map((time, i) => ({ time, done: [affCount, affCount, affCount, affCount, 3, 0, 0][i]! }));
 
-const NUM_WORDS = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven'];
+const NUM_WORDS = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight'];
+/** Spelled-out where we have a word, numeral beyond — never renders "undefined". */
+const numWord = (n: number): string => NUM_WORDS[n] ?? String(n);
 
 function fmtHour(h: number): string {
   const hr = ((h % 24) + 24) % 24;
@@ -92,16 +101,20 @@ function Stepper({ value, width, small, onDown, onUp }: { value: string; width: 
 
 /** Progress (design section 11): daily ring hero, alignment, sessions, week, medals, month. */
 export default function ProgressScreen() {
-  const { homeReadDone, streakDays, freq, awStart, awEnd, qStart, qEnd, set } = useStore();
+  const { homeReadDone, streakDays, freq, awStart, awEnd, qStart, qEnd, affirmations, set } = useStore();
   const [editing, setEditing] = useState(false);
+  // Rings track the user's real affirmation count — 7, or 8 with the catch-all.
+  // Falls back to 7 before onboarding has populated the set.
+  const affCount = affirmations.length || 7;
   const readCount = homeReadDone.length;
-  const frac = readCount / 7;
-  const remaining = 7 - readCount;
+  const frac = Math.min(1, readCount / affCount);
+  const remaining = Math.max(0, affCount - readCount);
   const r = 52, circ = 2 * Math.PI * r;
-  const sessionsComplete = DAY_SESSIONS.filter(d => d.done === 7).length;
+  const daySessions = daySessionsFor(affCount);
+  const sessionsComplete = daySessions.filter(d => d.done === affCount).length;
 
   const sessionMark = (done: number, i: number): 'aligned' | 'aligning' | 'disconnected' | 'upcoming' => {
-    const complete = done === 7;
+    const complete = done === affCount;
     if (complete && i === 1) return 'disconnected'; // design: 9:30 completed out of alignment
     if (complete) return 'aligned';
     if (done > 0) return 'aligning';
@@ -127,7 +140,7 @@ export default function ProgressScreen() {
               />
             </Svg>
             <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontFamily: fonts.monoMedium, fontSize: 23, color: colors.ink }}>{readCount}/7</Text>
+              <Text style={{ fontFamily: fonts.monoMedium, fontSize: 23, color: colors.ink }}>{readCount}/{affCount}</Text>
               <Text style={{ fontFamily: fonts.sans, fontSize: 11, color: colors.warmGray }}>today</Text>
             </View>
           </View>
@@ -140,7 +153,7 @@ export default function ProgressScreen() {
             <Text style={{ fontFamily: fonts.sans, fontSize: 14, color: colors.warmGray, marginTop: 2 }}>day streak</Text>
             <Text style={{ fontFamily: fonts.sans, fontSize: 13.5, color: colors.warmGray, lineHeight: 20, marginTop: 10 }}>
               {remaining > 0
-                ? `${NUM_WORDS[remaining]} more experience${remaining === 1 ? '' : 's'} close${remaining === 1 ? 's' : ''} today's ring.`
+                ? `${numWord(remaining)} more experience${remaining === 1 ? '' : 's'} close${remaining === 1 ? 's' : ''} today's ring.`
                 : "Today's ring is closed."}
             </Text>
           </View>
@@ -185,18 +198,18 @@ export default function ProgressScreen() {
                 <PencilIcon size={14} color={editing ? colors.ink : colors.inactive} />
               </Pressable>
             </View>
-            <Mono size={15} color={colors.ink}>{sessionsComplete}/7</Mono>
+            <Mono size={15} color={colors.ink}>{sessionsComplete}/{daySessions.length}</Mono>
           </View>
 
           {!editing ? (
             <View style={{ marginTop: 8 }}>
-              {DAY_SESSIONS.map((d, i) => {
+              {daySessions.map((d, i) => {
                 const mark = sessionMark(d.done, i);
-                const complete = d.done === 7;
+                const complete = d.done === affCount;
                 return (
                   <View key={d.time} style={{
                     flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9,
-                    borderBottomWidth: 1, borderBottomColor: i < DAY_SESSIONS.length - 1 ? colors.borderSoft : 'transparent',
+                    borderBottomWidth: 1, borderBottomColor: i < daySessions.length - 1 ? colors.borderSoft : 'transparent',
                   }}>
                     <Mono size={12} color={d.done > 0 ? colors.ink : colors.inactive} style={{ width: 60 }}>{d.time}</Mono>
                     <View style={{ flex: 1, flexDirection: 'row', gap: 3 }}>
