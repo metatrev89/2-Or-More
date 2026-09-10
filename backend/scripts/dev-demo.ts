@@ -32,6 +32,8 @@ const CANNED_ANSWERS: Record<string, string[]> = {
   communication_expression: ['I want to grow my audience to 100,000 people who hear my message', 'To reach people who need this'],
   mindset_growth: ['I want a mindset of continual growth I can hand down', 'So my kids start further along than I did'],
   spirit_purpose: ['Stay present in God\'s presence daily', 'It keeps me grounded and sane'],
+  // Catch-all (asked once after the seven): answering it yields the 8th goal.
+  open_capture: ['I want to finish writing my book this year — it is the message I owe people'],
 };
 
 async function main() {
@@ -50,12 +52,12 @@ async function main() {
     console.log(`[${area}] user: ${answer}`);
     await intake.submitAnswer(session, answer);
   }
-  console.log(`\n-> intake complete: ${session.goals.length} goals across ${LIFE_AREAS.length} areas\n`);
+  console.log(`\n-> intake complete: ${session.goals.length} goals (${LIFE_AREAS.length} areas + optional catch-all)\n`);
 
-  // 2) Rewrite to "I am"
+  // 2) Rewrite to "I am" — one per goal, nothing appended.
   const affSvc = new AffirmationService(await getRewriteLLM());
-  const affirmations = [...await affSvc.rewriteAll(session.goals), ...affSvc.identityStatements(USER)];
-  for (const a of affirmations) console.log(`  "${a.statement}"${a.isIdentity ? ' (identity)' : ''}`);
+  const affirmations = await affSvc.rewriteAll(session.goals);
+  for (const a of affirmations) console.log(`  "${a.statement}"`);
 
   // 3) Stage 1: audio + images (post-paywall, trial start)
   const pipeline = new MediaPipeline(await getTTS(), await getImageProvider(), await getVideoProvider(), await getStorage());

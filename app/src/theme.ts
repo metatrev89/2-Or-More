@@ -69,3 +69,9 @@ export const AREA_CHAKRAS = [
   'Third Eye · Clarity',
   'Crown · Unity',
 ] as const;
+
+/**
+ * The catch-all question asked once after the seven areas (backend areaIndex 7,
+ * LifeArea 'open_capture'). Not a chakra — it never lights a progress segment.
+ */
+export const CATCH_ALL_AREA = { label: 'Anything Else', note: 'Nothing left behind' } as const;

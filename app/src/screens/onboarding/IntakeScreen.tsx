@@ -7,7 +7,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
-import { AREAS, AREA_CHAKRAS, colors, fonts, timing } from '../../theme';
+import { AREAS, AREA_CHAKRAS, CATCH_ALL_AREA, colors, fonts, timing } from '../../theme';
 import { MOCK_SCRIPT } from '../../api/mockData';
 import { api, apiLive } from '../../api/client';
 import Svg, { Path } from 'react-native-svg';
@@ -68,6 +68,9 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
     if (areaIdx === prevArea.current) return;
     const first = prevArea.current === -1;
     prevArea.current = areaIdx;
+    // The catch-all lights no segment, so it earns no star and no chime —
+    // the big celebration on completion is the payoff instead.
+    if (areaIdx >= AREAS.length) return;
     const show = setTimeout(() => { setBarCeleb(areaIdx); playCelebrationSmall(); }, first ? 600 : 0);
     const hide = setTimeout(() => setBarCeleb(c => (c === areaIdx ? -1 : c)), (first ? 600 : 0) + 1100);
     return () => { clearTimeout(show); clearTimeout(hide); };
@@ -119,7 +122,9 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
       st.set({
         typing: false,
         msgs: [...st.msgs, ...step.ai.map(t => ({ isAi: true, text: t }))],
-        areaIdx: step.done ? 6 : step.area,
+        // On completion hold whatever area we were on (7 = catch-all) so the
+        // header doesn't jump back a step under the celebration.
+        areaIdx: step.done ? st.areaIdx : step.area,
         intakeDone: step.done,
       });
       scrollDown();
@@ -235,6 +240,11 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
     }, timing.typingDelayMs);
   };
 
+  // The catch-all (areaIdx 7) isn't a chakra: the bar stays full at 7/7 and the
+  // header names it rather than indexing past the end of AREAS.
+  const isCatchAll = areaIdx >= AREAS.length;
+  const barIdx = Math.min(areaIdx, AREAS.length - 1);
+
   return (
     <Animated.View entering={FadeIn.duration(400)} style={{ flex: 1, backgroundColor: colors.cream, paddingTop: 52 }}>
       <View style={{ alignItems: 'center', paddingVertical: 6 }}><Wordmark /></View>
@@ -242,7 +252,7 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 22, paddingVertical: 2 }}>
         <BackButton onPress={() => navigation.goBack()} />
         <View style={{ flex: 1 }}>
-          <SegmentBar total={7} activeCount={areaIdx + 1} />
+          <SegmentBar total={7} activeCount={barIdx + 1} />
           {barCeleb >= 0 && (
             <View pointerEvents="none" style={{
               position: 'absolute', top: -14, left: `${((barCeleb + 0.5) / 7) * 100}%`, marginLeft: -8, zIndex: 2,
@@ -251,21 +261,23 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
             </View>
           )}
         </View>
-        <Mono>{areaIdx + 1}/7</Mono>
+        <Mono>{barIdx + 1}/7</Mono>
       </View>
 
       <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingHorizontal: 22, paddingVertical: 6 }}>
         <View style={{ flexShrink: 1, paddingRight: 8 }}>
           <Text style={{ fontFamily: fonts.sansSemi, fontSize: 12, letterSpacing: 1.8, color: colors.warmGray, textTransform: 'uppercase' }}>
-            {AREAS[areaIdx]}
+            {isCatchAll ? CATCH_ALL_AREA.label : AREAS[areaIdx]}
           </Text>
           <Text style={{ fontFamily: fonts.serifItalic, fontSize: 11.5, color: colors.inactive, marginTop: 1 }}>
-            {AREA_CHAKRAS[areaIdx]}
+            {isCatchAll ? CATCH_ALL_AREA.note : AREA_CHAKRAS[areaIdx]}
           </Text>
         </View>
         {!intakeDone && (
           <Pressable onPress={skipArea}>
-            <Text style={{ fontFamily: fonts.sans, fontSize: 13, color: colors.warmGray }}>Not this season</Text>
+            <Text style={{ fontFamily: fonts.sans, fontSize: 13, color: colors.warmGray }}>
+              {isCatchAll ? 'Skip' : 'Not this season'}
+            </Text>
           </Pressable>
         )}
       </View>

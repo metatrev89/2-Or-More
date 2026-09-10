@@ -41,7 +41,7 @@ const AREA_LABELS: Record<string, string> = {
   communication_expression: 'Communication & Expression',
   mindset_growth: 'Mindset, Vision & Growth',
   spirit_purpose: 'Spirit & Purpose',
-  identity: 'Identity',
+  open_capture: 'Anything Else', // the optional 8th, from the intake's catch-all
 };
 
 async function authHeader(): Promise<Record<string, string>> {

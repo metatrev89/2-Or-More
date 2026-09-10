@@ -21,7 +21,9 @@ export const MOCK_SCRIPT: ScriptStep[] = [
   { area: 4, ai: ['Your voice: what message do you want to bring into the world this year?'], chips: null, user: 'I want to write and speak about what I believe — confidently, to the people looking for it.' },
   { area: 5, ai: ['Third eye — clarity and growth. What does the next level of you look like?'], chips: ['Discipline', 'Wisdom', 'Legacy', 'Momentum'], user: 'A mindset of continual growth I can hand down — so my kids start further along than I did.' },
   { area: 6, ai: ['Last one, the crown: Spirit & Purpose. When do you feel most connected — and what does that look like on an ordinary day?'], chips: null, user: 'Daily prayer and stillness before the house wakes up. I want that every morning, not just some mornings.' },
-  { area: 6, ai: ["That's everything I need. I can hear the life you're building — give me a moment to write you into it."], chips: null, user: null },
+  // Catch-all (area 7): asked once after the seven, answer becomes the 8th affirmation.
+  { area: 7, ai: ["That's all seven captured. Before I write these — is there anything else you want to hold in this practice that we didn't cover? Tell me what it is and why it matters, or just say that's it."], chips: ["That's it", 'One more thing'], user: 'One more thing — I want to finish writing my book this year. It’s the message I owe people.' },
+  { area: 7, ai: ["Beautiful — that's everything I need. Give me a moment to write you into it."], chips: null, user: null },
 ];
 
 export const MOCK_AFFS = [
@@ -32,6 +34,8 @@ export const MOCK_AFFS = [
   { id: 'a5', area: 'Communication & Expression', youSaid: 'Write and speak about what I believe — confidently, to the people looking for it.', statement: 'I AM a confident voice for what I believe, writing and speaking boldly. I share it because the people searching for this path deserve to find it lit.', alt: 'I AM speaking my message clearly and without apology — because someone out there is looking for exactly these words.', isIdentity: false },
   { id: 'a6', area: 'Mindset, Vision & Growth', youSaid: 'A mindset of continual growth I can hand down.', statement: 'I AM in a mindset of continual growth, already moving past today’s vision and setting new levels. I live this way because it is my legacy — my kids start further down the road than I did.', alt: 'I AM growing past every version of my vision — because each level I reach is inheritance for my children.', isIdentity: false },
   { id: 'a7', area: 'Spirit & Purpose', youSaid: 'I want that stillness every morning, not just some mornings.', statement: 'I AM anchored in morning stillness and prayer, aligned before the world asks anything of me. I begin here because when I start the day in alignment, the whole day follows.', alt: 'I AM in daily communion — stillness and prayer before the house wakes — because alignment is how every one of my days begins.', isIdentity: false },
+  // The optional 8th — only present when the catch-all question gets a real answer.
+  { id: 'a8', area: 'Anything Else', youSaid: 'I want to finish writing my book this year.', statement: 'I AM finishing my book this year, chapter by chapter, and it is good. I write it because the message inside it was never mine to keep — delivering it is part of who I am.', alt: 'I AM an author with a finished book in hand this year, because the people it was written for are still waiting on it.', isIdentity: false },
 ];
 
 export const BUILD_LINES = ['Reading your vision…', 'Finding the language…', 'Writing you in the present tense…'];

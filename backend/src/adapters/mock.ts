@@ -21,6 +21,8 @@ const AREA_QUESTIONS: Record<string, string[]> = {
   communication_expression: ['What message or voice do you want to bring into the world?', 'Who is it for — what happens when they hear it?'],
   mindset_growth: ['What vision are you growing toward — what does the next level of you look like?', 'What legacy does that growth create?'],
   spirit_purpose: ['Last one, the crown — what does alignment with spirit and purpose look like for you?', 'Why is that the truest measure of a full life for you?'],
+  // Catch-all: one optional question, asked after all seven areas.
+  open_capture: ['That’s all seven areas captured. Before I write these — is there anything else you want to hold in this practice that we didn’t cover? Tell me what it is and why it matters, or just say "that’s it" and I’ll get to work.'],
 };
 
 export class MockIntakeLLM implements IntakeLLM {

@@ -86,13 +86,14 @@ export function createApp() {
     if (!session?.completed) return c.json({ error: 'intake not complete' }, 400);
 
     const svc = new AffirmationService(await getRewriteLLM());
+    // Every affirmation traces back to a goal the user spoke — including the
+    // optional 8th from the intake's catch-all question. No appended boilerplate.
     const affirmations = await svc.rewriteAll(session.goals);
-    const identity = svc.identityStatements(userId);
     // Enrich with goal context the review screen renders (area chip + "You said").
     const byGoal = new Map(session.goals.map(g => [g.id, g]));
-    const dto = [...affirmations, ...identity].map(a => {
+    const dto = affirmations.map(a => {
       const g = a.goalId ? byGoal.get(a.goalId) : undefined;
-      return { ...a, area: g?.area ?? 'identity', youSaid: g?.rawText ?? '' };
+      return { ...a, area: g?.area ?? 'open_capture', youSaid: g?.rawText ?? '' };
     });
     return c.json({ affirmations: dto });
   });

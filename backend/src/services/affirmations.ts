@@ -34,17 +34,19 @@ export class AffirmationService {
   async rewriteAll(goals: Goal[]): Promise<Affirmation[]> {
     return Promise.all(goals.map(g => this.rewriteGoal(g)));
   }
-
-  /** Eternal identity statements (US-3) appended to every set. */
-  identityStatements(userId: string): Affirmation[] {
-    return [
-      'I am positive. I am happy. I am loved.',
-      'I stay in God’s presence. I am one with God.',
-    ].map(statement => ({
-      id: crypto.randomUUID(), userId, statement, isIdentity: true,
-    }));
-  }
 }
+
+/**
+ * REMOVED Sept 9, 2026 — identityStatements(): two hardcoded "eternal identity"
+ * affirmations ("I am positive. I am happy. I am loved." / "I stay in God's
+ * presence...") used to be appended to every set, so users saw a generic #8 and
+ * #9 they never said (Trevor: "8 & 9 affirmations are just generically added").
+ * Every affirmation now traces back to something the user actually told us —
+ * including the optional 8th from the intake's catch-all question
+ * (LifeArea 'open_capture'). Don't reintroduce set-level boilerplate here; if a
+ * universal statement is ever wanted, it belongs in the conversation, not
+ * stapled on after it.
+ */
 
 function normalize(s: string): string {
   const cleaned = s.replace(/^["']|["']$/g, '').trim();

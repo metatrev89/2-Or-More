@@ -7,7 +7,15 @@
  */
 export type LifeArea =
   | 'health_body' | 'emotions_creativity' | 'career_purpose' | 'relationships_love'
-  | 'communication_expression' | 'mindset_growth' | 'spirit_purpose';
+  | 'communication_expression' | 'mindset_growth' | 'spirit_purpose'
+  /**
+   * The catch-all (added Sept 9, 2026). NOT a chakra and deliberately NOT in
+   * LIFE_AREAS — after the seven areas the interviewer asks once whether
+   * anything else belongs in the practice. An answer becomes the optional 8th
+   * goal; a decline ends the intake at seven. Keeping it out of LIFE_AREAS is
+   * what preserves the 7-segment progress bar and the areaIndex contract.
+   */
+  | 'open_capture';
 
 export const LIFE_AREAS: LifeArea[] = [
   'health_body', 'emotions_creativity', 'career_purpose', 'relationships_love',
@@ -23,6 +31,7 @@ export const AREA_META: Record<LifeArea, { label: string; chakra: string }> = {
   communication_expression: { label: 'Communication & Expression', chakra: 'Throat · Voice' },
   mindset_growth: { label: 'Mindset, Vision & Growth', chakra: 'Third Eye · Clarity' },
   spirit_purpose: { label: 'Spirit & Purpose', chakra: 'Crown · Unity' },
+  open_capture: { label: 'Anything Else', chakra: '' },
 };
 
 export interface Goal {

@@ -4,6 +4,21 @@ import { LIFE_AREAS } from '../types.js';
 
 const MAX_QUESTIONS_PER_AREA = 3;
 
+/**
+ * The catch-all phase (added Sept 9, 2026) sits one step past the seven areas,
+ * at areaIndex === LIFE_AREAS.length. The interviewer asks ONCE whether
+ * anything else belongs in the practice; an answer becomes the optional 8th
+ * goal, a decline ends the intake at seven. It is not a chakra and never
+ * lights a progress segment.
+ */
+const OPEN_CAPTURE: LifeArea = 'open_capture';
+
+/**
+ * "Nothing more" replies to the catch-all. Matched whole-answer only, so
+ * "No — but I do want..." still counts as an answer, not a decline.
+ */
+const DECLINE = /^\s*(no|nope|nah|none|nothing|nothing else|n\/?a|skip|pass|i'?m good|im good|we'?re good|that'?s it|that is it|thats it|all good|all set|good to go|done|that'?s all|thats all)\b[\s.!,]*$/i;
+
 // NOTE (hybrid copy rule): the welcome/greeting is code-authored and rendered
 // CLIENT-SIDE (app IntakeScreen) so it appears instantly with no model latency.
 // The LLM is instructed never to write its own greeting (see adapter context).
@@ -21,7 +36,12 @@ export class IntakeService {
   }
 
   currentArea(session: IntakeSession): LifeArea {
-    return LIFE_AREAS[Math.min(session.areaIndex, LIFE_AREAS.length - 1)]!;
+    return this.isCatchAll(session) ? OPEN_CAPTURE : LIFE_AREAS[session.areaIndex]!;
+  }
+
+  /** True once the seven areas are done and only the catch-all question remains. */
+  isCatchAll(session: IntakeSession): boolean {
+    return session.areaIndex >= LIFE_AREAS.length;
   }
 
   async nextQuestion(session: IntakeSession): Promise<string> {
@@ -36,6 +56,15 @@ export class IntakeService {
   /** Handle a user answer; returns whether the current area is complete. */
   async submitAnswer(session: IntakeSession, answer: string): Promise<{ areaComplete: boolean; sessionComplete: boolean }> {
     session.turns.push({ role: 'user', content: answer });
+
+    // Catch-all: exactly one question. Something real becomes the 8th goal;
+    // "no thanks" finishes the intake with the seven they already gave.
+    if (this.isCatchAll(session)) {
+      if (!answer.trim() || DECLINE.test(answer)) this.advance(session, null);
+      else await this.completeArea(session);
+      return { areaComplete: true, sessionComplete: session.completed };
+    }
+
     const questionsAsked = session.turns.filter(t => t.role === 'assistant').length;
     const areaComplete = questionsAsked >= MAX_QUESTIONS_PER_AREA - 1; // 2 Qs default; 3rd is optional depth
     if (areaComplete) await this.completeArea(session);
@@ -64,10 +93,10 @@ export class IntakeService {
   private advance(session: IntakeSession, goal: Goal | null): void {
     if (goal) session.goals.push(goal);
     session.turns = []; // fresh conversation per area; prior goals passed as context
-    if (session.areaIndex >= LIFE_AREAS.length - 1) {
-      session.completed = true;
+    if (this.isCatchAll(session)) {
+      session.completed = true; // the catch-all is the last stop
     } else {
-      session.areaIndex += 1;
+      session.areaIndex += 1; // 6 -> 7 opens the catch-all
     }
   }
 }

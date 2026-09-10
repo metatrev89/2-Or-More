@@ -64,11 +64,20 @@ Message pattern per area:
 3. NEXT AREA message (after their why lands): one warm line receiving the why — then
    "Area N: [name]." and its goal question. Never re-summarize the finished area.
 
+FINAL CATCH-ALL message (ONLY when the context line says this is the catch-all —
+after all seven areas are captured):
+- Ask ONE question and nothing else. No echo block, no numbered follow-ups, no
+  road-ahead line — those belong to the seven areas, not here.
+- One short line acknowledging the seven are captured, then ask whether there is
+  anything else they want to hold in this practice that the seven areas did not
+  cover — inviting them to say what it is and why it matters, in one answer.
+- Make it plainly optional: they can say "no" or "that's it" and you'll wrap up.
+
 Rules:
 - PLAIN TEXT ONLY — no markdown, no asterisks or bold markers (the app renders raw
   text). Use "1." / "2." numbering and blank lines between blocks.
 - The user answers twice per area (goal, then why). After their why answer, always move
-  to the next area.
+  to the next area. The catch-all is answered once.
 - Energetic, personal, never preachy. Never use alarm or shame.
 
 Example WHY message (target register — match this):
@@ -122,8 +131,11 @@ async function openAICompatChat(baseUrl: string, apiKey: string, model: string, 
 export class SparkIntakeLLM implements IntakeLLM {
   async nextMessage(turns: IntakeTurn[], area: string, context: { priorGoals: string[]; userName?: string; isFirstMessage?: boolean }): Promise<string> {
     const meta = AREA_META[area as LifeArea];
+    const areaLine = area === 'open_capture'
+      ? 'All seven areas are captured. This is the FINAL CATCH-ALL message — follow the catch-all rule exactly (one optional question, nothing else).'
+      : `Current life area: ${meta?.label ?? area} (${meta?.chakra ?? ''}).`;
     const contextLines = [
-      `Current life area: ${meta?.label ?? area} (${meta?.chakra ?? ''}). Goals already captured: ${context.priorGoals.join('; ') || 'none yet'}.`,
+      `${areaLine} Goals already captured: ${context.priorGoals.join('; ') || 'none yet'}.`,
       context.userName ? `The user's name is ${context.userName}.` : '',
       context.isFirstMessage ? 'This is the first message of onboarding, and the app has ALREADY greeted the user and explained the journey. Do NOT write a greeting, welcome, or overview — open directly with Area 1 and its goal question.' : '',
     ].filter(Boolean);

@@ -7,7 +7,7 @@ import { summarize } from '../src/services/gamification.js';
 import { LIFE_AREAS } from '../src/types.js';
 
 describe('IntakeService', () => {
-  it('walks all 7 life areas and completes with goals', async () => {
+  it('walks all 7 life areas, then the catch-all — an answer becomes the 8th goal', async () => {
     const svc = new IntakeService(new MockIntakeLLM());
     const session = svc.newSession('u1');
     let guard = 0;
@@ -16,7 +16,32 @@ describe('IntakeService', () => {
       await svc.submitAnswer(session, 'I want to make seven figures this year');
     }
     expect(session.completed).toBe(true);
+    expect(session.goals.length).toBe(LIFE_AREAS.length + 1);
+    expect(session.goals.at(-1)!.area).toBe('open_capture');
+  });
+
+  it('declining the catch-all finishes with the seven areas only', async () => {
+    const svc = new IntakeService(new MockIntakeLLM());
+    const session = svc.newSession('u1');
+    let guard = 0;
+    while (!session.completed && guard++ < 50) {
+      await svc.nextQuestion(session);
+      await svc.submitAnswer(session, svc.isCatchAll(session) ? "that's it" : 'A goal for this area');
+    }
+    expect(session.completed).toBe(true);
     expect(session.goals.length).toBe(LIFE_AREAS.length);
+    expect(session.goals.some(g => g.area === 'open_capture')).toBe(false);
+  });
+
+  it('the catch-all asks exactly once', async () => {
+    const svc = new IntakeService(new MockIntakeLLM());
+    const session = svc.newSession('u1');
+    session.areaIndex = LIFE_AREAS.length; // jump straight to the catch-all
+    expect(svc.currentArea(session)).toBe('open_capture');
+    await svc.nextQuestion(session);
+    await svc.submitAnswer(session, 'I want to finish writing my book this year');
+    expect(session.completed).toBe(true);
+    expect(session.goals.length).toBe(1);
   });
 
   it('skipping an area records no goal', async () => {
@@ -41,11 +66,18 @@ describe('AffirmationService', () => {
     expect(aff.statement.endsWith('.')).toBe(true);
   });
 
-  it('appends identity statements', () => {
+  // Guards the Sept 9 removal of the two hardcoded "identity" affirmations:
+  // the set is exactly what the user said, nothing appended.
+  it('produces one affirmation per goal — no appended boilerplate', async () => {
     const svc = new AffirmationService(new MockRewriteLLM());
-    const ids = svc.identityStatements('u1');
-    expect(ids.length).toBeGreaterThan(0);
-    expect(ids.every(a => a.isIdentity)).toBe(true);
+    const goals = [
+      { id: 'g1', userId: 'u1', area: 'health_body' as const, rawText: 'Get to 175 pounds', actionItems: [] },
+      { id: 'g2', userId: 'u1', area: 'open_capture' as const, rawText: 'Finish writing my book', actionItems: [] },
+    ];
+    const affs = await svc.rewriteAll(goals);
+    expect(affs.length).toBe(goals.length);
+    expect(affs.every(a => !a.isIdentity)).toBe(true);
+    expect(affs.map(a => a.goalId)).toEqual(['g1', 'g2']);
   });
 });
 

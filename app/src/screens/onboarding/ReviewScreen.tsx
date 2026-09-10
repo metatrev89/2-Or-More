@@ -180,7 +180,7 @@ export default function ReviewScreen({ navigation }: NativeStackScreenProps<Root
             }}>
               <StarBurst size={22} />
               <Text style={{ flexShrink: 1, fontFamily: fonts.sansMedium, fontSize: 17, color: colors.cream }}>
-                All 7 affirmations — yours. Let's set your schedule.
+                All {affirmations.length} affirmations — yours. Let's set your schedule.
               </Text>
             </ChipPop>
           </View>
