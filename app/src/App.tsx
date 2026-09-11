@@ -33,6 +33,7 @@ import FriendsScreen from './screens/social/FriendsScreen';
 import DiscoverScreen from './screens/social/DiscoverScreen';
 import ContactsScreen from './screens/social/ContactsScreen';
 import SettingsScreen from './screens/SettingsScreen';
+import VoiceRecorderScreen from './screens/VoiceRecorderScreen';
 
 export type RootStackParamList = {
   Intro: undefined;
@@ -47,6 +48,8 @@ export type RootStackParamList = {
   Creation: undefined;
   Main: undefined;
   Player: { mode: 'audio' | 'movie' };
+  /** No param = record the whole set; affirmationId = re-record just that one. */
+  VoiceRecorder: { affirmationId?: string } | undefined;
   Friends: undefined;
   Discover: undefined;
   Contacts: undefined;
@@ -136,6 +139,7 @@ function Root() {
         <Stack.Screen name="Discover" component={DiscoverScreen} />
         <Stack.Screen name="Contacts" component={ContactsScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
+        <Stack.Screen name="VoiceRecorder" component={VoiceRecorderScreen} options={{ animation: 'slide_from_bottom' }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

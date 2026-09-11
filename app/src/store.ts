@@ -34,6 +34,14 @@ interface State {
   payPlan: 'annual' | 'monthly';
   voiceSel: 'aria' | 'james' | 'own' | null;
   recState: 'idle' | 'recording' | 'done';
+  /**
+   * Per-affirmation voice recordings, keyed by affirmation id (NOT index —
+   * indexes shift when affirmations are added or reordered). Missing = that
+   * affirmation plays in the preset AI voice.
+   */
+  voiceRecordings: Record<string, string>;
+  /** User chose "record in my own voice later" — Home surfaces the prompt. */
+  recordLater: boolean;
   profilePhotoUri: string | null;
   // daily practice
   userName: string;
@@ -49,6 +57,7 @@ interface State {
   // actions
   set: (partial: Partial<State>) => void;
   setProfilePhoto: (uri: string | null) => void;
+  setVoiceRecording: (affirmationId: string, uri: string | null) => void;
   addMsg: (m: Msg) => void;
   completeCard: (i: number) => void;
   recordMood: (sessionKey: string, mood: number) => void;
@@ -74,6 +83,8 @@ export const useStore = create<State>((set, get) => ({
   awStart: 7, awEnd: 22, qStart: 22, qEnd: 7,
   payPlan: 'annual',
   voiceSel: null,
+  voiceRecordings: {},
+  recordLater: false,
   recState: 'idle',
   profilePhotoUri: null,
   userName: 'Trevor',
@@ -93,6 +104,15 @@ export const useStore = create<State>((set, get) => ({
     set({ profilePhotoUri: uri });
     if (uri) AsyncStorage.setItem('twoplus_profile_photo', uri).catch(() => {});
     else AsyncStorage.removeItem('twoplus_profile_photo').catch(() => {});
+  },
+
+  /** Save (or clear with null) one affirmation's recording; persists the map. */
+  setVoiceRecording: (affirmationId, uri) => {
+    const next = { ...get().voiceRecordings };
+    if (uri) next[affirmationId] = uri;
+    else delete next[affirmationId];
+    set({ voiceRecordings: next });
+    AsyncStorage.setItem('twoplus_voice_recordings', JSON.stringify(next)).catch(() => {});
   },
 
   addMsg: (m) => set({ msgs: [...get().msgs, m] }),
@@ -118,6 +138,10 @@ export const useStore = create<State>((set, get) => ({
     }
     const photo = await AsyncStorage.getItem('twoplus_profile_photo');
     if (photo) set({ profilePhotoUri: photo });
+    const rec = await AsyncStorage.getItem('twoplus_voice_recordings');
+    if (rec) {
+      try { set({ voiceRecordings: JSON.parse(rec) as Record<string, string> }); } catch { /* corrupt map: start clean */ }
+    }
   },
 }));
 

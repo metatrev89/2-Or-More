@@ -6,7 +6,7 @@ import * as ImagePicker from 'expo-image-picker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
 import { colors, fonts, timing } from '../../theme';
-import { CREATION_LINES } from '../../api/mockData';
+import { CREATION_LINES, MOCK_AFFS } from '../../api/mockData';
 import { BackButton, Mono, PillButton, Serif } from '../../components/ui';
 import { CameraFrontIcon, CheckIcon, LibraryFrameIcon, MicIcon } from '../../components/brandIcons';
 import { DancingBars, PulseRing, StaticBars } from '../../components/AnimatedBars';
@@ -42,8 +42,12 @@ function SparkIcon({ size = 18 }: { size?: number }) {
  * Production: recording uploads to backend -> Fish clone; photo -> R2.
  */
 export default function CreationScreen({ navigation }: NativeStackScreenProps<RootStackParamList, 'Creation'>) {
-  const { voiceSel, recState, set } = useStore();
+  const { voiceSel, affirmations, voiceRecordings, set } = useStore();
   const [step, setStep] = useState<Step>('voice');
+  // v1 records one take per affirmation (no cloning to synthesize from), so
+  // progress is "how many of the set are done", not a single sample.
+  const totalAffs = affirmations.length || MOCK_AFFS.length;
+  const recordedCount = affirmations.filter(a => voiceRecordings[a.id]).length;
   const [lineIdx, setLineIdx] = useState(0);
   const [ready, setReady] = useState(false);
   const [samplePlaying, setSamplePlaying] = useState<'aria' | 'james' | null>(null);
@@ -52,14 +56,6 @@ export default function CreationScreen({ navigation }: NativeStackScreenProps<Ro
     set({ voiceSel: v });
     setSamplePlaying(v);
     setTimeout(() => setSamplePlaying(cur => (cur === v ? null : cur)), 2600);
-  };
-
-  const voiceOk = voiceSel === 'aria' || voiceSel === 'james' || (voiceSel === 'own' && recState === 'done');
-
-  const startRec = () => {
-    if (recState === 'recording') return;
-    set({ recState: 'recording' });
-    setTimeout(() => set({ recState: 'done' }), 3200);
   };
 
   const runBuild = () => {
@@ -130,54 +126,50 @@ export default function CreationScreen({ navigation }: NativeStackScreenProps<Ro
               <View style={{ flex: 1 }}>
                 <Text style={{ fontFamily: fonts.sansMedium, fontSize: 16, color: colors.cream }}>My own voice</Text>
                 <Text style={{ fontFamily: fonts.sans, fontSize: 13, color: colors.creamOnDarkDim, marginTop: 2 }}>
-                  A guided 60-second read of your set
+                  {recordedCount > 0
+                    ? `${recordedCount} of ${totalAffs} recorded`
+                    : `Read your ${totalAffs} affirmations, one at a time`}
                 </Text>
               </View>
+              {recordedCount > 0 && <CheckIcon size={20} />}
             </Pressable>
-            {voiceSel === 'own' && (
-              <Animated.View entering={FadeInUp.duration(350)} style={{
-                backgroundColor: 'rgba(250,244,232,0.07)', borderWidth: 1, borderColor: 'rgba(250,244,232,0.2)',
-                borderRadius: 18, padding: 16, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', gap: 14,
-              }}>
-                <PulseRing size={46} color={recState === 'recording' ? colors.gold : 'transparent'}>
-                  <Pressable onPress={startRec} style={{
-                    width: 46, height: 46, borderRadius: 23,
-                    backgroundColor: recState === 'done' ? colors.teal : colors.gold,
-                    alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    {recState === 'done'
-                      ? <CheckIcon size={20} />
-                      : <MicIcon size={19} color={colors.ink} />}
-                  </Pressable>
-                </PulseRing>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontFamily: fonts.sansMedium, fontSize: 15, color: colors.cream }}>
-                    {recState === 'recording' ? 'Listening…' : recState === 'done' ? 'Recording saved' : 'Record your voice'}
-                  </Text>
-                  <Text style={{ fontFamily: fonts.sans, fontSize: 13, color: colors.creamOnDarkDim, marginTop: 2, lineHeight: 18 }}>
-                    {recState === 'recording' ? 'Read each affirmation slowly — take your time.'
-                      : recState === 'done' ? 'Tap the mic to re-record anytime.'
-                      : 'A guided 60-second read of your set.'}
-                  </Text>
-                </View>
-              </Animated.View>
-            )}
           </View>
           <Text style={{ fontFamily: fonts.sans, fontSize: 13, color: 'rgba(250,244,232,0.5)', marginTop: 16, lineHeight: 19 }}>
-            Your own voice is the strongest signal to your subconscious. You can re-record anytime.
+            {voiceSel === 'own' && recordedCount > 0 && recordedCount < totalAffs
+              ? 'The ones you haven’t recorded yet play in the AI voice until you do.'
+              : 'Your own voice is the strongest signal to your subconscious. You can re-record anytime.'}
           </Text>
           <View style={{ flex: 1 }} />
           <PillButton
             label={!voiceSel ? 'Choose a voice to continue'
               : voiceSel === 'aria' ? 'Continue with Aria'
               : voiceSel === 'james' ? 'Continue with James'
-              : recState === 'done' ? 'Continue with my voice' : 'Record above to continue'}
-            onPress={() => voiceOk && setStep('photo')}
-            disabled={!voiceOk}
-            bg={voiceOk ? colors.gold : 'rgba(250,244,232,0.12)'}
-            color={voiceOk ? colors.ink : 'rgba(250,244,232,0.45)'}
+              : recordedCount === 0 ? 'Record my affirmations'
+              : recordedCount < totalAffs ? 'Record the rest'
+              : 'Continue with my voice'}
+            onPress={() => {
+              if (!voiceSel) return;
+              // "My own voice" opens the guided recorder; returning here keeps
+              // the user on this step so they choose when to move on.
+              if (voiceSel === 'own' && recordedCount < totalAffs) navigation.navigate('VoiceRecorder');
+              else setStep('photo');
+            }}
+            disabled={!voiceSel}
+            bg={voiceSel ? colors.gold : 'rgba(250,244,232,0.12)'}
+            color={voiceSel ? colors.ink : 'rgba(250,244,232,0.45)'}
             style={{ marginTop: 16 }}
           />
+          {/* General escape — nothing is gated behind recording (Trevor, Sept 11). */}
+          <Pressable
+            onPress={() => { set({ voiceSel: voiceSel ?? 'own', recordLater: true }); setStep('photo'); }}
+            style={{ paddingTop: 14 }}
+          >
+            <Text style={{ textAlign: 'center', fontFamily: fonts.sans, fontSize: 14, color: 'rgba(250,244,232,0.6)' }}>
+              {recordedCount > 0 && recordedCount < totalAffs
+                ? 'Record the rest later'
+                : 'Record in my own voice later'}
+            </Text>
+          </Pressable>
         </Animated.View>
       )}
 

@@ -17,7 +17,13 @@
       "package": "com.highnoon.twoplus"
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "2+ uses your microphone so you can record your affirmations in your own voice. Recordings are stored and played back to you only — they are never analyzed or used to synthesize speech."
+        }
+      ]
     ],
     "extra": {
       "eas": {

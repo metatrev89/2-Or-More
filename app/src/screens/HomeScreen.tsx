@@ -12,7 +12,7 @@ import { colors, fonts } from '../theme';
 import { Mono, Serif } from '../components/ui';
 import {
   BellIcon, ChevronDownIcon, DoneMark, FilmIcon, FlameIcon, HeadphonesIcon,
-  PauseFill, PencilIcon, PlayFill, StarBurst, VideoIcon, XIcon,
+  MicIcon, PauseFill, PencilIcon, PlayFill, StarBurst, VideoIcon, XIcon,
 } from '../components/brandIcons';
 import { DancingBars } from '../components/AnimatedBars';
 import { BurstRing, CelebStar, ChipPop, Confetti } from '../components/Celebration';
@@ -88,9 +88,12 @@ const greeting = () => {
 export default function HomeScreen() {
   const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const store = useStore();
-  const { affirmations, homeReadDone, streakDays, userName, welcome, schedPlan, freq, edits, set } = store;
+  const { affirmations, homeReadDone, streakDays, userName, welcome, schedPlan, freq, edits, voiceRecordings, set } = store;
 
   const [expanded, setExpanded] = useState(-1);
+  // Voice coverage across the set — drives the record-all prompt below.
+  const recordedCount = affirmations.filter(a => voiceRecordings[a.id]).length;
+  const unrecordedCount = Math.max(0, affirmations.length - recordedCount);
   const [audioIdx, setAudioIdx] = useState(-1);
   const [audioPlaying, setAudioPlaying] = useState(false);
   const [audioPos, setAudioPos] = useState(0);
@@ -361,6 +364,34 @@ export default function HomeScreen() {
             </View>
           </View>
 
+          {/* Record-all prompt — the way back in for anyone who skipped the
+              onboarding recorder. Disappears once the whole set is recorded. */}
+          {!editing && unrecordedCount > 0 && (
+            <Pressable
+              onPress={() => nav.navigate('VoiceRecorder')}
+              style={{
+                flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 12,
+                backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
+                borderRadius: 18, paddingVertical: 12, paddingHorizontal: 14,
+              }}
+            >
+              <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center' }}>
+                <MicIcon size={15} color={colors.ink} />
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={{ fontFamily: fonts.sansMedium, fontSize: 14.5, color: colors.ink }}>
+                  {recordedCount === 0 ? 'Record these in your own voice' : `Record the other ${unrecordedCount}`}
+                </Text>
+                <Text style={{ fontFamily: fonts.sans, fontSize: 12.5, color: colors.warmGray, marginTop: 1 }}>
+                  {recordedCount === 0
+                    ? 'Your own voice is the strongest signal'
+                    : `${recordedCount} of ${affs.length} already in your voice`}
+                </Text>
+              </View>
+              <ChevronDownIcon size={16} />
+            </Pressable>
+          )}
+
           {!editing ? (
             <View style={{ marginTop: 8 }}>
               {affs.map((a, i) => {
@@ -426,6 +457,32 @@ export default function HomeScreen() {
                         <ChevronDownIcon size={16} />
                       )}
                     </Pressable>
+
+                    {/* voice row — record this one, or hear which voice carries it.
+                        Present for anyone who skipped some (or all) of the
+                        onboarding recorder (Trevor, Sept 11). */}
+                    {isExpanded && (
+                      <Animated.View entering={FadeInUp.duration(280)} style={{
+                        flexDirection: 'row', alignItems: 'center', gap: 10, paddingBottom: 12, paddingTop: 2,
+                      }}>
+                        <Pressable
+                          onPress={() => nav.navigate('VoiceRecorder', { affirmationId: a.id })}
+                          style={{
+                            flexDirection: 'row', alignItems: 'center', gap: 7,
+                            backgroundColor: colors.white, borderWidth: 1, borderColor: colors.sand,
+                            borderRadius: 18, paddingVertical: 7, paddingHorizontal: 13,
+                          }}
+                        >
+                          <MicIcon size={13} color={colors.ink} />
+                          <Text style={{ fontFamily: fonts.sansMedium, fontSize: 13, color: colors.ink }}>
+                            {voiceRecordings[a.id] ? 'Re-record' : 'Record in my voice'}
+                          </Text>
+                        </Pressable>
+                        <Text style={{ fontFamily: fonts.sans, fontSize: 12.5, color: colors.inactive }}>
+                          {voiceRecordings[a.id] ? 'Your voice' : 'AI voice'}
+                        </Text>
+                      </Animated.View>
+                    )}
 
                     {/* inline scene video */}
                     {videoOpen && (
