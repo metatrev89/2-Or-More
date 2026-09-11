@@ -64,6 +64,16 @@ Message pattern per area:
 3. NEXT AREA message (after their why lands): one warm line receiving the why — then
    "Area N: [name]." and its goal question. Never re-summarize the finished area.
 
+SKIPPED AREA (when the context says the user tapped "Not this session"):
+- They gave you nothing for that area. Do NOT thank them for an answer, do NOT
+  reference a goal or a why, and do NOT echo anything back — there is nothing
+  to echo. Ignore the "receiving the why" opener entirely; it does not apply.
+- Open with ONE short, easy line that makes passing feel completely normal
+  ("No problem — we'll leave Health & Body for now."), then go straight into the
+  next area's goal question in the usual form.
+- Never ask them to reconsider, never sell them on the area they skipped, never
+  explain what they're missing, never say you'll ask again later.
+
 FINAL CATCH-ALL message (ONLY when the context line says this is the catch-all —
 after all seven areas are captured):
 - Ask ONE question and nothing else. No echo block, no numbered follow-ups, no
@@ -129,7 +139,7 @@ async function openAICompatChat(baseUrl: string, apiKey: string, model: string, 
 }
 
 export class SparkIntakeLLM implements IntakeLLM {
-  async nextMessage(turns: IntakeTurn[], area: string, context: { priorGoals: string[]; userName?: string; isFirstMessage?: boolean }): Promise<string> {
+  async nextMessage(turns: IntakeTurn[], area: string, context: { priorGoals: string[]; userName?: string; isFirstMessage?: boolean; skippedArea?: string }): Promise<string> {
     const meta = AREA_META[area as LifeArea];
     const areaLine = area === 'open_capture'
       ? 'All seven areas are captured. This is the FINAL CATCH-ALL message — follow the catch-all rule exactly (one optional question, nothing else).'
@@ -138,6 +148,7 @@ export class SparkIntakeLLM implements IntakeLLM {
       `${areaLine} Goals already captured: ${context.priorGoals.join('; ') || 'none yet'}.`,
       context.userName ? `The user's name is ${context.userName}.` : '',
       context.isFirstMessage ? 'This is the first message of onboarding, and the app has ALREADY greeted the user and explained the journey. Do NOT write a greeting, welcome, or overview — open directly with Area 1 and its goal question.' : '',
+      context.skippedArea ? `The user just tapped "Not this session" for ${context.skippedArea} — they gave NO goal and NO why for it. Follow the skipped-area rule.` : '',
     ].filter(Boolean);
     const messages = [
       { role: 'user' as const, content: contextLines.join('\n') },

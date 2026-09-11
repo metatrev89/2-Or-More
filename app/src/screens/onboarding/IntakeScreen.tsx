@@ -111,7 +111,7 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
       await liveStart();
       if (!liveStarted.current || skip) return;
     }
-    addMsg({ isAi: false, text: skip ? 'Not this season.' : text });
+    addMsg({ isAi: false, text: skip ? 'Not this session.' : text });
     set({ typing: true, listening: false });
     setChips([]);
     setDraft('');
@@ -205,8 +205,8 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
     set({
       msgs: [
         ...st.msgs,
-        { isAi: false, text: 'Not this season.' },
-        { isAi: true, text: 'No problem — not this season. You can come back to it anytime from your profile.' },
+        { isAi: false, text: 'Not this session.' },
+        { isAi: true, text: 'No problem — we’ll leave that one for now. You can come back to it anytime from your profile.' },
         ...next.ai.map(t => ({ isAi: true, text: t })),
       ],
       scriptIdx: j, areaIdx: next.area, intakeDone: !next.user, typing: false, listening: false,
@@ -276,7 +276,7 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
         {!intakeDone && (
           <Pressable onPress={skipArea}>
             <Text style={{ fontFamily: fonts.sans, fontSize: 13, color: colors.warmGray }}>
-              {isCatchAll ? 'Skip' : 'Not this season'}
+              {isCatchAll ? 'Skip' : 'Not this session'}
             </Text>
           </Pressable>
         )}

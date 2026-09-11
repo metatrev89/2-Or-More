@@ -26,10 +26,14 @@ const AREA_QUESTIONS: Record<string, string[]> = {
 };
 
 export class MockIntakeLLM implements IntakeLLM {
-  async nextMessage(turns: IntakeTurn[], area: string): Promise<string> {
+  async nextMessage(turns: IntakeTurn[], area: string, context?: { skippedArea?: string }): Promise<string> {
     const qs = AREA_QUESTIONS[area] ?? ['Tell me about this area of your life.', 'Why does it matter?'];
     const asked = turns.filter(t => t.role === 'assistant').length;
-    return qs[Math.min(asked, qs.length - 1)]!;
+    const q = qs[Math.min(asked, qs.length - 1)]!;
+    // Mirror the live adapter: acknowledge a skip, then ask, never re-sell it.
+    return context?.skippedArea && asked === 0
+      ? `No problem — we'll leave ${context.skippedArea} for now.\n\n${q}`
+      : q;
   }
   async extractGoal(turns: IntakeTurn[], area: string) {
     const userText = turns.filter(t => t.role === 'user').map(t => t.content).join(' ');

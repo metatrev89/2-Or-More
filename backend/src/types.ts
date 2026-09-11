@@ -75,6 +75,13 @@ export interface IntakeSession {
   turns: IntakeTurn[];
   goals: Goal[];
   completed: boolean;
+  /**
+   * Label of an area the user just passed on ("Not this session"). Set by
+   * skipArea and consumed by the very next question, so the interviewer can
+   * acknowledge the skip instead of thanking them for an answer they never
+   * gave. One-shot — cleared as soon as it's used.
+   */
+  skippedArea?: string;
 }
 
 export type JobType = 'media_stage1' | 'media_stage2' | 'regen_asset';

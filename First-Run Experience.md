@@ -38,7 +38,7 @@ The heart of onboarding. The AI introduces itself in one message, then interview
 - The AI references earlier answers wherever possible ("You mentioned losing 70 pounds — that's huge. What does the finish line look like?"). This proves it's listening and is the single strongest trust-builder in the flow.
 - Quick-reply chips appear on why-questions where people freeze (e.g. "My kids · Energy · Longevity · Confidence"). Tapping a chip pre-fills, doesn't send — the user can add to it.
 - Starter action items: after each goal, the AI proposes 1–2 first steps conversationally ("Want me to note 'book bloodwork panel' as a starting action?"). Lightweight, skippable — 2+ is not a planner.
-- Every area is skippable ("Not this season") and can be revisited later from the profile.
+- Every area is skippable ("Not this session") and can be revisited later from the profile.
 
 **Input:** the mic button is primary (teal, prominent, right of the text field); keyboard is secondary. Voice transcribes live into the chat.
 

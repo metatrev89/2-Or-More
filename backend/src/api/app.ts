@@ -47,6 +47,7 @@ export function createApp() {
       rawText: z.string(), whyText: z.string().optional(), actionItems: z.array(z.string()),
     })),
     completed: z.boolean(),
+    skippedArea: z.string().optional(), // survives the client round-trip
   });
 
   app.post('/intake/start', async c => {

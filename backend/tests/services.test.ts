@@ -82,6 +82,35 @@ describe('IntakeService', () => {
     expect(session.goals.length).toBe(0);
     expect(session.areaIndex).toBe(1);
   });
+
+  // A skip must be acknowledged once and then forgotten — otherwise the model
+  // opens the next area thanking them for a why they never gave.
+  it('a skip is flagged to the next question, then cleared', async () => {
+    const svc = new IntakeService(new MockIntakeLLM());
+    const session = svc.newSession('u1');
+    await svc.nextQuestion(session);
+    await svc.skipArea(session);
+    expect(session.skippedArea).toBe('Health & Body');
+
+    const q = await svc.nextQuestion(session);
+    expect(q).toContain('Health & Body');       // acknowledged
+    expect(session.skippedArea).toBeUndefined(); // one-shot
+
+    // The following question must not mention it again.
+    await svc.submitAnswer(session, 'A goal for this area');
+    const next = await svc.nextQuestion(session);
+    expect(next).not.toContain('No problem');
+  });
+
+  it('skipping the final area still reaches the catch-all', async () => {
+    const svc = new IntakeService(new MockIntakeLLM());
+    const session = svc.newSession('u1');
+    session.areaIndex = LIFE_AREAS.length - 1; // last chakra area
+    await svc.nextQuestion(session);
+    await svc.skipArea(session);
+    expect(session.completed).toBe(false);
+    expect(svc.isCatchAll(session)).toBe(true);
+  });
 });
 
 describe('AffirmationService', () => {

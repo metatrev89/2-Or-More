@@ -1,6 +1,6 @@
 import type { IntakeLLM } from '../adapters/types.js';
 import type { Goal, IntakeSession, IntakeTurn, LifeArea } from '../types.js';
-import { LIFE_AREAS } from '../types.js';
+import { AREA_META, LIFE_AREAS } from '../types.js';
 
 const MAX_QUESTIONS_PER_AREA = 3;
 
@@ -74,7 +74,11 @@ export class IntakeService {
     const area = this.currentArea(session);
     const priorGoals = session.goals.map(g => g.rawText);
     const isFirstMessage = session.areaIndex === 0 && session.turns.length === 0;
-    const q = await this.llm.nextMessage(session.turns, area, { priorGoals, userName: session.name, isFirstMessage });
+    const skippedArea = session.skippedArea;
+    const q = await this.llm.nextMessage(session.turns, area, {
+      priorGoals, userName: session.name, isFirstMessage, skippedArea,
+    });
+    session.skippedArea = undefined; // one-shot: acknowledge once, then move on
     session.turns.push({ role: 'assistant', content: q });
     return q;
   }
@@ -97,9 +101,13 @@ export class IntakeService {
     return { areaComplete, sessionComplete: session.completed };
   }
 
-  /** User taps "Not this season" — skip the area with no goal. */
+  /** User taps "Not this session" — skip the area with no goal. */
   async skipArea(session: IntakeSession): Promise<void> {
+    const label = AREA_META[this.currentArea(session)]?.label;
     this.advance(session, null);
+    // advance() wipes turns, so without this the model would see an empty
+    // conversation and open the next area as if a why had just been answered.
+    if (!session.completed && label) session.skippedArea = label;
   }
 
   private async completeArea(session: IntakeSession): Promise<void> {
