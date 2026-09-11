@@ -17,7 +17,7 @@ import {
 import { DancingBars } from '../components/AnimatedBars';
 import { BurstRing, CelebStar, ChipPop, Confetti } from '../components/Celebration';
 import MoodCheckIn from '../components/MoodCheckIn';
-import { affText, useStore } from '../store';
+import { affSet, affText, useStore } from '../store';
 import { api } from '../api/client';
 import { MOCK_AFFS } from '../api/mockData';
 import { NOTIFS } from '../api/socialMock';
@@ -91,9 +91,6 @@ export default function HomeScreen() {
   const { affirmations, homeReadDone, streakDays, userName, welcome, schedPlan, freq, edits, voiceRecordings, set } = store;
 
   const [expanded, setExpanded] = useState(-1);
-  // Voice coverage across the set — drives the record-all prompt below.
-  const recordedCount = affirmations.filter(a => voiceRecordings[a.id]).length;
-  const unrecordedCount = Math.max(0, affirmations.length - recordedCount);
   const [audioIdx, setAudioIdx] = useState(-1);
   const [audioPlaying, setAudioPlaying] = useState(false);
   const [audioPos, setAudioPos] = useState(0);
@@ -112,7 +109,12 @@ export default function HomeScreen() {
   const audioPosRef = useRef(0);
   const videoPosRef = useRef(0);
 
-  const affs = affirmations.length ? affirmations : MOCK_AFFS;
+  const affs = affSet(affirmations);
+  // Voice coverage drives the record-all prompt. MUST count against `affs`, not
+  // the store array: signing in without running onboarding leaves the store
+  // empty and Home falls back to the mock, which made the prompt never render.
+  const recordedCount = affs.filter(a => voiceRecordings[a.id]).length;
+  const unrecordedCount = Math.max(0, affs.length - recordedCount);
   useEffect(() => {
     if (!affirmations.length) set({ affirmations: MOCK_AFFS });
     // eslint-disable-next-line react-hooks/exhaustive-deps

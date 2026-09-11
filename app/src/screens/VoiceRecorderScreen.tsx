@@ -15,7 +15,7 @@ import {
   saveRecording, deleteRecording, fmtDuration, RECORDING_OPTIONS,
 } from '../audio/voiceRecordings';
 import { uploadVoiceRecording } from '../api/voiceUpload';
-import { affText, useStore } from '../store';
+import { affSet, affText, useStore } from '../store';
 import { useAudioPlayer, useAudioRecorder, useAudioRecorderState } from 'expo-audio';
 
 /** Hard stop so a forgotten recording can't fill the disk. */
@@ -45,7 +45,10 @@ export default function VoiceRecorderScreen({ route, navigation }: NativeStackSc
   const singleId = route.params?.affirmationId;
   const { affirmations, edits, reworded, voiceRecordings, setVoiceRecording, set } = useStore();
 
-  const cards = singleId ? affirmations.filter(a => a.id === singleId) : affirmations;
+  // Same set Home renders — falls back to the mock when the store is empty, so
+  // arriving from Home's prompt never lands on an empty recorder.
+  const set0 = affSet(affirmations);
+  const cards = singleId ? set0.filter(a => a.id === singleId) : set0;
   const firstUnrecorded = Math.max(0, cards.findIndex(a => !voiceRecordings[a.id]));
   const [idx, setIdx] = useState(singleId ? 0 : firstUnrecorded);
   const [savedCeleb, setSavedCeleb] = useState(false);
@@ -82,8 +85,8 @@ export default function VoiceRecorderScreen({ route, navigation }: NativeStackSc
     );
   }
 
-  const statement = affText({ affirmations, edits, reworded }, affirmations.indexOf(aff));
-  const recordedCount = affirmations.filter(a => voiceRecordings[a.id]).length;
+  const statement = affText({ affirmations: set0, edits, reworded }, set0.indexOf(aff));
+  const recordedCount = set0.filter(a => voiceRecordings[a.id]).length;
 
   const startRecording = async () => {
     if (busy || recState.isRecording) return;
@@ -182,7 +185,7 @@ export default function VoiceRecorderScreen({ route, navigation }: NativeStackSc
           {singleId ? 'Re-record' : 'Your voice'}
         </Text>
         <Text style={{ fontFamily: fonts.sans, fontSize: 13, color: colors.warmGray }}>
-          {recordedCount} of {affirmations.length} recorded
+          {recordedCount} of {set0.length} recorded
         </Text>
       </View>
 

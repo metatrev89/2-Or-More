@@ -5,6 +5,7 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { AffirmationDTO } from './api/client';
+import { MOCK_AFFS } from './api/mockData';
 
 export type OnboardingScreen =
   | 'intro' | 'signup' | 'email' | 'intake' | 'build'
@@ -144,6 +145,18 @@ export const useStore = create<State>((set, get) => ({
     }
   },
 }));
+
+/**
+ * The affirmation set actually shown to the user. The store is empty until
+ * onboarding populates it — signing straight in lands on Home with nothing — so
+ * screens fall back to the design mock. Every screen MUST derive counts from
+ * this, not from `state.affirmations`, or UI keyed on "how many affirmations
+ * are there" silently disappears for signed-in users (the record-all prompt
+ * did exactly that, Sept 11).
+ */
+export function affSet(affirmations: AffirmationDTO[]): AffirmationDTO[] {
+  return affirmations.length ? affirmations : MOCK_AFFS;
+}
 
 /** Text for affirmation i respecting edits > reword > original (design's currentAff). */
 export function affText(s: Pick<State, 'affirmations' | 'edits' | 'reworded'>, i: number): string {

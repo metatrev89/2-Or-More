@@ -6,11 +6,11 @@ import * as ImagePicker from 'expo-image-picker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
 import { colors, fonts, timing } from '../../theme';
-import { CREATION_LINES, MOCK_AFFS } from '../../api/mockData';
+import { CREATION_LINES } from '../../api/mockData';
 import { BackButton, Mono, PillButton, Serif } from '../../components/ui';
 import { CameraFrontIcon, CheckIcon, LibraryFrameIcon, MicIcon } from '../../components/brandIcons';
 import { DancingBars, PulseRing, StaticBars } from '../../components/AnimatedBars';
-import { useStore } from '../../store';
+import { affSet, useStore } from '../../store';
 
 type Step = 'voice' | 'photo' | 'photoAdd' | 'building';
 
@@ -46,8 +46,9 @@ export default function CreationScreen({ navigation }: NativeStackScreenProps<Ro
   const [step, setStep] = useState<Step>('voice');
   // v1 records one take per affirmation (no cloning to synthesize from), so
   // progress is "how many of the set are done", not a single sample.
-  const totalAffs = affirmations.length || MOCK_AFFS.length;
-  const recordedCount = affirmations.filter(a => voiceRecordings[a.id]).length;
+  const affs = affSet(affirmations);
+  const totalAffs = affs.length;
+  const recordedCount = affs.filter(a => voiceRecordings[a.id]).length;
   const [lineIdx, setLineIdx] = useState(0);
   const [ready, setReady] = useState(false);
   const [samplePlaying, setSamplePlaying] = useState<'aria' | 'james' | null>(null);
