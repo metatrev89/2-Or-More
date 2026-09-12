@@ -35,6 +35,14 @@ export const LENS_RIM = 'rgba(255, 255, 255, 0.9)';
 
 const BAR_H = 62;
 const SIDE = 16;
+/**
+ * Gap between the lens and its slot edges. The lens is deliberately near
+ * slot-width: it has to sit comfortably around the LONGEST label ("Progress",
+ * ~50pt at 11pt sansMedium). A tighter inset made the pill narrower than that
+ * word, so Progress looked cramped while the shorter tabs looked fine. One
+ * width for every tab — it's the same pill sliding, not a resizing one.
+ */
+const LENS_INSET = 8;
 
 export default function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
@@ -49,8 +57,10 @@ export default function GlassTabBar({ state, descriptors, navigation }: BottomTa
     if (!slot) return;
     x.value = withSpring(state.index * slot, { damping: 18, stiffness: 170, mass: 0.9 });
     // The liquid part: the lens elongates as it leaves, then relaxes on arrival.
+    // Eased back from 1.28 now the pill nearly fills its slot — at the old
+    // value a wider lens would swallow both neighbours mid-flight.
     stretch.value = withSequence(
-      withTiming(1.28, { duration: 130, easing: Easing.out(Easing.quad) }),
+      withTiming(1.16, { duration: 130, easing: Easing.out(Easing.quad) }),
       withSpring(1, { damping: 14, stiffness: 190 }),
     );
   }, [state.index, slot, x, stretch]);
@@ -96,13 +106,14 @@ export default function GlassTabBar({ state, descriptors, navigation }: BottomTa
               <Animated.View
                 pointerEvents="none"
                 style={[{
-                  position: 'absolute', left: 0, top: 6, height: BAR_H - 12,
-                  width: slot, borderRadius: (BAR_H - 12) / 2,
-                  paddingHorizontal: 6,
+                  position: 'absolute', left: 0, top: 6,
+                  width: slot, height: BAR_H - 12,
+                  alignItems: 'center', justifyContent: 'center',
                 }, lensStyle]}
               >
                 <View style={{
-                  flex: 1, marginHorizontal: 5, borderRadius: (BAR_H - 12) / 2,
+                  width: Math.max(0, slot - LENS_INSET), height: '100%',
+                  borderRadius: (BAR_H - 12) / 2,
                   backgroundColor: LENS_FILL, borderWidth: 1, borderColor: LENS_RIM,
                 }} />
               </Animated.View>
