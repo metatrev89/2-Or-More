@@ -41,9 +41,14 @@ function SparkIcon({ size = 18 }: { size?: number }) {
  * "own voice" flow), photo opt-in, then the generation theater.
  * Production: recording uploads to backend -> Fish clone; photo -> R2.
  */
-export default function CreationScreen({ navigation }: NativeStackScreenProps<RootStackParamList, 'Creation'>) {
+export default function CreationScreen({ route, navigation }: NativeStackScreenProps<RootStackParamList, 'Creation'>) {
   const { voiceSel, affirmations, voiceRecordings, set } = useStore();
-  const [step, setStep] = useState<Step>('voice');
+  const [step, setStep] = useState<Step>(route.params?.step ?? 'voice');
+  // The recorder sends the user onward to the photo step when they finish the
+  // set, rather than dropping them back on the voice picker they already used.
+  useEffect(() => {
+    if (route.params?.step) setStep(route.params.step);
+  }, [route.params?.step]);
   // v1 records one take per affirmation (no cloning to synthesize from), so
   // progress is "how many of the set are done", not a single sample.
   const affs = affSet(affirmations);
@@ -152,7 +157,7 @@ export default function CreationScreen({ navigation }: NativeStackScreenProps<Ro
               if (!voiceSel) return;
               // "My own voice" opens the guided recorder; returning here keeps
               // the user on this step so they choose when to move on.
-              if (voiceSel === 'own' && recordedCount < totalAffs) navigation.navigate('VoiceRecorder');
+              if (voiceSel === 'own' && recordedCount < totalAffs) navigation.navigate('VoiceRecorder', { fromCreation: true });
               else setStep('photo');
             }}
             disabled={!voiceSel}

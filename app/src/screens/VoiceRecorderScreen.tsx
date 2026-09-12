@@ -1,15 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, ScrollView, Alert } from 'react-native';
-import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
+import Animated, {
+  Easing, FadeIn, FadeInUp, useAnimatedStyle, useSharedValue, withRepeat, withTiming,
+} from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../App';
 import { colors, fonts } from '../theme';
 import { BackButton, Label, Mono, PillButton, SegmentBar, Serif, Wordmark } from '../components/ui';
-import { MicIcon } from '../components/brandIcons';
+import { ChevronDownIcon, MicIcon, StarBurst } from '../components/brandIcons';
 import { PulseRing } from '../components/AnimatedBars';
-import { CelebStar } from '../components/Celebration';
-import { playCelebrationSmall } from '../audio/sfx';
+import { BurstRing, CelebStar, ChipPop, Confetti } from '../components/Celebration';
+import { playCelebrationLarge, playCelebrationSmall } from '../audio/sfx';
 import {
   ensureMicPermission, enterRecordingMode, exitRecordingMode,
   saveRecording, deleteRecording, fmtDuration, RECORDING_OPTIONS,
@@ -20,6 +22,20 @@ import { useAudioPlayer, useAudioPlayerStatus, useAudioRecorder, useAudioRecorde
 
 /** Hard stop so a forgotten recording can't fill the disk. */
 const MAX_MS = 90_000;
+
+/** Gentle bobbing chevron pointing at the CTA — matches the intake finish. */
+function BobbingArrow() {
+  const y = useSharedValue(0);
+  useEffect(() => {
+    y.value = withRepeat(withTiming(6, { duration: 600, easing: Easing.inOut(Easing.ease) }), -1, true);
+  }, [y]);
+  const style = useAnimatedStyle(() => ({ transform: [{ translateY: y.value }] }));
+  return (
+    <Animated.View style={style}>
+      <ChevronDownIcon size={22} color={colors.ink} />
+    </Animated.View>
+  );
+}
 
 function PlayIcon({ playing, size = 19, color = colors.cream }: { playing: boolean; size?: number; color?: string }) {
   return (
@@ -43,6 +59,7 @@ function PlayIcon({ playing, size = 19, color = colors.cream }: { playing: boole
  */
 export default function VoiceRecorderScreen({ route, navigation }: NativeStackScreenProps<RootStackParamList, 'VoiceRecorder'>) {
   const singleId = route.params?.affirmationId;
+  const fromCreation = !!route.params?.fromCreation;
   const { affirmations, edits, reworded, voiceRecordings, setVoiceRecording, set } = useStore();
 
   // Same set Home renders — falls back to the mock when the store is empty, so
@@ -52,6 +69,8 @@ export default function VoiceRecorderScreen({ route, navigation }: NativeStackSc
   const firstUnrecorded = Math.max(0, cards.findIndex(a => !voiceRecordings[a.id]));
   const [idx, setIdx] = useState(singleId ? 0 : firstUnrecorded);
   const [savedCeleb, setSavedCeleb] = useState(false);
+  const [doneCeleb, setDoneCeleb] = useState(false);
+  const [finished, setFinished] = useState(false);
   const [busy, setBusy] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
@@ -90,6 +109,7 @@ export default function VoiceRecorderScreen({ route, navigation }: NativeStackSc
 
   const statement = affText({ affirmations: set0, edits, reworded }, set0.indexOf(aff));
   const recordedCount = set0.filter(a => voiceRecordings[a.id]).length;
+  const allRecorded = recordedCount === set0.length;
 
   const startRecording = async () => {
     if (busy || recState.isRecording) return;
@@ -159,9 +179,27 @@ export default function VoiceRecorderScreen({ route, navigation }: NativeStackSc
     if (idx < cards.length - 1) {
       setIdx(idx + 1);
       scrollRef.current?.scrollTo({ y: 0, animated: true });
-    } else {
-      leave();
+      return;
     }
+    // Re-recording a single affirmation just returns where it came from —
+    // there's nothing to celebrate and no onward step.
+    if (singleId) { leave(); return; }
+    setFinished(true);
+    if (allRecorded) {
+      // Full set earns the same big moment as finishing the intake.
+      setDoneCeleb(true);
+      playCelebrationLarge();
+      setTimeout(() => setDoneCeleb(false), 4200);
+    } else {
+      playCelebrationSmall();
+    }
+  };
+
+  /** Onward from the finish screen: photo step in onboarding, else back. */
+  const goOnward = () => {
+    if (previewing) player.pause();
+    if (fromCreation) navigation.navigate('Creation', { step: 'photo' });
+    else navigation.goBack();
   };
 
   /** Per-card skip — this affirmation keeps the AI voice for now. */
@@ -194,6 +232,21 @@ export default function VoiceRecorderScreen({ route, navigation }: NativeStackSc
       </View>
 
       <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 10 }}>
+        {finished ? (
+          <Animated.View entering={FadeInUp.duration(420)} style={{ marginTop: 30, alignItems: 'center' }}>
+            <Serif size={26} style={{ textAlign: 'center' }}>
+              {allRecorded
+                ? '“Every affirmation, in your own voice.”'
+                : `“${recordedCount} of ${set0.length}, in your own voice.”`}
+            </Serif>
+            <Text style={{ fontFamily: fonts.sans, fontSize: 14.5, lineHeight: 21, color: colors.warmGray, textAlign: 'center', marginTop: 16 }}>
+              {allRecorded
+                ? 'That’s the strongest signal you can send yourself — and it’s yours now.'
+                : 'The rest play in the AI voice. You can record them anytime from your home screen.'}
+            </Text>
+          </Animated.View>
+        ) : (
+        <>
         <View style={{ marginTop: 6 }}>
           <Label>{aff.area}</Label>
         </View>
@@ -214,9 +267,28 @@ export default function VoiceRecorderScreen({ route, navigation }: NativeStackSc
             ? 'Saved. Play it back, re-record it, or move on.'
             : 'Read it out loud, slowly, like you already mean it.'}
         </Text>
+        </>
+        )}
       </ScrollView>
 
-      {/* recorder controls */}
+      {/* finish CTA — mirrors the intake's completion moment */}
+      {finished ? (
+        <View style={{ paddingHorizontal: 24, paddingBottom: 34, paddingTop: 6 }}>
+          <Animated.View entering={FadeInUp.duration(400)}>
+            <View style={{ alignItems: 'center', marginBottom: 8 }}>
+              <BobbingArrow />
+            </View>
+            <PillButton
+              label={fromCreation ? 'Add your photo' : 'Back to my affirmations'}
+              height={58}
+              onPress={goOnward}
+              bg={colors.gold}
+              color={colors.ink}
+            />
+          </Animated.View>
+        </View>
+      ) : (
+      /* recorder controls */
       <View style={{ paddingHorizontal: 24, paddingBottom: 30, paddingTop: 4 }}>
         <View style={{ alignItems: 'center', marginBottom: 18 }}>
           <View style={{ height: 22, justifyContent: 'center' }}>
@@ -298,6 +370,30 @@ export default function VoiceRecorderScreen({ route, navigation }: NativeStackSc
           Your own voice is the strongest signal to your subconscious.{'\n'}You can re-record anytime.
         </Text>
       </View>
+      )}
+
+      {/* whole-set celebration — same shape as the all-seven intake moment */}
+      {doneCeleb && (
+        <View pointerEvents="none" style={{
+          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden',
+          alignItems: 'center', justifyContent: 'center', zIndex: 50,
+        }}>
+          <Confetti />
+          <BurstRing color={colors.gold} borderWidth={4} durMs={1100} />
+          <BurstRing color={colors.teal} borderWidth={3} durMs={1300} delayMs={200} />
+          <BurstRing color={colors.gold} borderWidth={2} durMs={1500} delayMs={400} />
+          <ChipPop durMs={600} delayMs={200} style={{
+            backgroundColor: colors.ink, borderRadius: 26, paddingVertical: 16, paddingHorizontal: 26,
+            flexDirection: 'row', alignItems: 'center', gap: 12, maxWidth: '88%',
+            shadowColor: colors.ink, shadowOpacity: 0.35, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 8,
+          }}>
+            <StarBurst size={22} />
+            <Text style={{ flexShrink: 1, fontFamily: fonts.sansMedium, fontSize: 17, color: colors.cream }}>
+              That’s all of them — in your own voice.
+            </Text>
+          </ChipPop>
+        </View>
+      )}
     </Animated.View>
   );
 }

@@ -45,11 +45,15 @@ export type RootStackParamList = {
   Review: undefined;
   Schedule: undefined;
   Paywall: undefined;
-  Creation: undefined;
   Main: undefined;
   Player: { mode: 'audio' | 'movie' };
-  /** No param = record the whole set; affirmationId = re-record just that one. */
-  VoiceRecorder: { affirmationId?: string } | undefined;
+  Creation: { step?: 'photo' } | undefined;
+  /**
+   * No param = record the whole set; affirmationId = re-record just that one.
+   * fromCreation routes the finish CTA onward to the photo step instead of
+   * dropping the user back on the voice picker.
+   */
+  VoiceRecorder: { affirmationId?: string; fromCreation?: boolean } | undefined;
   Friends: undefined;
   Discover: undefined;
   Contacts: undefined;
