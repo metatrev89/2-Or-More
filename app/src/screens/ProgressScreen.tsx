@@ -125,7 +125,7 @@ export default function ProgressScreen() {
 
   return (
     <Animated.View entering={FadeIn.duration(400)} style={{ flex: 1, backgroundColor: colors.cream }}>
-      <ScrollView contentContainerStyle={{ paddingTop: 64, paddingHorizontal: 22, paddingBottom: 12 }}>
+      <ScrollView contentContainerStyle={{ paddingTop: 64, paddingHorizontal: 22, paddingBottom: 108 }}>
         <Text style={{ fontFamily: fonts.sansSemi, fontSize: 28, color: colors.ink, letterSpacing: -0.5 }}>Progress</Text>
 
         {/* hero: today ring + streak */}

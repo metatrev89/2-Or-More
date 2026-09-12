@@ -48,7 +48,7 @@ export default function MiniPlayer({ onExpand, liftForTabs }: {
       pointerEvents="box-none"
       style={{
         position: 'absolute', left: 12, right: 12,
-        bottom: insets.bottom + (liftForTabs ? 68 : 14),
+        bottom: insets.bottom + (liftForTabs ? 80 : 14),
         zIndex: 50,
       }}
     >

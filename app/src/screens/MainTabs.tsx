@@ -3,6 +3,7 @@ import { Text, View, Image } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { colors, fonts } from '../theme';
+import GlassTabBar from '../components/GlassTabBar';
 import { useStore } from '../store';
 import HomeScreen from './HomeScreen';
 import FeedScreen from './social/FeedScreen';
@@ -102,17 +103,14 @@ function label(name: keyof TabsParamList) {
 export default function MainTabs() {
   return (
     <Tab.Navigator
+      tabBar={props => <GlassTabBar {...props} />}
       screenOptions={({ route }) => {
         const name = route.name as keyof TabsParamList;
         return {
           headerShown: false,
-          tabBarStyle: {
-            backgroundColor: colors.cream,
-            borderTopWidth: 1,
-            borderTopColor: colors.border,
-            height: 88,
-            paddingTop: 12,
-          },
+          // The bar floats over content now, so screens must be able to scroll
+          // underneath it — that's the whole point of the glass.
+          tabBarStyle: { position: 'absolute', borderTopWidth: 0, backgroundColor: 'transparent' },
           tabBarLabel: label(name),
           tabBarIcon: ({ focused }) =>
             name === 'Profile'

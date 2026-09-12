@@ -97,7 +97,7 @@ export default function FriendsScreen() {
             <SortIcon size={17} />
           </View>
 
-          <ScrollView contentContainerStyle={{ paddingTop: 2, paddingHorizontal: 22, paddingBottom: 12 }}>
+          <ScrollView contentContainerStyle={{ paddingTop: 2, paddingHorizontal: 22, paddingBottom: 108 }}>
             {rows.map(({ f, i }) => {
               const av = FRIEND_AVATAR_STYLES[i % FRIEND_AVATAR_STYLES.length]!;
               const pending = f.pending && !added[i];
@@ -145,7 +145,7 @@ export default function FriendsScreen() {
           </ScrollView>
         </>
       ) : (
-        <ScrollView contentContainerStyle={{ paddingTop: 6, paddingHorizontal: 22, paddingBottom: 12 }}>
+        <ScrollView contentContainerStyle={{ paddingTop: 6, paddingHorizontal: 22, paddingBottom: 108 }}>
           {/* invite a friend */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 13, paddingTop: 12, paddingBottom: 16 }}>
             <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: '#EFE6D2', alignItems: 'center', justifyContent: 'center' }}>

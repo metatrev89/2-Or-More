@@ -271,7 +271,7 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 12 }}>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 108 }}>
         {/* stat cards — first scrolling element */}
         <View style={{ flexDirection: 'row', gap: 14, marginTop: 12 }}>
           <View style={{ flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 20, padding: 18 }}>

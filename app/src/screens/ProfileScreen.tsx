@@ -116,7 +116,7 @@ export default function ProfileScreen() {
 
   return (
     <Animated.View entering={FadeIn.duration(400)} style={{ flex: 1, backgroundColor: colors.cream }}>
-      <ScrollView contentContainerStyle={{ paddingTop: 64, paddingHorizontal: 22, paddingBottom: 12 }}>
+      <ScrollView contentContainerStyle={{ paddingTop: 64, paddingHorizontal: 22, paddingBottom: 108 }}>
         {/* header — avatar is tappable; the little camera badge is the edit affordance */}
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
           <Pressable onPress={() => setPhotoSheet(true)} hitSlop={4} style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}>

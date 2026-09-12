@@ -65,7 +65,7 @@ export default function FeedScreen() {
       <View style={{ paddingTop: 64, paddingHorizontal: 22, paddingBottom: 10 }}>
         <Text style={{ fontFamily: fonts.sansSemi, fontSize: 24, color: colors.ink, letterSpacing: -0.5 }}>Feed</Text>
       </View>
-      <ScrollView contentContainerStyle={{ paddingTop: 4, paddingHorizontal: 22, paddingBottom: 14, gap: 12 }}>
+      <ScrollView contentContainerStyle={{ paddingTop: 4, paddingHorizontal: 22, paddingBottom: 108, gap: 12 }}>
         {FEED_ITEMS.map((f, i) => {
           const av = AVATAR_STYLES[i % AVATAR_STYLES.length]!;
           const affirmed = !!feedAffirmed[i];
