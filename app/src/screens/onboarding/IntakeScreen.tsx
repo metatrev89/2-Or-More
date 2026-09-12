@@ -11,7 +11,8 @@ import { AREAS, AREA_CHAKRAS, CATCH_ALL_AREA, colors, fonts, timing } from '../.
 import { MOCK_SCRIPT } from '../../api/mockData';
 import { api, apiLive } from '../../api/client';
 import Svg, { Path } from 'react-native-svg';
-import { AiSpark, BackButton, Mono, PillButton, SegmentBar, Wordmark } from '../../components/ui';
+// Wordmark dropped with the compact header — see the header comment below.
+import { AiSpark, BackButton, Mono, PillButton, SegmentBar } from '../../components/ui';
 import { CameraIcon, ChevronDownIcon, ClockIcon, LibraryIcon, MicIcon, PaperclipIcon, StarBurst } from '../../components/brandIcons';
 import { BurstRing, ChipPop, Confetti } from '../../components/Celebration';
 import { playCelebrationLarge, playCelebrationSmall, primeCelebrationSounds } from '../../audio/sfx';
@@ -96,6 +97,40 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
   const scrollRef = useRef<ScrollView>(null);
   const inputRef = useRef<TextInput>(null);
 
+  // ── Submit → dismiss keyboard, pin the sent message to the top ──────────
+  // Meta's chat does this on every send and it's the single biggest readability
+  // win: the question you just asked parks under the header and the whole
+  // screen below it belongs to the answer. We need three measurements for it —
+  // where each message sits, how tall the list is, and how tall the window is.
+  const msgY = useRef<Record<number, number>>({});
+  const [viewportH, setViewportH] = useState(0);
+  const [listH, setListH] = useState(0);
+  const [pinIdx, setPinIdx] = useState(-1);
+
+  const pinY = pinIdx >= 0 ? msgY.current[pinIdx] ?? 0 : 0;
+  // Only as much empty runway as the pin actually needs. `listH - pinY` is what
+  // already sits below the pinned message; anything short of a full screen is
+  // the gap that would otherwise stop it partway up.
+  const tailSpacer = pinIdx >= 0 && viewportH > 0
+    ? Math.max(0, viewportH - (listH - pinY) - 28)
+    : 0;
+
+  useEffect(() => {
+    if (pinIdx < 0) return;
+    const y = msgY.current[pinIdx];
+    if (y == null) return;
+    // One frame after the spacer lands, or scrollTo clamps against the old
+    // content height and lands short.
+    const t = setTimeout(() => scrollRef.current?.scrollTo({ y: Math.max(0, y - 6), animated: true }), 60);
+    return () => clearTimeout(t);
+  }, [pinIdx, listH, tailSpacer]);
+
+  /** Send behaviour: close the keyboard, then park this message at the top. */
+  const pinSent = (index: number) => {
+    Keyboard.dismiss();
+    setPinIdx(index);
+  };
+
   // All seven areas answered → big celebration (no mood check-in), auto-dismisses.
   useEffect(() => {
     if (!intakeDone || doneCelebFired.current) return;
@@ -177,6 +212,7 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
       await liveStart();
       if (!liveStarted.current || skip) return;
     }
+    const idx = useStore.getState().msgs.length;
     addMsg({ isAi: false, text: skip ? 'Not this session.' : text });
     answersInArea.current += 1;
     // First answer in an area is the goal (one step); the second is the why,
@@ -185,7 +221,7 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
     set({ typing: true, listening: false });
     setChips([]);
     setDraft('');
-    scrollDown();
+    pinSent(idx);
     try {
       const step = await api.intakeAnswer('me', text, scriptIdx, skip);
       const st = useStore.getState();
@@ -197,14 +233,14 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
         areaIdx: step.done ? st.areaIdx : step.area,
         intakeDone: step.done,
       });
-      scrollDown();
+      // Deliberately NOT scrolling to the end here: the reply should fill the
+      // space under the pinned question, not shove it off the top.
     } catch {
       const st = useStore.getState();
       st.set({
         typing: false,
         msgs: [...st.msgs, { isAi: true, text: 'Hmm — that one didn’t reach me. Mind sending it again?' }],
       });
-      scrollDown();
     }
   };
 
@@ -232,13 +268,14 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
     }
     const step = MOCK_SCRIPT[scriptIdx];
     if (!step?.user) return;
+    const idx = useStore.getState().msgs.length;
     addMsg({ isAi: false, text: text || step.user });
     answersInArea.current += 1;
     setStages(stagesFor(answersInArea.current >= 2 ? 'why' : 'goal'));
     set({ typing: true });
     setChips([]);
     setDraft('');
-    scrollDown();
+    pinSent(idx);
     setTimeout(() => {
       const next = MOCK_SCRIPT[scriptIdx + 1];
       if (!next) { set({ typing: false, intakeDone: true }); return; }
@@ -252,7 +289,7 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
         listening: false,
       });
       setChips(next.chips ?? []);
-      scrollDown();
+      // Stays pinned — see liveAnswer.
     }, timing.typingDelayMs);
   };
 
@@ -275,6 +312,7 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
     if (j >= MOCK_SCRIPT.length) j = MOCK_SCRIPT.length - 1;
     const next = MOCK_SCRIPT[j]!;
     const st = useStore.getState();
+    const idx = st.msgs.length;
     set({
       msgs: [
         ...st.msgs,
@@ -285,7 +323,7 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
       scriptIdx: j, areaIdx: next.area, intakeDone: !next.user, typing: false, listening: false,
     });
     setChips(next.chips ?? []);
-    scrollDown();
+    pinSent(idx);
   };
 
   const attachPhoto = async (source: 'library' | 'camera' = 'library') => {
@@ -320,10 +358,32 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
 
   return (
     <Animated.View entering={FadeIn.duration(400)} style={{ flex: 1, backgroundColor: colors.cream, paddingTop: 52 }}>
-      <View style={{ alignItems: 'center', paddingVertical: 6 }}><Wordmark /></View>
+      {/*
+        Header compacted to Meta's proportions (Trevor, Sept 11). It used to be
+        three stacked rows — centred wordmark, segment bar, then area + skip —
+        costing ~155pt before a single message. Meta's chat gives its header one
+        ~48pt row and spends everything else on the conversation.
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 22, paddingVertical: 2 }}>
+        The wordmark is the piece that went: this screen is reached from three
+        branded screens in a row, so it was repeating something the user had
+        just seen, at the cost of the thing they came to read. Progress stayed —
+        the segment bar and its stars are the spine of the intake — but it's now
+        a hairline strip sharing a row with the skip link.
+      */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 22 }}>
         <BackButton onPress={() => navigation.goBack()} />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text numberOfLines={1} style={{ fontFamily: fonts.sansSemi, fontSize: 16.5, color: colors.ink, letterSpacing: -0.2 }}>
+            {isCatchAll ? CATCH_ALL_AREA.label : AREAS[areaIdx]}
+          </Text>
+          <Text numberOfLines={1} style={{ fontFamily: fonts.serifItalic, fontSize: 11.5, color: colors.inactive, marginTop: 0.5 }}>
+            {isCatchAll ? CATCH_ALL_AREA.note : AREA_CHAKRAS[areaIdx]}
+          </Text>
+        </View>
+        <Mono>{barIdx + 1}/7</Mono>
+      </View>
+
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 22, paddingTop: 10, paddingBottom: 8 }}>
         <View style={{ flex: 1 }}>
           <SegmentBar total={7} activeCount={barIdx + 1} />
           {barCeleb >= 0 && (
@@ -334,20 +394,8 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
             </View>
           )}
         </View>
-        <Mono>{barIdx + 1}/7</Mono>
-      </View>
-
-      <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingHorizontal: 22, paddingVertical: 6 }}>
-        <View style={{ flexShrink: 1, paddingRight: 8 }}>
-          <Text style={{ fontFamily: fonts.sansSemi, fontSize: 12, letterSpacing: 1.8, color: colors.warmGray, textTransform: 'uppercase' }}>
-            {isCatchAll ? CATCH_ALL_AREA.label : AREAS[areaIdx]}
-          </Text>
-          <Text style={{ fontFamily: fonts.serifItalic, fontSize: 11.5, color: colors.inactive, marginTop: 1 }}>
-            {isCatchAll ? CATCH_ALL_AREA.note : AREA_CHAKRAS[areaIdx]}
-          </Text>
-        </View>
         {!intakeDone && (
-          <Pressable onPress={skipArea}>
+          <Pressable onPress={skipArea} hitSlop={8}>
             <Text style={{ fontFamily: fonts.sans, fontSize: 13, color: colors.warmGray }}>
               {isCatchAll ? 'Skip' : 'Not this session'}
             </Text>
@@ -355,56 +403,109 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
         )}
       </View>
 
-      <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 22, paddingVertical: 10, gap: 14 }}>
-        {msgs.map((m, i) => m.isAi ? (
-          <Animated.View key={i} entering={FadeInUp.duration(timing.fadeUpMs)} style={{ flexDirection: 'row', gap: 10, alignItems: 'flex-start' }}>
-            <AiSpark />
-            <View style={{
-              backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-              borderRadius: 18, borderTopLeftRadius: 6, padding: 13, paddingHorizontal: 16, maxWidth: '78%',
-            }}>
-              <Text style={{ fontFamily: fonts.sans, fontSize: 15.5, lineHeight: 22, color: colors.ink }}>{m.text}</Text>
+      <ScrollView
+        ref={scrollRef}
+        style={{ flex: 1 }}
+        onLayout={e => setViewportH(e.nativeEvent.layout.height)}
+        keyboardDismissMode="interactive"
+        contentContainerStyle={{ paddingHorizontal: 22, paddingTop: 10 }}
+      >
+        <View onLayout={e => setListH(e.nativeEvent.layout.height)} style={{ gap: 16 }}>
+          {msgs.map((m, i) => m.isAi ? (
+            /*
+              AI replies are full-bleed text, not bubbles (Trevor, Sept 11 —
+              matching Meta). A bubble capped at 78% and indented past an avatar
+              was throwing away roughly a third of every line, which is the
+              whole reason the reply felt cramped. The spark marker survives —
+              the brand's "show the work" rule needs AI output labelled — but it
+              now sits ABOVE the text on its own line rather than beside it,
+              which is what buys back the width.
+
+              It only prints on the first message of a run, so a three-message
+              answer reads as one voice instead of three stamped fragments.
+            */
+            <Animated.View
+              key={i}
+              entering={FadeInUp.duration(timing.fadeUpMs)}
+              onLayout={e => { msgY.current[i] = e.nativeEvent.layout.y; }}
+              style={{ gap: 8 }}
+            >
+              {!msgs[i - 1]?.isAi && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <AiSpark />
+                  <Text style={{ fontFamily: fonts.sansMedium, fontSize: 12.5, letterSpacing: 0.3, color: colors.warmGray }}>2+</Text>
+                </View>
+              )}
+              <Text style={{ fontFamily: fonts.sans, fontSize: 16.5, lineHeight: 25, color: colors.ink }}>{m.text}</Text>
+            </Animated.View>
+          ) : (
+            <Animated.View
+              key={i}
+              entering={FadeInUp.duration(timing.fadeUpMs)}
+              onLayout={e => { msgY.current[i] = e.nativeEvent.layout.y; }}
+              style={{ alignItems: 'flex-end' }}
+            >
+              <View style={{ backgroundColor: colors.ink, borderRadius: 20, borderBottomRightRadius: 8, paddingVertical: 12, paddingHorizontal: 16, maxWidth: '82%' }}>
+                {m.photoUri ? <Image source={{ uri: m.photoUri }} style={{ width: 190, height: 190, borderRadius: 12, marginBottom: m.text ? 8 : 0 }} /> : null}
+                {m.text ? <Text style={{ fontFamily: fonts.sans, fontSize: 16, lineHeight: 23, color: colors.cream }}>{m.text}</Text> : null}
+              </View>
+            </Animated.View>
+          ))}
+          {typing && <ThinkingLine stages={stages} />}
+          {/* quick-reply chips live in the chat flow and scroll with it (design behavior) */}
+          {chips.length > 0 && !typing && !intakeDone && (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingTop: 2 }}>
+              {chips.map(c => (
+                <Pressable key={c} onPress={() => setDraft(`${c} — `)} style={{
+                  backgroundColor: colors.white, borderWidth: 1, borderColor: colors.sand,
+                  borderRadius: 20, paddingVertical: 9, paddingHorizontal: 16,
+                }}>
+                  <Text style={{ fontFamily: fonts.sans, fontSize: 14, color: colors.ink }}>{c}</Text>
+                </Pressable>
+              ))}
             </View>
-          </Animated.View>
-        ) : (
-          <Animated.View key={i} entering={FadeInUp.duration(timing.fadeUpMs)} style={{ alignItems: 'flex-end' }}>
-            <View style={{ backgroundColor: colors.ink, borderRadius: 18, borderBottomRightRadius: 6, padding: 13, paddingHorizontal: 16, maxWidth: '80%' }}>
-              {m.photoUri ? <Image source={{ uri: m.photoUri }} style={{ width: 190, height: 190, borderRadius: 12, marginBottom: m.text ? 8 : 0 }} /> : null}
-              {m.text ? <Text style={{ fontFamily: fonts.sans, fontSize: 15.5, lineHeight: 22, color: colors.cream }}>{m.text}</Text> : null}
-            </View>
-          </Animated.View>
-        ))}
-        {typing && <ThinkingLine stages={stages} />}
-        {/* quick-reply chips live in the chat flow and scroll with it (design behavior) */}
-        {chips.length > 0 && !typing && !intakeDone && (
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingTop: 2 }}>
-            {chips.map(c => (
-              <Pressable key={c} onPress={() => setDraft(`${c} — `)} style={{
-                backgroundColor: colors.white, borderWidth: 1, borderColor: colors.sand,
-                borderRadius: 20, paddingVertical: 9, paddingHorizontal: 16,
-              }}>
-                <Text style={{ fontFamily: fonts.sans, fontSize: 14, color: colors.ink }}>{c}</Text>
-              </Pressable>
-            ))}
-          </View>
-        )}
+          )}
+        </View>
+
+        {/*
+          Runway so the pinned message can physically reach the top. Without it
+          scrollTo clamps at the end of the content and the message stops
+          wherever it happens to land — which is exactly the "it barely moved"
+          failure. Sized to the shortfall only, so it collapses to nothing once
+          the reply is long enough to fill the screen on its own.
+        */}
+        <View style={{ height: tailSpacer }} />
       </ScrollView>
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         {!intakeDone ? (
-          <View style={{ paddingHorizontal: 18, paddingBottom: 30, paddingTop: 6 }}>
+          <View style={{ paddingHorizontal: 18, paddingBottom: 22, paddingTop: 6 }}>
             <View style={{
               backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 26,
-              paddingTop: 16, paddingRight: 14, paddingBottom: 12, paddingLeft: 18, gap: 12,
+              paddingTop: 14, paddingRight: 14, paddingBottom: 12, paddingLeft: 18, gap: 10,
               shadowColor: colors.ink, shadowOpacity: 0.07, shadowRadius: 24, shadowOffset: { width: 0, height: 8 }, elevation: 4,
             }}>
+              {/*
+                Multiline so a long answer wraps in place instead of scrolling
+                sideways through a one-line slot — intake answers are sentences,
+                not search queries. `submitBehavior="blurAndSubmit"` is what
+                makes Return send AND drop the keyboard in one gesture, which is
+                the behaviour Trevor asked for; the send button below does the
+                same thing through pinSent().
+              */}
               <TextInput
                 ref={inputRef}
                 value={draft} onChangeText={setDraft}
                 placeholder={listening ? 'Listening…' : 'Type or speak…'}
                 placeholderTextColor={colors.inactive}
+                multiline
+                returnKeyType="send"
+                submitBehavior="blurAndSubmit"
                 onSubmitEditing={() => draft.trim() && answer(draft.trim())}
-                style={{ fontFamily: fonts.sans, fontSize: 16, color: colors.ink, paddingHorizontal: 4 }}
+                style={{
+                  fontFamily: fonts.sans, fontSize: 16, lineHeight: 22, color: colors.ink,
+                  paddingHorizontal: 4, paddingTop: 0, maxHeight: 108,
+                }}
               />
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                 <Pressable onPress={() => { Keyboard.dismiss(); setPhotoSheet(true); }} style={{
