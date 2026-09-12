@@ -11,8 +11,8 @@ import type { RootStackParamList } from '../App';
 import { colors, fonts } from '../theme';
 import { Mono, Serif } from '../components/ui';
 import {
-  BellIcon, ChevronDownIcon, DoneMark, FlameIcon, HeadphonesIcon,
-  MicIcon, PauseFill, PencilIcon, PlayFill, XIcon,
+  BellIcon, ChevronDownIcon, DoneMark, FlameIcon,
+  MicIcon, PencilIcon, PlayFill, XIcon,
 } from '../components/brandIcons';
 import { DancingBars } from '../components/AnimatedBars';
 import { CelebStar, Confetti } from '../components/Celebration';
@@ -158,18 +158,6 @@ export default function HomeScreen() {
   const audioPlaying = queue.playing;
   const celebIdx = queue.celebIndex;
   const cardFrac = queue.duration > 0 ? Math.min(1, queue.position / queue.duration) : 0;
-
-  const toggleAudio = (i: number, playing: boolean) => {
-    if (playing) { queue.toggle(); return; }
-    if (!queue.sources[i]) {
-      // Nothing recorded for this one — send them to record it instead of
-      // silently doing nothing.
-      nav.navigate('VoiceRecorder', { affirmationId: affs[i]!.id });
-      return;
-    }
-    setExpanded(i);
-    queue.playAt(i);
-  };
 
 
   const startEdit = () => {
@@ -351,15 +339,13 @@ export default function HomeScreen() {
                           <View style={{ height: 3, borderRadius: 2, backgroundColor: colors.teal, width: `${Math.round(cardFrac * 100)}%` }} />
                         </View>
                       )}
-                      <Pressable onPress={() => toggleAudio(i, playing)} style={{
-                        width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center',
-                        backgroundColor: playing ? colors.teal : colors.white,
-                        borderWidth: 1, borderColor: playing ? colors.teal : colors.sand,
-                      }}>
-                        {playing ? <PauseFill size={12} /> : <HeadphonesIcon size={14} />}
-                      </Pressable>
+                      {/* The per-card headphone button is gone (Trevor, Sept 12) —
+                          with recording living in the edit view it had become a
+                          re-record shortcut, so the row gives that width back to
+                          the affirmation itself: two lines collapsed, full when
+                          expanded. Play all / the mini player handle listening. */}
                       <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-                        <Text numberOfLines={isExpanded ? undefined : 1} style={{
+                        <Text numberOfLines={isExpanded ? undefined : 2} style={{
                           fontFamily: fonts.serifItalic, fontSize: 15, lineHeight: 22,
                           color: done ? colors.teal : colors.ink,
                         }}>
