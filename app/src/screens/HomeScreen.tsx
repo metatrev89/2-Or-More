@@ -159,6 +159,21 @@ export default function HomeScreen() {
   const celebIdx = queue.celebIndex;
   const cardFrac = queue.duration > 0 ? Math.min(1, queue.position / queue.duration) : 0;
 
+  /**
+   * Reading path (restored Sept 12): tapping an expanded card's ring marks that
+   * affirmation experienced — star + chime — then opens the next unread one and
+   * closes this one, so the whole set can be read straight through. Reading all
+   * of them consecutively closes the last ring, which fires the big celebration
+   * exactly like listening through does.
+   */
+  const markRead = (i: number) => {
+    queue.completeAffirmation(i, 'read');
+    const doneAfter = [...useStore.getState().homeReadDone, i];
+    const unread = (from: number) => affs.findIndex((_, j) => j >= from && !doneAfter.includes(j));
+    const next = unread(i + 1) >= 0 ? unread(i + 1) : unread(0);
+    setExpanded(next);
+  };
+
 
   const startEdit = () => {
     if (editing) { setEditing(false); return; }
@@ -356,7 +371,7 @@ export default function HomeScreen() {
                         </Text>
                       </View>
                       {isExpanded || playing ? (
-                        <Pressable onPress={() => queue.playAt(i)} hitSlop={5} style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}>
+                        <Pressable onPress={() => markRead(i)} hitSlop={5} style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}>
                           <Ring size={26} frac={frac} />
                         </Pressable>
                       ) : done ? (

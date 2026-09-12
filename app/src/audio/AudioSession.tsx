@@ -42,6 +42,8 @@ interface AudioSessionValue {
   dismissBigCeleb: () => void;
   start: (from?: number) => void;
   playAt: (i: number) => void;
+  /** Close a ring without audio — the read-it-yourself path. */
+  completeAffirmation: (i: number, kind?: 'listened' | 'read') => void;
   toggle: () => void;
   skip: (forward: boolean) => void;
   /** X on the mini bar — stop and end the session. */
@@ -71,11 +73,16 @@ export function AudioSessionProvider({ children }: { children: React.ReactNode }
   const affsRef = useRef(affs); affsRef.current = affs;
 
   /**
-   * One affirmation played through. Closes its ring, and when that completes
-   * the whole set, fires the big celebration — triggered here on the LAST ring
-   * rather than on "queue ended", because with looping on the queue never ends.
+   * One affirmation was experienced — listened through, or deliberately marked
+   * read by tapping its ring. Both close the ring identically; only the logged
+   * `kind` differs. Kept here rather than in a screen so it behaves the same
+   * whichever surface triggered it.
+   *
+   * The big celebration fires on the LAST ring rather than on "queue ended",
+   * because with looping on the queue never ends — and because reading through
+   * the set never involves the queue at all.
    */
-  const onFinished = useCallback((i: number) => {
+  const completeAffirmation = useCallback((i: number, kind: 'listened' | 'read' = 'listened') => {
     const list = affsRef.current;
     const doneNow = useStore.getState().homeReadDone;
     const wasDone = doneNow.includes(i);
@@ -86,7 +93,7 @@ export function AudioSessionProvider({ children }: { children: React.ReactNode }
     if (celebTimer.current) clearTimeout(celebTimer.current);
     celebTimer.current = setTimeout(() => setCelebIndex(-1), 1100);
 
-    api.recordExperience('me', list[i]?.id ?? null, 'listened');
+    api.recordExperience('me', list[i]?.id ?? null, kind);
 
     if (!wasDone && nd.length === list.length) {
       setBigCeleb(true);
@@ -100,7 +107,7 @@ export function AudioSessionProvider({ children }: { children: React.ReactNode }
     items: affs,
     recordings: voiceRecordings,
     speed: audioSpeed,
-    onFinished,
+    onFinished: i => completeAffirmation(i, 'listened'),
   });
 
   const close = useCallback(() => {
@@ -138,10 +145,11 @@ export function AudioSessionProvider({ children }: { children: React.ReactNode }
     dismissBigCeleb,
     start,
     playAt,
+    completeAffirmation,
     toggle: queue.toggle,
     skip: queue.skip,
     close,
-  }), [affs, queue, active, celebIndex, bigCeleb, dismissBigCeleb, start, playAt, close]);
+  }), [affs, queue, active, celebIndex, bigCeleb, dismissBigCeleb, start, playAt, completeAffirmation, close]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
