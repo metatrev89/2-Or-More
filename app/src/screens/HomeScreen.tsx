@@ -18,6 +18,9 @@ import { DancingBars } from '../components/AnimatedBars';
 import { BurstRing, CelebStar, ChipPop, Confetti } from '../components/Celebration';
 import MoodCheckIn from '../components/MoodCheckIn';
 import { affSet, affText, useStore } from '../store';
+import { useAffirmationQueue } from '../audio/useAffirmationQueue';
+import { isLiveMode } from '../api/supabase';
+import { loadAffirmations, updateAffirmationText } from '../api/affirmationsRepo';
 import { api } from '../api/client';
 import { MOCK_AFFS } from '../api/mockData';
 import { NOTIFS } from '../api/socialMock';
@@ -93,12 +96,9 @@ const greeting = () => {
 export default function HomeScreen() {
   const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const store = useStore();
-  const { affirmations, homeReadDone, streakDays, userName, welcome, schedPlan, freq, edits, voiceRecordings, set } = store;
+  const { affirmations, homeReadDone, streakDays, userName, welcome, schedPlan, freq, edits, voiceRecordings, audioSpeed, set } = store;
 
   const [expanded, setExpanded] = useState(-1);
-  const [audioIdx, setAudioIdx] = useState(-1);
-  const [audioPlaying, setAudioPlaying] = useState(false);
-  const [audioPos, setAudioPos] = useState(0);
   const [celebIdx, setCelebIdx] = useState(-1);
   const [bigCeleb, setBigCeleb] = useState(false);
   const [streakCeleb, setStreakCeleb] = useState(false);
@@ -107,8 +107,6 @@ export default function HomeScreen() {
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifSeen, setNotifSeen] = useState(false);
   const [notifAccepted, setNotifAccepted] = useState<Record<number, boolean>>({});
-  const audioTimer = useRef<ReturnType<typeof setInterval> | null>(null);
-  const audioPosRef = useRef(0);
 
   const affs = affSet(affirmations);
   // Voice coverage drives the record-all prompt. MUST count against `affs`, not
@@ -116,8 +114,18 @@ export default function HomeScreen() {
   // empty and Home falls back to the mock, which made the prompt never render.
   const recordedCount = affs.filter(a => voiceRecordings[a.id]).length;
   const unrecordedCount = Math.max(0, affs.length - recordedCount);
+  // Real set first: signed-in users load their persisted affirmations. Only
+  // fall back to the design mock when there's genuinely nothing to show (mock
+  // mode, signed out, or an account that hasn't finished onboarding).
   useEffect(() => {
-    if (!affirmations.length) set({ affirmations: MOCK_AFFS });
+    if (affirmations.length) return;
+    let alive = true;
+    (async () => {
+      const saved = isLiveMode ? await loadAffirmations() : [];
+      if (!alive) return;
+      set({ affirmations: saved.length ? saved : MOCK_AFFS });
+    })();
+    return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -155,24 +163,28 @@ export default function HomeScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bigCeleb]);
 
-  const clearTimers = () => {
-    if (audioTimer.current) clearInterval(audioTimer.current);
-    audioTimer.current = null;
-  };
-  useEffect(() => clearTimers, []);
+  /**
+   * Real playback (Sept 12) — the old setInterval simulation advanced progress
+   * against no audio at all. The queue plays the user's own recordings and
+   * skips affirmations they haven't recorded yet.
+   */
+  const queue = useAffirmationQueue({
+    items: affs,
+    recordings: voiceRecordings,
+    speed: audioSpeed,
+    onFinished: i => completeCard(i),
+  });
+  const audioIdx = queue.index;
+  const audioPlaying = queue.playing;
+  const cardFrac = queue.duration > 0 ? Math.min(1, queue.position / queue.duration) : 0;
 
-  const cardDur = (i: number) => 14 + ((i * 7) % 12);
-
-  const completeCard = (i: number, autoplay: boolean) => {
-    clearTimers();
-    const done = useStore.getState().homeReadDone;
-    const wasDone = done.includes(i);
-    const nd = wasDone ? done : [...done, i];
-    const next = i < affs.length - 1 ? i + 1 : -1;
+  /** Bookkeeping when a card plays through — the queue handles advancing. */
+  const completeCard = (i: number) => {
+    const doneNow = useStore.getState().homeReadDone;
+    const wasDone = doneNow.includes(i);
+    const nd = wasDone ? doneNow : [...doneNow, i];
     set({ homeReadDone: nd });
-    audioPosRef.current = 0;
-    setAudioIdx(-1); setAudioPlaying(false); setAudioPos(0);
-    setExpanded(next);
+    setExpanded(i < affs.length - 1 ? i + 1 : -1);
     setCelebIdx(i);
     setTimeout(() => setCelebIdx(c => (c === i ? -1 : c)), 1100);
     api.recordExperience('me', affs[i]?.id ?? null, 'listened');
@@ -183,32 +195,25 @@ export default function HomeScreen() {
       playCelebrationLarge();
     } else {
       playCelebrationSmall();
-      if (autoplay && next !== -1 && nd.length < affs.length) playAudio(next);
     }
   };
 
-  const playAudio = (i: number) => {
-    clearTimers();
-    if (audioIdx !== i) { audioPosRef.current = 0; setAudioPos(0); } // resume keeps position
-    setAudioIdx(i); setAudioPlaying(true); setExpanded(i);
-    const dur = cardDur(i);
-    audioTimer.current = setInterval(() => {
-      audioPosRef.current += 0.25;
-      if (audioPosRef.current >= dur) completeCard(i, true);
-      else setAudioPos(audioPosRef.current);
-    }, 250);
-  };
-
   const toggleAudio = (i: number, playing: boolean) => {
-    if (playing) { clearTimers(); setAudioPlaying(false); }
-    else playAudio(i);
+    if (playing) { queue.toggle(); return; }
+    if (!queue.sources[i]) {
+      // Nothing recorded for this one — send them to record it instead of
+      // silently doing nothing.
+      nav.navigate('VoiceRecorder', { affirmationId: affs[i]!.id });
+      return;
+    }
+    setExpanded(i);
+    queue.playAt(i);
   };
 
 
   const startEdit = () => {
     if (editing) { setEditing(false); return; }
-    clearTimers();
-    setAudioIdx(-1); setAudioPlaying(false); setAudioPos(0);
+    queue.stop();
     setExpanded(-1);
     setDrafts(affs.map((_, i) => affText(store, i)));
     setEditing(true);
@@ -216,7 +221,14 @@ export default function HomeScreen() {
 
   const saveEdit = () => {
     const ne = { ...edits };
-    drafts.forEach((t, i) => { const v = (t || '').trim(); if (v) ne[i] = v; });
+    drafts.forEach((t, i) => {
+      const v = (t || '').trim();
+      if (!v) return;
+      ne[i] = v;
+      // Edits are the user's own words — persist them so a relaunch keeps them.
+      const id = affs[i]?.id;
+      if (id) void updateAffirmationText(id, v);
+    });
     set({ edits: ne });
     setEditing(false);
   };
@@ -359,7 +371,7 @@ export default function HomeScreen() {
                 const active = audioIdx === i;
                 const playing = active && audioPlaying;
                 const isExpanded = expanded === i;
-                const frac = active ? Math.min(1, audioPos / cardDur(i)) : readCount / affs.length;
+                const frac = active ? cardFrac : readCount / affs.length;
                 return (
                   <View key={a.id}>
                     <Pressable onPress={() => setExpanded(isExpanded ? -1 : i)} style={{
@@ -375,7 +387,7 @@ export default function HomeScreen() {
                       {/* audio scrub along the row's bottom edge */}
                       {active && (
                         <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 3, borderRadius: 2, backgroundColor: colors.borderSoft }}>
-                          <View style={{ height: 3, borderRadius: 2, backgroundColor: colors.teal, width: `${Math.round(Math.min(1, audioPos / cardDur(i)) * 100)}%` }} />
+                          <View style={{ height: 3, borderRadius: 2, backgroundColor: colors.teal, width: `${Math.round(cardFrac * 100)}%` }} />
                         </View>
                       )}
                       <Pressable onPress={() => toggleAudio(i, playing)} style={{
@@ -397,7 +409,7 @@ export default function HomeScreen() {
                         </Text>
                       </View>
                       {isExpanded || playing ? (
-                        <Pressable onPress={() => completeCard(i, false)} hitSlop={5} style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}>
+                        <Pressable onPress={() => completeCard(i)} hitSlop={5} style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}>
                           <Ring size={26} frac={frac} />
                         </Pressable>
                       ) : done ? (

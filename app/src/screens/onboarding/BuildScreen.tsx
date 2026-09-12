@@ -6,6 +6,7 @@ import type { RootStackParamList } from '../../App';
 import { colors, fonts, timing } from '../../theme';
 import { BUILD_FRAGMENTS, BUILD_LINES, MOCK_AFFS } from '../../api/mockData';
 import { AiSpark, Mono, PillButton, Serif } from '../../components/ui';
+import { saveAffirmationSet } from '../../api/affirmationsRepo';
 import { useStore } from '../../store';
 import { api } from '../../api/client';
 
@@ -29,6 +30,10 @@ export default function BuildScreen({ navigation }: NativeStackScreenProps<RootS
     const load = (async () => {
       const affs = await api.generateAffirmations('me');
       set({ affirmations: affs, reviewIndex: 0 });
+      // Persist immediately, while the backend's ids are still in hand — voice
+      // recordings are keyed by affirmation id, so losing the set here orphans
+      // every recording made against it.
+      void saveAffirmationSet(affs);
     })();
     const t3 = setTimeout(async () => { await load; setDone(true); }, timing.buildDoneMs);
     return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };

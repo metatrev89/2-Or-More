@@ -9,7 +9,8 @@ import { Mono, Serif } from '../components/ui';
 import { ChevronDownIcon, DoneMark, PauseFill, PlayFill, StarBurst } from '../components/brandIcons';
 import { BurstRing, CelebStar, ChipPop, Confetti } from '../components/Celebration';
 import MoodCheckIn from '../components/MoodCheckIn';
-import { affText, useStore } from '../store';
+import { affSet, affText, useStore } from '../store';
+import { useAffirmationQueue } from '../audio/useAffirmationQueue';
 import { api } from '../api/client';
 import { MOCK_AFFS } from '../api/mockData';
 import { playCelebrationLarge, playCelebrationSmall } from '../audio/sfx';
@@ -30,6 +31,18 @@ function SkipIcon({ forward = false, color = colors.warmGray }: { forward?: bool
   return (
     <Svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
       <Path d={forward ? 'M5 4l10 8-10 8V4zM19 5v14' : 'M19 20L9 12l10-8v16zM5 19V5'} />
+    </Svg>
+  );
+}
+
+/** Loop glyph — circular arrows. */
+function LoopIcon({ color = colors.warmGray }: { color?: string }) {
+  return (
+    <Svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M17 2l4 4-4 4" />
+      <Path d="M3 11v-1a4 4 0 0 1 4-4h14" />
+      <Path d="M7 22l-4-4 4-4" />
+      <Path d="M21 13v1a4 4 0 0 1-4 4H3" />
     </Svg>
   );
 }
@@ -110,10 +123,8 @@ function PlayerCeleb({ dark, sessionKey, autoDismiss, onDone }: {
  */
 export default function PlayerScreen({ navigation }: NativeStackScreenProps<RootStackParamList, 'Player'>) {
   const store = useStore();
-  const { audioSpeed, setSpeed } = store;
-  const affs = store.affirmations.length ? store.affirmations : MOCK_AFFS;
-  const [playing, setPlaying] = useState(false);
-  const [pos, setPos] = useState(0);
+  const { audioSpeed, setSpeed, voiceRecordings } = store;
+  const affs = affSet(store.affirmations);
   const [celebSeg, setCelebSeg] = useState(-1);
   const [ringClosed, setRingClosed] = useState(false);
   const [sessionChip, setSessionChip] = useState(false);
@@ -137,70 +148,56 @@ export default function PlayerScreen({ navigation }: NativeStackScreenProps<Root
     onPanResponderRelease: e => dragTo(e.nativeEvent.locationX, true),
     onPanResponderTerminate: e => dragTo(e.nativeEvent.locationX, true),
   })).current;
-  const posRef = useRef(0);
-
-  const dur = AUDIO_DUR;
-
-  const stop = () => { if (timer.current) clearInterval(timer.current); timer.current = null; };
-  useEffect(() => () => stop(), []);
-
   const showSessionChip = () => {
     setSessionChip(true);
     setTimeout(() => setSessionChip(false), SESSION_CHIP_MS);
   };
 
-  const tick = () => {
-    const d = AUDIO_DUR;
-    const p = posRef.current + 0.25 * (useStore.getState().audioSpeed || 1);
-    if (p >= d) {
-      stop();
-      posRef.current = d; setPos(d); setPlaying(false);
-      setRingClosed(true); setCelebSeg(affs.length - 1); setBigCeleb(true);
+  // Real playback (Sept 12) — replaces the setInterval simulation that advanced
+  // progress bars against no audio at all.
+  const [done, setDone] = useState<number[]>([]);
+  const queue = useAffirmationQueue({
+    items: affs,
+    recordings: voiceRecordings,
+    speed: audioSpeed,
+    onFinished: i => {
+      setDone(d => (d.includes(i) ? d : [...d, i]));
+      setCelebSeg(i);
+      playCelebrationSmall();
+      setTimeout(() => setCelebSeg(c => (c === i ? -1 : c)), 1100);
+    },
+    onQueueEnd: () => {
+      setRingClosed(true);
+      setBigCeleb(true);
       showSessionChip();
       playCelebrationLarge();
       setTimeout(() => setCelebSeg(-1), 4200);
       api.recordExperience('me', null, 'listened');
-    } else {
-      const unit = AUDIO_DUR / affs.length;
-      const before = Math.floor(posRef.current / unit);
-      const after = Math.floor(p / unit);
-      if (after > before && after < affs.length) {
-        setCelebSeg(after - 1);
-        playCelebrationSmall();
-        setTimeout(() => setCelebSeg(c => (c === after - 1 ? -1 : c)), 1100);
-      }
-      posRef.current = p;
-      setPos(p);
-    }
-  };
+    },
+  });
 
-  const togglePlay = () => {
-    if (playing) { stop(); setPlaying(false); return; }
-    if (posRef.current >= AUDIO_DUR) { posRef.current = 0; setPos(0); }
-    setPlaying(true);
-    timer.current = setInterval(tick, 250);
-  };
+  const { index: curIdx, playing, position: pos, duration, hasAudio, playableCount } = queue;
+  const togglePlay = queue.toggle;
+  const skip = (fwd: boolean) => queue.skip(fwd);
 
-  // Autoplay on entry — the notification landing behavior.
+  // Autoplay on entry — the notification landing behavior. Waits for sources to
+  // resolve, and does nothing at all when the user has recorded nothing yet.
+  const autoStarted = useRef(false);
   useEffect(() => {
-    const t = setTimeout(() => { if (!timer.current) togglePlay(); }, 400);
+    if (autoStarted.current || !hasAudio) return;
+    autoStarted.current = true;
+    const t = setTimeout(() => queue.start(0), 400);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [hasAudio]);
 
-  const skip = (fwd: boolean) => {
-    const unit = AUDIO_DUR / affs.length;
-    const cur = Math.floor(posRef.current / unit);
-    const target = fwd ? Math.min(affs.length - 1, cur + 1) : Math.max(0, cur - 1);
-    posRef.current = target * unit; setPos(target * unit);
-  };
-
-  const frac = Math.min(1, pos / dur);
-  const audioFrac = Math.min(1, pos / AUDIO_DUR);
-  const curAffIdx = Math.min(affs.length - 1, Math.floor(audioFrac * affs.length));
+  // Progress is now the real track position, and the set's progress is "how
+  // many have played through" rather than a fraction of a fake 34s track.
+  const trackFrac = duration > 0 ? Math.min(1, pos / duration) : 0;
+  const curAffIdx = Math.max(0, Math.min(affs.length - 1, curIdx));
   const ink = colors.ink;
   const muted = colors.warmGray;
-  const playerCount = Math.min(affs.length, Math.floor(audioFrac * affs.length) + 1);
+  const playerCount = Math.min(affs.length, done.length + (curIdx >= 0 ? 1 : 0));
 
   return (
     <Animated.View entering={FadeIn.duration(400)} style={{ flex: 1, backgroundColor: colors.cream, paddingHorizontal: 24, paddingTop: 56, paddingBottom: 40 }}>
@@ -228,8 +225,7 @@ export default function PlayerScreen({ navigation }: NativeStackScreenProps<Root
             <View style={{ paddingHorizontal: 4 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 {affs.map((_, i) => {
-                  const unit = AUDIO_DUR / affs.length;
-                  const segFrac = Math.max(0, Math.min(1, (pos - i * unit) / unit));
+                  const segFrac = done.includes(i) ? 1 : i === curIdx ? trackFrac : 0;
                   return segFrac >= 1 ? (
                     <DoneMark key={i} size={24} />
                   ) : (
@@ -254,7 +250,9 @@ export default function PlayerScreen({ navigation }: NativeStackScreenProps<Root
               “{affText(store, curAffIdx) || affs[curAffIdx]?.statement}”
             </Serif>
             <Text style={{ fontFamily: fonts.sans, fontSize: 13.5, color: colors.warmGray, textAlign: 'center', marginTop: 18 }}>
-              Voice: your own · recorded July 9
+              {hasAudio
+                ? `Voice: your own · ${playableCount} of ${affs.length} recorded`
+                : 'No recordings yet — record these in your own voice to listen.'}
             </Text>
           </View>
 
@@ -264,13 +262,13 @@ export default function PlayerScreen({ navigation }: NativeStackScreenProps<Root
               {PLAYER_HEIGHTS.map((h, i) => (
                 <View key={i} style={{
                   width: 4, height: h, borderRadius: 2,
-                  backgroundColor: i / PLAYER_HEIGHTS.length < audioFrac ? colors.teal : colors.sand,
+                  backgroundColor: i / PLAYER_HEIGHTS.length < trackFrac ? colors.teal : colors.sand,
                 }} />
               ))}
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 }}>
               <Mono size={13}>{fmt(pos)}</Mono>
-              <Mono size={13}>0:34</Mono>
+              <Mono size={13}>{fmt(duration)}</Mono>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 26, marginTop: 18 }}>
               <Pressable onPress={() => setSpeedSheet(true)} style={{
@@ -284,7 +282,45 @@ export default function PlayerScreen({ navigation }: NativeStackScreenProps<Root
                 {playing ? <PauseFill size={22} /> : <View style={{ marginLeft: 3 }}><PlayFill size={24} /></View>}
               </Pressable>
               <Pressable onPress={() => skip(true)} hitSlop={6}><SkipIcon forward /></Pressable>
-              <View style={{ width: 46 }} />
+              {/* Loop: off → once → infinite. Teal = on (an active playback mode). */}
+              <Pressable
+                onPress={() => queue.setLoop(queue.loop === 'off' ? 'once' : queue.loop === 'once' ? 'infinite' : 'off')}
+                style={{
+                  width: 46, height: 30, borderRadius: 15,
+                  borderWidth: 1, borderColor: queue.loop === 'off' ? colors.sand : colors.teal,
+                  backgroundColor: queue.loop === 'off' ? 'transparent' : colors.aiTint,
+                  alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 3,
+                }}
+              >
+                <LoopIcon color={queue.loop === 'off' ? colors.warmGray : colors.tealDeep} />
+                {queue.loop === 'once' && <Mono size={10} color={colors.tealDeep}>1</Mono>}
+                {queue.loop === 'infinite' && <Mono size={11} color={colors.tealDeep}>∞</Mono>}
+              </Pressable>
+            </View>
+
+            {/* Sleep timer — 15 / 30 / 60 minutes of looping practice. */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 14 }}>
+              {([15, 30, 60] as const).map(m => {
+                const on = queue.timerMin === m;
+                return (
+                  <Pressable
+                    key={m}
+                    onPress={() => queue.setTimerMin(on ? null : m)}
+                    style={{
+                      borderRadius: 16, paddingVertical: 6, paddingHorizontal: 13,
+                      borderWidth: 1, borderColor: on ? colors.teal : colors.sand,
+                      backgroundColor: on ? colors.aiTint : 'transparent',
+                    }}
+                  >
+                    <Mono size={12} color={on ? colors.tealDeep : colors.warmGray}>{m}m</Mono>
+                  </Pressable>
+                );
+              })}
+              {queue.timerMin !== null && (
+                <Text style={{ fontFamily: fonts.sans, fontSize: 12.5, color: colors.tealDeep }}>
+                  {fmt(queue.remainingSec)} left
+                </Text>
+              )}
             </View>
             {/* fixed-height slot: hint before completion, daily progress report after (auto-dismisses) */}
             <View style={{ minHeight: 54, alignItems: 'center', justifyContent: 'center', marginTop: 6 }}>
