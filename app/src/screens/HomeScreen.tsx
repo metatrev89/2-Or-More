@@ -370,17 +370,45 @@ export default function HomeScreen() {
                           {a.area}
                         </Text>
                       </View>
-                      {isExpanded || playing ? (
-                        <Pressable onPress={() => markRead(i)} hitSlop={5} style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}>
-                          <Ring size={26} frac={frac} />
-                        </Pressable>
-                      ) : done ? (
+                      {/* Status only — the labelled control below does the work. */}
+                      {done ? (
                         <DoneMark size={18} />
+                      ) : isExpanded || playing ? (
+                        <Ring size={26} frac={frac} />
                       ) : (
                         <ChevronDownIcon size={16} />
                       )}
                     </Pressable>
 
+                    {/* A bare ring on the right read as chrome, not a control —
+                        worst on the first affirmation, where session progress is
+                        empty so nothing even moved. Expanding now reveals a
+                        labelled pill: the same session ring, plus the words.
+                        Ink/sand outline — teal is AI-only and gold is reserved
+                        for the achievement moment this tap triggers. */}
+                    {isExpanded && !done && (
+                      <Animated.View entering={FadeInUp.duration(280)} style={{
+                        flexDirection: 'row', alignItems: 'center', gap: 10, paddingTop: 2, paddingBottom: 12,
+                      }}>
+                        <Pressable
+                          onPress={() => markRead(i)}
+                          hitSlop={6}
+                          style={{
+                            flexDirection: 'row', alignItems: 'center', gap: 8,
+                            backgroundColor: colors.white, borderWidth: 1, borderColor: colors.sand,
+                            borderRadius: 19, paddingVertical: 8, paddingHorizontal: 14,
+                          }}
+                        >
+                          <Ring size={17} frac={frac} />
+                          <Text style={{ fontFamily: fonts.sansMedium, fontSize: 13.5, color: colors.ink }}>
+                            Mark as read
+                          </Text>
+                        </Pressable>
+                        <Text style={{ flexShrink: 1, fontFamily: fonts.sans, fontSize: 12.5, color: colors.inactive }}>
+                          {readCount} of {affs.length} this session
+                        </Text>
+                      </Animated.View>
+                    )}
                   </View>
                 );
               })}
