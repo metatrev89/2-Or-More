@@ -6,16 +6,11 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../App';
 import { colors, fonts } from '../theme';
 import { Mono, Serif } from '../components/ui';
-import { ChevronDownIcon, DoneMark, PauseFill, PlayFill, StarBurst } from '../components/brandIcons';
-import { BurstRing, CelebStar, ChipPop, Confetti } from '../components/Celebration';
-import MoodCheckIn from '../components/MoodCheckIn';
+import { ChevronDownIcon, DoneMark, PauseFill, PlayFill } from '../components/brandIcons';
+import { CelebStar } from '../components/Celebration';
 import { affSet, affText, useStore } from '../store';
-import { useAffirmationQueue } from '../audio/useAffirmationQueue';
-import { api } from '../api/client';
-import { MOCK_AFFS } from '../api/mockData';
-import { playCelebrationLarge, playCelebrationSmall } from '../audio/sfx';
+import { useAudioSession } from '../audio/AudioSession';
 
-const AUDIO_DUR = 34;
 /** Mock daily-progress figure shown in the session-complete chip (live: from stats/summary). */
 const SESSIONS_TODAY = '3 of 7';
 const SESSION_CHIP_MS = 5200; // linger through the celebration, then slip away
@@ -64,55 +59,6 @@ function SessionChip({ onDark = false }: { onDark?: boolean }) {
 }
 
 /**
- * The "all complete" celebration overlay.
- * Repeat completions (mood already recorded this session-day) auto-dismiss after
- * a few seconds; tapping anywhere outside the mood card always dismisses.
- */
-function PlayerCeleb({ dark, sessionKey, autoDismiss, onDone }: {
-  dark: boolean; sessionKey: string; autoDismiss: boolean; onDone: () => void;
-}) {
-  const chipBg = dark ? colors.cream : colors.ink;
-  const chipInk = dark ? colors.ink : colors.cream;
-  // 7, or 8 when the intake's catch-all was answered — never hardcode the count.
-  const affCount = useStore(s => s.affirmations.length) || MOCK_AFFS.length;
-  useEffect(() => {
-    if (!autoDismiss) return;
-    const t = setTimeout(onDone, 4000);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  return (
-    <View pointerEvents="box-none" style={{
-      position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden',
-      alignItems: 'center', justifyContent: 'center', zIndex: 40,
-    }}>
-      <Pressable onPress={onDone} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
-      <Confetti />
-      <BurstRing color={colors.gold} borderWidth={4} durMs={1100} />
-      <BurstRing color={colors.teal} borderWidth={3} durMs={1300} delayMs={200} />
-      <BurstRing color={colors.gold} borderWidth={2} durMs={1500} delayMs={400} />
-      <ChipPop durMs={600} delayMs={200} style={{
-        backgroundColor: chipBg, borderRadius: 26, paddingVertical: 16, paddingHorizontal: 26,
-        flexDirection: 'row', alignItems: 'center', gap: 12, maxWidth: '92%',
-        shadowColor: '#000', shadowOpacity: dark ? 0.45 : 0.35, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 8,
-      }}>
-        <StarBurst size={22} />
-        <Text style={{ flexShrink: 1, fontFamily: fonts.sansMedium, fontSize: 17, color: chipInk }}>
-          Congratulations! All {affCount} affirmations complete!
-        </Text>
-      </ChipPop>
-      <ChipPop durMs={600} delayMs={450} style={{
-        backgroundColor: dark ? colors.cream : colors.white,
-        borderWidth: dark ? 0 : 1, borderColor: colors.border,
-        borderRadius: 22, paddingVertical: 16, paddingHorizontal: 22, marginTop: 14,
-      }}>
-        <MoodCheckIn sessionKey={sessionKey} onDone={onDone} />
-      </ChipPop>
-    </View>
-  );
-}
-
-/**
  * Player (design section 10) — the notification landing spot.
  * Audio: full-track playback, 7 segment rings fill and pop as each affirmation
  * passes; completion closes the ring.
@@ -123,14 +69,10 @@ function PlayerCeleb({ dark, sessionKey, autoDismiss, onDone }: {
  */
 export default function PlayerScreen({ navigation }: NativeStackScreenProps<RootStackParamList, 'Player'>) {
   const store = useStore();
-  const { audioSpeed, setSpeed, voiceRecordings } = store;
+  const { audioSpeed, setSpeed } = store;
   const affs = affSet(store.affirmations);
-  const [celebSeg, setCelebSeg] = useState(-1);
-  const [ringClosed, setRingClosed] = useState(false);
   const [sessionChip, setSessionChip] = useState(false);
-  const [bigCeleb, setBigCeleb] = useState(false);
   const [speedSheet, setSpeedSheet] = useState(false);
-  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   // Draggable speed slider: live store update while dragging, persist on release.
   const trackW = useRef(0);
   const dragTo = useRef((x: number, commit: boolean) => {
@@ -153,43 +95,33 @@ export default function PlayerScreen({ navigation }: NativeStackScreenProps<Root
     setTimeout(() => setSessionChip(false), SESSION_CHIP_MS);
   };
 
-  // Real playback (Sept 12) — replaces the setInterval simulation that advanced
-  // progress bars against no audio at all.
-  const [done, setDone] = useState<number[]>([]);
-  const queue = useAffirmationQueue({
-    items: affs,
-    recordings: voiceRecordings,
-    speed: audioSpeed,
-    onFinished: i => {
-      setDone(d => (d.includes(i) ? d : [...d, i]));
-      setCelebSeg(i);
-      playCelebrationSmall();
-      setTimeout(() => setCelebSeg(c => (c === i ? -1 : c)), 1100);
-    },
-    onQueueEnd: () => {
-      setRingClosed(true);
-      setBigCeleb(true);
-      showSessionChip();
-      playCelebrationLarge();
-      setTimeout(() => setCelebSeg(-1), 4200);
-      api.recordExperience('me', null, 'listened');
-    },
-  });
-
-  const { index: curIdx, playing, position: pos, duration, hasAudio, playableCount } = queue;
+  // Playback lives in the app-level session (Sept 12) so it keeps running when
+  // the user minimizes this screen and walks around the app.
+  const queue = useAudioSession();
+  const { index: curIdx, playing, position: pos, duration, hasAudio, playableCount, celebIndex } = queue;
   const togglePlay = queue.toggle;
   const skip = (fwd: boolean) => queue.skip(fwd);
+  const done = useStore(s => s.homeReadDone);
+  const ringClosed = done.length >= affs.length && affs.length > 0;
 
   // Autoplay on entry — the notification landing behavior. Waits for sources to
-  // resolve, and does nothing at all when the user has recorded nothing yet.
+  // resolve, does nothing when nothing is recorded, and never restarts a
+  // session that's already running (e.g. re-opened from the mini player).
   const autoStarted = useRef(false);
   useEffect(() => {
     if (autoStarted.current || !hasAudio) return;
     autoStarted.current = true;
+    if (queue.active) return;
     const t = setTimeout(() => queue.start(0), 400);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasAudio]);
+
+  // The session chip is the day's progress report once the set closes out.
+  useEffect(() => {
+    if (ringClosed) showSessionChip();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ringClosed]);
 
   // Progress is now the real track position, and the set's progress is "how
   // many have played through" rather than a fraction of a fake 34s track.
@@ -203,7 +135,7 @@ export default function PlayerScreen({ navigation }: NativeStackScreenProps<Root
     <Animated.View entering={FadeIn.duration(400)} style={{ flex: 1, backgroundColor: colors.cream, paddingHorizontal: 24, paddingTop: 56, paddingBottom: 40 }}>
       {/* header: close chevron · label · count */}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8 }}>
-        <Pressable onPress={() => { stop(); navigation.goBack(); }} hitSlop={8} style={{ marginLeft: -4, padding: 4 }}>
+        <Pressable onPress={() => navigation.goBack()} hitSlop={8} style={{ marginLeft: -4, padding: 4 }}>
           <ChevronDownIcon size={24} color={ink} />
         </Pressable>
         {/* The Audio / Mind movie toggle lived here. Removed for v1 (Sept 11)
@@ -240,8 +172,8 @@ export default function PlayerScreen({ navigation }: NativeStackScreenProps<Root
                   );
                 })}
               </View>
-              {celebSeg >= 0 && (
-                <View pointerEvents="none" style={{ position: 'absolute', top: -8, left: `${((celebSeg + 0.5) / affs.length) * 100}%`, marginLeft: -8 }}>
+              {celebIndex >= 0 && (
+                <View pointerEvents="none" style={{ position: 'absolute', top: -8, left: `${((celebIndex + 0.5) / affs.length) * 100}%`, marginLeft: -8 }}>
                   <CelebStar size={16} durMs={1000} />
                 </View>
               )}
@@ -337,15 +269,6 @@ export default function PlayerScreen({ navigation }: NativeStackScreenProps<Root
           </View>
         </>
 
-      {/* all-complete celebration */}
-      {bigCeleb && (
-        <PlayerCeleb
-          dark={false}
-          sessionKey={`audio-${new Date().toDateString()}`}
-          autoDismiss={store.moods[`audio-${new Date().toDateString()}`] !== undefined}
-          onDone={() => setBigCeleb(false)}
-        />
-      )}
 
       {/* speed sheet */}
       {speedSheet && (

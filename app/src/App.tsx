@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -34,6 +34,9 @@ import DiscoverScreen from './screens/social/DiscoverScreen';
 import ContactsScreen from './screens/social/ContactsScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import VoiceRecorderScreen from './screens/VoiceRecorderScreen';
+import MiniPlayer from './components/MiniPlayer';
+import SessionCeleb from './components/SessionCeleb';
+import { AudioSessionProvider, useAudioSession } from './audio/AudioSession';
 
 export type RootStackParamList = {
   Intro: undefined;
@@ -63,6 +66,9 @@ export type RootStackParamList = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+/** Lets the mini player — which lives outside the navigator — open the Player. */
+export const navRef = createNavigationContainerRef<RootStackParamList>();
+
 const navTheme = {
   ...DefaultTheme,
   colors: { ...DefaultTheme.colors, background: colors.cream },
@@ -89,6 +95,9 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { err
 
 function Root() {
   const hydrate = useStore(s => s.hydrate);
+  const session = useAudioSession();
+  const moods = useStore(s => s.moods);
+  const [route, setRoute] = React.useState('');
   // Live mode: restore a persisted Supabase session and land signed-in users on Main.
   const [authState, setAuthState] = React.useState<'checking' | 'in' | 'out'>(isLiveMode ? 'checking' : 'out');
   useEffect(() => {
@@ -122,7 +131,13 @@ function Root() {
   }
 
   return (
-    <NavigationContainer theme={navTheme}>
+    <NavigationContainer
+      ref={navRef}
+      theme={navTheme}
+      onStateChange={() => setRoute(navRef.getCurrentRoute()?.name ?? '')}
+      onReady={() => setRoute(navRef.getCurrentRoute()?.name ?? '')}
+    >
+      <View style={{ flex: 1 }}>
       <StatusBar style="dark" />
       <Stack.Navigator
         initialRouteName={authState === 'in' ? 'Main' : 'Intro'}
@@ -146,6 +161,25 @@ function Root() {
         <Stack.Screen name="Settings" component={SettingsScreen} />
         <Stack.Screen name="VoiceRecorder" component={VoiceRecorderScreen} options={{ animation: 'slide_from_bottom' }} />
       </Stack.Navigator>
+
+      {/* Minimized player — hidden while the full player is open, and never
+          shown during onboarding (there's no session to carry yet). */}
+      {session.active && route !== 'Player' && (
+        <MiniPlayer
+          liftForTabs={route === 'Main'}
+          onExpand={() => navRef.isReady() && navRef.navigate('Player')}
+        />
+      )}
+
+      {/* Session-complete celebration renders over WHATEVER screen is showing,
+          then closes the mini player when dismissed. */}
+      {session.bigCeleb && (
+        <SessionCeleb
+          autoDismiss={moods[`audio-${new Date().toDateString()}`] !== undefined}
+          onDone={session.dismissBigCeleb}
+        />
+      )}
+      </View>
     </NavigationContainer>
   );
 }
@@ -154,7 +188,10 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <ErrorBoundary>
-        <Root />
+        {/* Audio lives ABOVE the navigator so a session survives screen changes. */}
+        <AudioSessionProvider>
+          <Root />
+        </AudioSessionProvider>
       </ErrorBoundary>
     </SafeAreaProvider>
   );

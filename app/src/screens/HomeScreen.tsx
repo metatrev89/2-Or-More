@@ -12,20 +12,18 @@ import { colors, fonts } from '../theme';
 import { Mono, Serif } from '../components/ui';
 import {
   BellIcon, ChevronDownIcon, DoneMark, FlameIcon, HeadphonesIcon,
-  MicIcon, PauseFill, PencilIcon, PlayFill, StarBurst, XIcon,
+  MicIcon, PauseFill, PencilIcon, PlayFill, XIcon,
 } from '../components/brandIcons';
 import { DancingBars } from '../components/AnimatedBars';
-import { BurstRing, CelebStar, ChipPop, Confetti } from '../components/Celebration';
-import MoodCheckIn from '../components/MoodCheckIn';
+import { CelebStar, Confetti } from '../components/Celebration';
 import { affSet, affText, useStore } from '../store';
-import { useAffirmationQueue } from '../audio/useAffirmationQueue';
+import { useAudioSession } from '../audio/AudioSession';
 import { isLiveMode } from '../api/supabase';
 import { loadAffirmations, updateAffirmationText } from '../api/affirmationsRepo';
-import { api } from '../api/client';
 import { MOCK_AFFS } from '../api/mockData';
 import { NOTIFS } from '../api/socialMock';
 import SocialAvatar from '../components/Avatar';
-import { playCelebrationLarge, playCelebrationSmall } from '../audio/sfx';
+import { playCelebrationLarge } from '../audio/sfx';
 
 const AI_SPARK_PATH = 'M7 1v12M1 7h12M2.8 2.8l8.4 8.4M11.2 2.8l-8.4 8.4';
 
@@ -96,11 +94,9 @@ const greeting = () => {
 export default function HomeScreen() {
   const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const store = useStore();
-  const { affirmations, homeReadDone, streakDays, userName, welcome, schedPlan, freq, edits, voiceRecordings, audioSpeed, set } = store;
+  const { affirmations, homeReadDone, streakDays, userName, welcome, schedPlan, freq, edits, voiceRecordings, set } = store;
 
   const [expanded, setExpanded] = useState(-1);
-  const [celebIdx, setCelebIdx] = useState(-1);
-  const [bigCeleb, setBigCeleb] = useState(false);
   const [streakCeleb, setStreakCeleb] = useState(false);
   const [editing, setEditing] = useState(false);
   const [drafts, setDrafts] = useState<string[]>([]);
@@ -152,51 +148,16 @@ export default function HomeScreen() {
     return () => { alive = false; };
   }, []);
 
-  // Repeat all-seven completions (mood already recorded today) auto-dismiss the
-  // celebration after a few seconds; tap-outside always dismisses (July 13 fix).
-  const moodKey = `home-${new Date().toDateString()}`;
-  const moodAlreadyPicked = store.moods[moodKey] !== undefined;
-  useEffect(() => {
-    if (!bigCeleb || !moodAlreadyPicked) return;
-    const t = setTimeout(() => setBigCeleb(false), 4000);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bigCeleb]);
-
   /**
-   * Real playback (Sept 12) — the old setInterval simulation advanced progress
-   * against no audio at all. The queue plays the user's own recordings and
-   * skips affirmations they haven't recorded yet.
+   * The SHARED app-level session (Sept 12) — not a second queue. Two queues
+   * would each own an expo-audio player and play over each other, and a local
+   * one would die the moment the user navigated away.
    */
-  const queue = useAffirmationQueue({
-    items: affs,
-    recordings: voiceRecordings,
-    speed: audioSpeed,
-    onFinished: i => completeCard(i),
-  });
+  const queue = useAudioSession();
   const audioIdx = queue.index;
   const audioPlaying = queue.playing;
+  const celebIdx = queue.celebIndex;
   const cardFrac = queue.duration > 0 ? Math.min(1, queue.position / queue.duration) : 0;
-
-  /** Bookkeeping when a card plays through — the queue handles advancing. */
-  const completeCard = (i: number) => {
-    const doneNow = useStore.getState().homeReadDone;
-    const wasDone = doneNow.includes(i);
-    const nd = wasDone ? doneNow : [...doneNow, i];
-    set({ homeReadDone: nd });
-    setExpanded(i < affs.length - 1 ? i + 1 : -1);
-    setCelebIdx(i);
-    setTimeout(() => setCelebIdx(c => (c === i ? -1 : c)), 1100);
-    api.recordExperience('me', affs[i]?.id ?? null, 'listened');
-    // Session celebration fires only when THIS completion newly closes the final
-    // ring — replaying an already-completed card never re-triggers it.
-    if (!wasDone && nd.length === affs.length) {
-      setBigCeleb(true);
-      playCelebrationLarge();
-    } else {
-      playCelebrationSmall();
-    }
-  };
 
   const toggleAudio = (i: number, playing: boolean) => {
     if (playing) { queue.toggle(); return; }
@@ -213,7 +174,7 @@ export default function HomeScreen() {
 
   const startEdit = () => {
     if (editing) { setEditing(false); return; }
-    queue.stop();
+    queue.close();
     setExpanded(-1);
     setDrafts(affs.map((_, i) => affText(store, i)));
     setEditing(true);
@@ -409,7 +370,7 @@ export default function HomeScreen() {
                         </Text>
                       </View>
                       {isExpanded || playing ? (
-                        <Pressable onPress={() => completeCard(i)} hitSlop={5} style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}>
+                        <Pressable onPress={() => queue.playAt(i)} hitSlop={5} style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}>
                           <Ring size={26} frac={frac} />
                         </Pressable>
                       ) : done ? (
@@ -489,36 +450,6 @@ export default function HomeScreen() {
       {streakCeleb && (
         <View pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden', zIndex: 40 }}>
           <Confetti />
-        </View>
-      )}
-
-      {/* all-seven celebration + mood check-in */}
-      {bigCeleb && (
-        <View pointerEvents="box-none" style={{
-          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden',
-          alignItems: 'center', justifyContent: 'center', zIndex: 40,
-        }}>
-          <Pressable onPress={() => setBigCeleb(false)} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
-          <Confetti />
-          <BurstRing color={colors.gold} borderWidth={4} durMs={1100} />
-          <BurstRing color={colors.teal} borderWidth={3} durMs={1300} delayMs={200} />
-          <BurstRing color={colors.gold} borderWidth={2} durMs={1500} delayMs={400} />
-          <ChipPop durMs={600} delayMs={200} style={{
-            backgroundColor: colors.ink, borderRadius: 26, paddingVertical: 16, paddingHorizontal: 26,
-            flexDirection: 'row', alignItems: 'center', gap: 12, maxWidth: '90%',
-            shadowColor: colors.ink, shadowOpacity: 0.35, shadowRadius: 20, shadowOffset: { width: 0, height: 10 }, elevation: 8,
-          }}>
-            <StarBurst size={22} />
-            <Text style={{ flexShrink: 1, fontFamily: fonts.sansMedium, fontSize: 17, color: colors.cream }}>
-              Congratulations! All {affs.length} affirmations complete!
-            </Text>
-          </ChipPop>
-          <ChipPop durMs={600} delayMs={450} style={{
-            backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 22,
-            paddingVertical: 16, paddingHorizontal: 22, marginTop: 14,
-          }}>
-            <MoodCheckIn sessionKey={moodKey} onDone={() => setBigCeleb(false)} />
-          </ChipPop>
         </View>
       )}
 
