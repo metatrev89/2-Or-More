@@ -336,11 +336,18 @@ export default function HomeScreen() {
                 const playing = active && audioPlaying;
                 const isExpanded = expanded === i;
                 const frac = active ? cardFrac : readCount / affs.length;
+                // The divider lives on the wrapper, not the row (Trevor,
+                // Sept 11): with it on the row, expanding drew a line BETWEEN
+                // an affirmation and its own "Mark as read" control, splitting
+                // one card in two. Out here it closes the whole card, control
+                // included.
                 return (
-                  <View key={a.id}>
+                  <View key={a.id} style={{
+                    borderBottomWidth: 1,
+                    borderBottomColor: i < affs.length - 1 ? colors.borderSoft : 'transparent',
+                  }}>
                     <Pressable onPress={() => setExpanded(isExpanded ? -1 : i)} style={{
                       flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11,
-                      borderBottomWidth: 1, borderBottomColor: i < affs.length - 1 ? colors.borderSoft : 'transparent',
                     }}>
                       {/* completion star — design celebStar: rise 18px, overshoot, fade */}
                       {celebIdx === i && (
@@ -387,18 +394,12 @@ export default function HomeScreen() {
                         Ink/sand outline — teal is AI-only and gold is reserved
                         for the achievement moment this tap triggers.
 
-                        Right-aligned (Trevor, Sept 11) so the control lands in
-                        the dead space beside the area label and stacks directly
-                        under the status ring it mirrors, instead of drifting off
-                        to the left margin under the text. */}
+                        Left-aligned under the text — a right-aligned pass read
+                        worse and was reverted (Trevor, Sept 11). */}
                     {isExpanded && !done && (
                       <Animated.View entering={FadeInUp.duration(280)} style={{
-                        flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end',
-                        gap: 10, paddingTop: 2, paddingBottom: 11,
+                        flexDirection: 'row', alignItems: 'center', gap: 10, paddingTop: 2, paddingBottom: 12,
                       }}>
-                        <Text style={{ fontFamily: fonts.sans, fontSize: 12.5, color: colors.inactive }}>
-                          {readCount} of {affs.length}
-                        </Text>
                         <Pressable
                           onPress={() => markRead(i)}
                           hitSlop={6}
@@ -413,6 +414,9 @@ export default function HomeScreen() {
                             Mark as read
                           </Text>
                         </Pressable>
+                        <Text style={{ flexShrink: 1, fontFamily: fonts.sans, fontSize: 12.5, color: colors.inactive }}>
+                          {readCount} of {affs.length}
+                        </Text>
                       </Animated.View>
                     )}
                   </View>
