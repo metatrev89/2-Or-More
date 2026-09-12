@@ -15,7 +15,7 @@ import { AiSpark, BackButton, Mono, PillButton, SegmentBar, Wordmark } from '../
 import { CameraIcon, ChevronDownIcon, ClockIcon, LibraryIcon, MicIcon, PaperclipIcon, StarBurst } from '../../components/brandIcons';
 import { BurstRing, ChipPop, Confetti } from '../../components/Celebration';
 import { playCelebrationLarge, playCelebrationSmall, primeCelebrationSounds } from '../../audio/sfx';
-import { BlinkingDots, DancingBars, PulseRing } from '../../components/AnimatedBars';
+import { DancingBars, PulseRing } from '../../components/AnimatedBars';
 import { CelebStar } from '../../components/Celebration';
 
 /** Gentle bobbing chevron directing attention to the CTA below. */
@@ -31,6 +31,49 @@ function BobbingArrow() {
     </Animated.View>
   );
 }
+/**
+ * In-character status line — replaces the typing-dots bubble (Trevor, Sept 11).
+ *
+ * The stages track work the backend actually does, which is what keeps this
+ * honest rather than decorative: a goal answer is one round trip, while a why
+ * answer also extracts the goal into a record AND composes the next area. It
+ * holds on the last stage rather than looping — pretending there's more work
+ * happening than there is would be theater.
+ */
+function ThinkingLine({ stages }: { stages: string[] }) {
+  const [i, setI] = useState(0);
+  const pulse = useSharedValue(1);
+
+  useEffect(() => {
+    pulse.value = withRepeat(withTiming(0.55, { duration: 1150, easing: Easing.inOut(Easing.ease) }), -1, true);
+  }, [pulse]);
+
+  useEffect(() => {
+    setI(0);
+    if (stages.length < 2) return;
+    const timers = stages.slice(1).map((_, n) => setTimeout(() => setI(n + 1), (n + 1) * 4000));
+    return () => timers.forEach(clearTimeout);
+  }, [stages]);
+
+  const pulseStyle = useAnimatedStyle(() => ({ opacity: pulse.value }));
+  const line = stages[Math.min(i, stages.length - 1)] ?? 'Thinking…';
+
+  return (
+    <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center', paddingVertical: 4 }}>
+      <AiSpark />
+      <Animated.View style={pulseStyle}>
+        <Animated.Text
+          key={line}
+          entering={FadeIn.duration(340)}
+          style={{ fontFamily: fonts.sans, fontSize: 14.5, color: colors.warmGray }}
+        >
+          {line}
+        </Animated.Text>
+      </Animated.View>
+    </View>
+  );
+}
+
 import { useStore } from '../../store';
 
 /**
@@ -45,6 +88,7 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
   const [chips, setChips] = useState<string[]>([]);
   const [photoSheet, setPhotoSheet] = useState(false);
   const [barCeleb, setBarCeleb] = useState(-1);
+  const [stages, setStages] = useState<string[]>([]);
   const [doneCeleb, setDoneCeleb] = useState(false);
   const prevArea = useRef(-1);
   const doneCelebFired = useRef(false);
@@ -78,12 +122,34 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
 
   const scrollDown = () => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
 
+  // ── What the AI is doing while the user waits ──────────────────────────
+  // Which stages to show depends on what kind of answer was just sent, so we
+  // count answers within the current area (first = goal, second = why).
+  const answersInArea = useRef(0);
+  useEffect(() => { answersInArea.current = 0; }, [areaIdx]);
+
+  const nextAreaLabel = (from: number): string =>
+    from + 1 >= AREAS.length ? CATCH_ALL_AREA.label : AREAS[from + 1]!;
+
+  const stagesFor = (kind: 'open' | 'goal' | 'why' | 'skip'): string[] => {
+    const atCatchAll = areaIdx >= AREAS.length;
+    switch (kind) {
+      case 'open': return [`Opening ${AREAS[0]}…`];
+      case 'goal': return ['Taking that in…'];
+      case 'skip': return ['No problem…', `Opening ${nextAreaLabel(areaIdx)}…`];
+      case 'why': return atCatchAll
+        ? ['Taking that in…', 'Writing that down…']
+        : ['Taking that in…', 'Noting what matters to you…', `Opening ${nextAreaLabel(areaIdx)}…`];
+    }
+  };
+
   // ── Live path (apiLive): the conversation is Spark, via the backend. ──
   const liveStart = async () => {
     // Code-authored welcome renders INSTANTLY (no waiting on the model) —
     // typing dots then cover only Spark's first question.
     const hello = userName?.trim() ? `Welcome to 2+ (Two or More), ${userName.trim()}.` : 'Welcome to 2+ (Two or More).';
     const welcome = `${hello} We're going to walk through seven areas of your life, root to crown. For each one I'll capture your goal and your why — and turn them into your personal I AM affirmations.`;
+    setStages(stagesFor('open'));
     set({ typing: true, msgs: [{ isAi: true, text: welcome }] });
     scrollDown();
     try {
@@ -112,6 +178,10 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
       if (!liveStarted.current || skip) return;
     }
     addMsg({ isAi: false, text: skip ? 'Not this session.' : text });
+    answersInArea.current += 1;
+    // First answer in an area is the goal (one step); the second is the why,
+    // which also triggers goal extraction and the next area (three steps).
+    setStages(stagesFor(skip ? 'skip' : answersInArea.current >= 2 ? 'why' : 'goal'));
     set({ typing: true, listening: false });
     setChips([]);
     setDraft('');
@@ -142,6 +212,7 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
     primeCelebrationSounds(); // load both chimes before the first star fires at 600ms
     if (msgs.length === 0) {
       if (apiLive) { liveStart(); return; }
+      setStages(stagesFor('open'));
       set({ typing: true });
       setTimeout(() => {
         const step = MOCK_SCRIPT[0]!;
@@ -162,6 +233,8 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
     const step = MOCK_SCRIPT[scriptIdx];
     if (!step?.user) return;
     addMsg({ isAi: false, text: text || step.user });
+    answersInArea.current += 1;
+    setStages(stagesFor(answersInArea.current >= 2 ? 'why' : 'goal'));
     set({ typing: true });
     setChips([]);
     setDraft('');
@@ -301,14 +374,7 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
             </View>
           </Animated.View>
         ))}
-        {typing && (
-          <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
-            <AiSpark />
-            <View style={{ backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 18, padding: 14, paddingHorizontal: 16 }}>
-              <BlinkingDots />
-            </View>
-          </View>
-        )}
+        {typing && <ThinkingLine stages={stages} />}
         {/* quick-reply chips live in the chat flow and scroll with it (design behavior) */}
         {chips.length > 0 && !typing && !intakeDone && (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingTop: 2 }}>
