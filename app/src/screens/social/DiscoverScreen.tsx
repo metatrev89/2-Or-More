@@ -8,7 +8,7 @@ import { colors, fonts } from '../../theme';
 import { BackButton } from '../../components/ui';
 import { ContactsCardIcon, XIcon } from '../../components/brandIcons';
 import SocialAvatar from '../../components/Avatar';
-import { DISC_FOLLOWBACK, DISC_SUGGESTED, DISCOVER_AVATAR_STYLES } from '../../api/socialMock';
+import { DISC_REQUESTS, DISC_SUGGESTED, DISCOVER_AVATAR_STYLES } from '../../api/socialMock';
 
 /** Discover people (design section 14) — connect contacts, suggestions, add-backs. */
 export default function DiscoverScreen() {
@@ -17,10 +17,19 @@ export default function DiscoverScreen() {
   const [dismissed, setDismissed] = useState<Record<string, boolean>>({});
   const [connectRow, setConnectRow] = useState(true);
 
-  const row = (p: { name: string; sub: string }, i: number, keyPrefix: string, cta: string, ctaPad: number) => {
+  /**
+   * `done` is the resting label after the tap, and it differs by list because
+   * the outcome does: asking a suggested person leaves you WAITING on them,
+   * while accepting a request completes the connection then and there. Both
+   * used to read "Added", which overstated the first case.
+   */
+  const row = (
+    p: { name: string; sub: string },
+    i: number, keyPrefix: string, cta: string, ctaPad: number, done: string,
+  ) => {
     const k = `${keyPrefix}-${i}`;
     if (dismissed[k]) return null;
-    const av = DISCOVER_AVATAR_STYLES[(keyPrefix === 'fb' ? i + 3 : i) % DISCOVER_AVATAR_STYLES.length]!;
+    const av = DISCOVER_AVATAR_STYLES[(keyPrefix === 'req' ? i + 3 : i) % DISCOVER_AVATAR_STYLES.length]!;
     const isAdded = !!added[k];
     return (
       <View key={p.name} style={{
@@ -41,7 +50,7 @@ export default function DiscoverScreen() {
             fontFamily: isAdded ? fonts.sans : fonts.sansMedium, fontSize: 13.5,
             color: isAdded ? colors.ink : colors.white,
           }}>
-            {isAdded ? 'Added' : cta}
+            {isAdded ? done : cta}
           </Text>
         </Pressable>
         <Pressable onPress={() => setDismissed({ ...dismissed, [k]: true })} hitSlop={6} style={{ padding: 6 }}>
@@ -88,13 +97,15 @@ export default function DiscoverScreen() {
         <Text style={{ fontFamily: fonts.sansSemi, fontSize: 17, color: colors.ink, paddingTop: 8, paddingBottom: 4 }}>
           Suggested for you
         </Text>
-        {DISC_SUGGESTED.map((p, i) => row(p, i, 'sug', 'Add', 20))}
+        {DISC_SUGGESTED.map((p, i) => row(p, i, 'sug', 'Connect', 14, 'Pending'))}
 
+        {/* Was "Add back" — same incoming requests the Friends tab answers,
+            so it uses the same word for the same action (Trevor, Sept 11). */}
         <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingTop: 20, paddingBottom: 4 }}>
-          <Text style={{ fontFamily: fonts.sansSemi, fontSize: 17, color: colors.ink }}>Add back</Text>
+          <Text style={{ fontFamily: fonts.sansSemi, fontSize: 17, color: colors.ink }}>Requests</Text>
           <Text style={{ fontFamily: fonts.sansMedium, fontSize: 14, color: colors.teal }}>See all</Text>
         </View>
-        {DISC_FOLLOWBACK.map((p, i) => row(p, i, 'fb', 'Add back', 16))}
+        {DISC_REQUESTS.map((p, i) => row(p, i, 'req', 'Accept', 18, 'Connected'))}
       </ScrollView>
     </Animated.View>
   );

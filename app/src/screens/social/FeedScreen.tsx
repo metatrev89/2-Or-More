@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable, ScrollView, TextInput } from 'react-native';
-import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
+import { View, Text, Pressable, ScrollView } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { colors, fonts } from '../../theme';
-import { BubbleIcon, HeartIcon, MedalIcon } from '../../components/brandIcons';
+import { HeartIcon, MedalIcon } from '../../components/brandIcons';
 import SocialAvatar from '../../components/Avatar';
 import { CelebStar } from '../../components/Celebration';
 import { AVATAR_STYLES, FEED_ITEMS } from '../../api/socialMock';
@@ -31,16 +31,16 @@ function FeedRing({ pct, daily }: { pct: number; daily: boolean }) {
 }
 
 /**
- * Feed (design section 16) — creations + experiences from connections,
- * positive-only interactions: "Affirm" (no dislikes) and comments.
+ * Feed (design section 16) — creations + experiences from connections.
+ *
+ * "Affirm" is the ONLY interaction in this version (Trevor, Sept 11): the
+ * comment composer and thread are cut. There are still no dislikes — the
+ * design rule that feedback is encouraging, never condemning, now has exactly
+ * one way to be expressed.
  */
 export default function FeedScreen() {
-  const { feedAffirmed, userName, profilePhotoUri, set } = useStore();
-  const [commentOpen, setCommentOpen] = useState<Record<number, boolean>>({});
-  const [drafts, setDrafts] = useState<Record<number, string>>({});
-  const [myComments, setMyComments] = useState<Record<number, { name: string; text: string }[]>>({});
+  const { feedAffirmed, set } = useStore();
   const [affirmCeleb, setAffirmCeleb] = useState(-1);
-  const [postCeleb, setPostCeleb] = useState(-1);
 
   const toggleAffirm = (i: number) => {
     const on = !feedAffirmed[i];
@@ -49,15 +49,6 @@ export default function FeedScreen() {
       setAffirmCeleb(i);
       setTimeout(() => setAffirmCeleb(c => (c === i ? -1 : c)), 1100);
     }
-  };
-
-  const send = (i: number) => {
-    const d = (drafts[i] || '').trim();
-    if (!d) return;
-    setMyComments({ ...myComments, [i]: [...(myComments[i] || []), { name: userName, text: d }] });
-    setDrafts({ ...drafts, [i]: '' });
-    setPostCeleb(i);
-    setTimeout(() => setPostCeleb(c => (c === i ? -1 : c)), 1100);
   };
 
   return (
@@ -69,7 +60,6 @@ export default function FeedScreen() {
         {FEED_ITEMS.map((f, i) => {
           const av = AVATAR_STYLES[i % AVATAR_STYLES.length]!;
           const affirmed = !!feedAffirmed[i];
-          const comments = [...f.comments, ...(myComments[i] || [])];
           return (
             <View key={i} style={{ backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 18, padding: 16 }}>
               {/* header: avatar + "name phrase" + time */}
@@ -117,8 +107,8 @@ export default function FeedScreen() {
                 </View>
               )}
 
-              {/* actions */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12 }}>
+              {/* action — Affirm, on its own now that Comment is gone */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12 }}>
                 <Pressable onPress={() => toggleAffirm(i)} style={{
                   flexDirection: 'row', alignItems: 'center', gap: 7, height: 34, paddingHorizontal: 14, borderRadius: 17,
                   backgroundColor: affirmed ? colors.teal : colors.white,
@@ -134,62 +124,7 @@ export default function FeedScreen() {
                     Affirm · {f.affirms + (affirmed ? 1 : 0)}
                   </Text>
                 </Pressable>
-                <Pressable onPress={() => setCommentOpen({ ...commentOpen, [i]: !commentOpen[i] })} style={{
-                  flexDirection: 'row', alignItems: 'center', gap: 7, height: 34, paddingHorizontal: 14, borderRadius: 17,
-                  backgroundColor: colors.white, borderWidth: 1, borderColor: colors.sand,
-                }}>
-                  <BubbleIcon size={14} />
-                  <Text style={{ fontFamily: fonts.sansMedium, fontSize: 13, color: colors.teal }}>
-                    Comment{comments.length ? ` · ${comments.length}` : ''}
-                  </Text>
-                </Pressable>
               </View>
-
-              {/* comments */}
-              {commentOpen[i] && (
-                <Animated.View entering={FadeInUp.duration(300)} style={{ borderTopWidth: 1, borderTopColor: colors.borderSoft, marginTop: 12, paddingTop: 11 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <TextInput
-                      value={drafts[i] || ''}
-                      onChangeText={t => setDrafts({ ...drafts, [i]: t })}
-                      placeholder="Add a comment…"
-                      placeholderTextColor={colors.inactive}
-                      onSubmitEditing={() => send(i)}
-                      style={{
-                        flex: 1, height: 38, borderRadius: 19, borderWidth: 1, borderColor: colors.sand,
-                        backgroundColor: colors.cream, paddingHorizontal: 14,
-                        fontFamily: fonts.sans, fontSize: 13.5, color: colors.ink,
-                      }}
-                    />
-                    <Pressable onPress={() => send(i)} style={{
-                      height: 38, paddingHorizontal: 14, borderRadius: 19, backgroundColor: colors.ink,
-                      alignItems: 'center', justifyContent: 'center',
-                    }}>
-                      {postCeleb === i && (
-                        <View pointerEvents="none" style={{ position: 'absolute', top: -10, left: '50%', marginLeft: -8 }}>
-                          <CelebStar size={16} durMs={1000} />
-                        </View>
-                      )}
-                      <Text style={{ fontFamily: fonts.sansMedium, fontSize: 13, color: colors.cream }}>Post</Text>
-                    </Pressable>
-                  </View>
-                  {comments.length > 0 && (
-                    <View style={{ gap: 8, marginTop: 11 }}>
-                      {comments.map((c, j) => (
-                        <View key={j} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
-                          <SocialAvatar
-                            name={c.name} size={24} bg={colors.ink} ink={colors.cream} fontSize={11}
-                            photoUri={c.name === userName ? profilePhotoUri : undefined}
-                          />
-                          <Text style={{ flex: 1, fontFamily: fonts.sans, fontSize: 13.5, color: '#5C5142', lineHeight: 19 }}>
-                            <Text style={{ fontFamily: fonts.sansSemi, color: colors.ink }}>{c.name}</Text> {c.text}
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
-                  )}
-                </Animated.View>
-              )}
             </View>
           );
         })}

@@ -41,6 +41,18 @@ genuinely faster rather than better-disguised.
 `openAICompatChat` sets no token ceiling, so an occasionally rambling reply has no
 upper bound on generation time. Free insurance, small average win.
 
+### 4. Feed comments — deferred, not cancelled (added Sept 11, 2026)
+Trevor cut comments from the feed tiles "on this version." Removed: the Comment
+button, the composer, the thread, the `comments` field on `FeedItem`, and the
+`comment` notification type (a notification for an action the app no longer offers
+is a dead end). **Affirm** is now the only interaction a post carries.
+
+If it returns, the open questions are the ones that made it worth cutting for v1:
+moderation on a wellbeing app where posts are personal affirmations, notification
+volume, and whether a comment thread fits "feedback is encouraging, never
+condemning" without a reporting flow behind it. The design bundle's comment
+markup is still in the handoff HTML if the styling is wanted back.
+
 ## Done
 
 - In-character thinking line in intake (Sept 11, 2026) — replaced the typing-dots

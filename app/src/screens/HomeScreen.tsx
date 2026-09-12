@@ -6,6 +6,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../App';
 import { colors, fonts } from '../theme';
@@ -33,16 +34,14 @@ const NOTIF_AV = [
   { bg: colors.sand, ink: colors.ink },
 ];
 
-/** Notification badge glyphs — verbatim design paths (like / comment / friend request). */
+/**
+ * Notification badge glyphs — design paths for encouragement / connection
+ * request. The comment glyph went with the Feed's comment thread (Sept 11).
+ */
 function NotifBadge({ type }: { type: string }) {
   if (type === 'like') return (
     <Svg width={10} height={10} viewBox="0 0 24 24" fill={colors.ink}>
       <Path d="M12 21s-7.5-4.7-10-9.2C.5 8 2.5 4.5 6 4.5c2.1 0 3.6 1.1 4.5 2.6h3c.9-1.5 2.4-2.6 4.5-2.6 3.5 0 5.5 3.5 4 7.3C19.5 16.3 12 21 12 21z" />
-    </Svg>
-  );
-  if (type === 'comment') return (
-    <Svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke={colors.white} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
-      <Path d="M21 12a8 8 0 0 1-8 8H4l2-3a8 8 0 1 1 15-5z" />
     </Svg>
   );
   return (
@@ -103,6 +102,9 @@ export default function HomeScreen() {
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifSeen, setNotifSeen] = useState(false);
   const [notifAccepted, setNotifAccepted] = useState<Record<number, boolean>>({});
+  /** Declined requests leave the sheet — a two-way model needs a real "no". */
+  const [notifDeclined, setNotifDeclined] = useState<Record<number, boolean>>({});
+  const insets = useSafeAreaInsets();
 
   const affs = affSet(affirmations);
   // Voice coverage drives the record-all prompt. MUST count against `affs`, not
@@ -500,10 +502,16 @@ export default function HomeScreen() {
           <Animated.View entering={FadeIn.duration(250)} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(38,32,26,0.4)', zIndex: 40 }}>
             <Pressable onPress={() => setNotifOpen(false)} style={{ flex: 1 }} />
           </Animated.View>
+          {/* The sheet used to sit at bottom:8, which the liquid-glass tab bar
+              now floats directly on top of — it's absolutely positioned and
+              painted by the navigator, above anything a screen renders. So the
+              sheet stops above the bar instead of being partly covered by it:
+              bar height (62) + its own bottom offset + a breathing gap. */}
           <Animated.View entering={FadeInUp.duration(300)} style={{
-            position: 'absolute', left: 8, right: 8, bottom: 8, zIndex: 41,
+            position: 'absolute', left: 8, right: 8, zIndex: 41,
+            bottom: (insets.bottom > 0 ? insets.bottom : 12) + 74,
             backgroundColor: colors.cream, borderRadius: 30, paddingTop: 22, paddingHorizontal: 20, paddingBottom: 12,
-            maxHeight: '75%',
+            maxHeight: '70%',
           }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4, paddingBottom: 10 }}>
               <Text style={{ fontFamily: fonts.sansSemi, fontSize: 18, color: colors.ink }}>Notifications</Text>
@@ -513,6 +521,7 @@ export default function HomeScreen() {
             </View>
             <ScrollView>
               {NOTIFS.map((n, i) => {
+                if (notifDeclined[i]) return null;
                 const av = NOTIF_AV[i % NOTIF_AV.length];
                 const accepted = !!notifAccepted[i];
                 return (
@@ -524,7 +533,7 @@ export default function HomeScreen() {
                       <SocialAvatar name={n.name} size={46} bg={av.bg} ink={av.ink} fontSize={17} />
                       <View style={{
                         position: 'absolute', right: -4, bottom: -4, width: 20, height: 20, borderRadius: 10,
-                        backgroundColor: n.type === 'like' ? colors.gold : n.type === 'comment' ? colors.teal : colors.ink,
+                        backgroundColor: n.type === 'like' ? colors.gold : colors.ink,
                         borderWidth: 2, borderColor: colors.cream, alignItems: 'center', justifyContent: 'center',
                       }}>
                         <NotifBadge type={n.type} />
@@ -534,17 +543,25 @@ export default function HomeScreen() {
                       <Text style={{ fontFamily: fonts.sansSemi, color: colors.ink }}>{n.name}</Text> {n.text}{' '}
                       <Text style={{ color: colors.inactive }}>· {n.time}</Text>
                     </Text>
+                    {/* Accept forms the connection; the X declines it. Both are
+                        offered because a two-way model needs a real "no" — the
+                        old single "Add back" left no way to refuse. */}
                     {n.type === 'request' && !accepted && (
-                      <Pressable onPress={() => setNotifAccepted(a => ({ ...a, [i]: true }))} style={{
-                        height: 32, borderRadius: 16, paddingHorizontal: 14, backgroundColor: colors.teal,
-                        alignItems: 'center', justifyContent: 'center',
-                      }}>
-                        <Text style={{ fontFamily: fonts.sansMedium, fontSize: 13, color: colors.white }}>Add back</Text>
-                      </Pressable>
+                      <>
+                        <Pressable onPress={() => setNotifAccepted(a => ({ ...a, [i]: true }))} style={{
+                          height: 32, borderRadius: 16, paddingHorizontal: 14, backgroundColor: colors.teal,
+                          alignItems: 'center', justifyContent: 'center',
+                        }}>
+                          <Text style={{ fontFamily: fonts.sansMedium, fontSize: 13, color: colors.white }}>Accept</Text>
+                        </Pressable>
+                        <Pressable onPress={() => setNotifDeclined(d => ({ ...d, [i]: true }))} hitSlop={8} style={{ paddingLeft: 2, paddingVertical: 6 }}>
+                          <XIcon size={14} />
+                        </Pressable>
+                      </>
                     )}
                     {n.type === 'request' && accepted && (
                       <View style={{ height: 32, borderRadius: 16, paddingHorizontal: 12, backgroundColor: '#EFE6D2', alignItems: 'center', justifyContent: 'center' }}>
-                        <Text style={{ fontFamily: fonts.sans, fontSize: 13, color: colors.warmGray }}>Added</Text>
+                        <Text style={{ fontFamily: fonts.sans, fontSize: 13, color: colors.warmGray }}>Connected</Text>
                       </View>
                     )}
                   </View>

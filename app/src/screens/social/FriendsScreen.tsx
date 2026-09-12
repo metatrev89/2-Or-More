@@ -9,14 +9,27 @@ import { LinkIcon, PersonPlusIcon, SearchIcon, SortIcon, XIcon } from '../../com
 import SocialAvatar from '../../components/Avatar';
 import { FRIENDS, FRIEND_AVATAR_STYLES, INVITES, INVITE_AVATAR_STYLES } from '../../api/socialMock';
 
-type Tab = 'following' | 'followers' | 'invites';
+type Tab = 'connections' | 'requests' | 'invites';
 
-/** Friends (design section 17) — Following / Followers / Invites. */
+/**
+ * Friends (design section 17), rebuilt around TWO-WAY connections (Trevor,
+ * Sept 11). Following / Followers is gone: those tabs described an asymmetric
+ * graph, where someone could follow you without your say. A connection here
+ * requires both people, so there is one list of connections plus one list of
+ * requests still waiting on somebody.
+ *
+ * Requests splits by who is waiting on whom, because the available action is
+ * completely different: a received request is yours to Accept or Decline, and
+ * a sent one you can only Cancel. Collapsing them into one list would put a
+ * button next to a row where you have no move to make.
+ */
 export default function FriendsScreen() {
   const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const [tab, setTab] = useState<Tab>('following');
+  const [tab, setTab] = useState<Tab>('connections');
   const [q, setQ] = useState('');
-  const [added, setAdded] = useState<Record<number, boolean>>({});
+  /** Received requests you accepted this session — they join Connections. */
+  const [accepted, setAccepted] = useState<Record<number, boolean>>({});
+  /** Declined requests / removed connections / cancelled sends — all leave. */
   const [dismissed, setDismissed] = useState<Record<number, boolean>>({});
   const [invAccepted, setInvAccepted] = useState<Record<number, boolean>>({});
   const [invCancelled, setInvCancelled] = useState<Record<number, boolean>>({});
@@ -25,22 +38,54 @@ export default function FriendsScreen() {
   const matches = (name: string, sub: string) =>
     !query || name.toLowerCase().includes(query) || sub.toLowerCase().includes(query);
 
-  const rows = FRIENDS
-    .map((f, i) => ({ f, i }))
-    .filter(({ f, i }) =>
-      !dismissed[i] &&
-      (tab === 'followers' ? f.followsYou : (!f.pending || added[i])) &&
-      matches(f.name, f.sub));
+  const live = FRIENDS.map((f, i) => ({ f, i })).filter(({ i }) => !dismissed[i]);
+  const isConnected = (f: typeof FRIENDS[number], i: number) => f.status === 'connected' || !!accepted[i];
 
-  const followingCount = FRIENDS.filter((f, i) => !dismissed[i] && (!f.pending || added[i])).length;
-  const followersCount = FRIENDS.filter((f, i) => !dismissed[i] && f.followsYou).length;
+  const connections = live.filter(({ f, i }) => isConnected(f, i) && matches(f.name, f.sub));
+  const received = live.filter(({ f, i }) => f.status === 'incoming' && !accepted[i] && matches(f.name, f.sub));
+  const sent = live.filter(({ f }) => f.status === 'outgoing' && matches(f.name, f.sub));
+
+  const connectionCount = live.filter(({ f, i }) => isConnected(f, i)).length;
+  const requestCount =
+    live.filter(({ f, i }) => f.status === 'incoming' && !accepted[i]).length +
+    live.filter(({ f }) => f.status === 'outgoing').length;
   const inviteRows = INVITES.map((v, i) => ({ v, i })).filter(({ i }) => !invCancelled[i]);
 
   const tabs: { key: Tab; label: string; count: number }[] = [
-    { key: 'following', label: 'Following', count: followingCount },
-    { key: 'followers', label: 'Followers', count: followersCount },
+    { key: 'connections', label: 'Connections', count: connectionCount },
+    { key: 'requests', label: 'Requests', count: requestCount },
     { key: 'invites', label: 'Invites', count: inviteRows.length },
   ];
+
+  /** One person row; the caller supplies whatever action belongs on the right. */
+  const personRow = (f: typeof FRIENDS[number], i: number, action: React.ReactNode) => {
+    const av = FRIEND_AVATAR_STYLES[i % FRIEND_AVATAR_STYLES.length]!;
+    return (
+      <View key={f.name} style={{
+        flexDirection: 'row', alignItems: 'center', gap: 13, paddingVertical: 12,
+        borderBottomWidth: 1, borderBottomColor: colors.borderSoft,
+      }}>
+        <SocialAvatar
+          name={f.name} size={52} bg={av.bg} ink={av.ink} fontSize={19}
+          ringWidth={f.streak ? 2 : 1} ringColor={f.streak ? colors.gold : colors.border}
+        />
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text numberOfLines={1} style={{ fontFamily: fonts.sansSemi, fontSize: 15.5, color: colors.ink }}>{f.name}</Text>
+          <Text numberOfLines={1} style={{ fontFamily: fonts.sans, fontSize: 13.5, color: colors.warmGray, marginTop: 2 }}>{f.sub}</Text>
+        </View>
+        {action}
+      </View>
+    );
+  };
+
+  const sectionLabel = (text: string) => (
+    <Text style={{
+      fontFamily: fonts.sansSemi, fontSize: 13, letterSpacing: 1.2, color: colors.warmGray,
+      textTransform: 'uppercase', paddingTop: 16, paddingBottom: 2,
+    }}>
+      {text}
+    </Text>
+  );
 
   return (
     <Animated.View entering={FadeIn.duration(400)} style={{ flex: 1, backgroundColor: colors.cream }}>
@@ -89,58 +134,73 @@ export default function FriendsScreen() {
             </View>
           </View>
 
-          {/* sort row */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 10, paddingHorizontal: 22, paddingBottom: 2 }}>
-            <Text style={{ fontFamily: fonts.sans, fontSize: 13.5, color: colors.warmGray }}>
-              Sort by <Text style={{ fontFamily: fonts.sansSemi, color: colors.ink }}>Recently active</Text>
-            </Text>
-            <SortIcon size={17} />
-          </View>
+          {/* sort row — connections only; requests are ordered by how recently they arrived */}
+          {tab === 'connections' && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 10, paddingHorizontal: 22, paddingBottom: 2 }}>
+              <Text style={{ fontFamily: fonts.sans, fontSize: 13.5, color: colors.warmGray }}>
+                Sort by <Text style={{ fontFamily: fonts.sansSemi, color: colors.ink }}>Recently active</Text>
+              </Text>
+              <SortIcon size={17} />
+            </View>
+          )}
 
           <ScrollView contentContainerStyle={{ paddingTop: 2, paddingHorizontal: 22, paddingBottom: 108 }}>
-            {rows.map(({ f, i }) => {
-              const av = FRIEND_AVATAR_STYLES[i % FRIEND_AVATAR_STYLES.length]!;
-              const pending = f.pending && !added[i];
-              return (
-                <View key={f.name} style={{
-                  flexDirection: 'row', alignItems: 'center', gap: 13, paddingVertical: 12,
-                  borderBottomWidth: 1, borderBottomColor: colors.borderSoft,
-                }}>
-                  <SocialAvatar
-                    name={f.name} size={52} bg={av.bg} ink={av.ink} fontSize={19}
-                    ringWidth={f.streak ? 2 : 1} ringColor={f.streak ? colors.gold : colors.border}
-                  />
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text numberOfLines={1} style={{ fontFamily: fonts.sansSemi, fontSize: 15.5, color: colors.ink }}>{f.name}</Text>
-                    <Text numberOfLines={1} style={{ fontFamily: fonts.sans, fontSize: 13.5, color: colors.warmGray, marginTop: 2 }}>{f.sub}</Text>
+            {tab === 'connections' ? (
+              <>
+                {connections.map(({ f, i }) => personRow(f, i, (
+                  <View style={{
+                    height: 34, paddingHorizontal: 14, borderRadius: 17, borderWidth: 1, borderColor: colors.sand,
+                    alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <Text style={{ fontFamily: fonts.sans, fontSize: 13.5, color: colors.warmGray }}>Connected</Text>
                   </View>
-                  {pending ? (
-                    <>
-                      <Pressable onPress={() => setAdded({ ...added, [i]: true })} style={{
-                        height: 34, paddingHorizontal: 16, borderRadius: 17, backgroundColor: colors.teal,
-                        alignItems: 'center', justifyContent: 'center',
-                      }}>
-                        <Text style={{ fontFamily: fonts.sansMedium, fontSize: 13.5, color: colors.white }}>Follow back</Text>
-                      </Pressable>
-                      <Pressable onPress={() => setDismissed({ ...dismissed, [i]: true })} hitSlop={6} style={{ padding: 6 }}>
-                        <XIcon size={15} />
-                      </Pressable>
-                    </>
-                  ) : (
-                    <View style={{
-                      height: 34, paddingHorizontal: 14, borderRadius: 17, borderWidth: 1, borderColor: colors.sand,
+                )))}
+                {connections.length === 0 && (
+                  <Text style={{ textAlign: 'center', paddingVertical: 44, fontFamily: fonts.sans, fontSize: 14.5, color: colors.warmGray }}>
+                    {query ? `No one matches “${q.trim()}”` : 'No connections yet — invite someone to agree with you.'}
+                  </Text>
+                )}
+              </>
+            ) : (
+              <>
+                {/* Received — the only place a connection can actually be formed. */}
+                {received.length > 0 && sectionLabel('Received')}
+                {received.map(({ f, i }) => personRow(f, i, (
+                  <>
+                    <Pressable onPress={() => setAccepted({ ...accepted, [i]: true })} style={{
+                      height: 34, paddingHorizontal: 16, borderRadius: 17, backgroundColor: colors.teal,
                       alignItems: 'center', justifyContent: 'center',
                     }}>
-                      <Text style={{ fontFamily: fonts.sans, fontSize: 13.5, color: colors.warmGray }}>Following</Text>
+                      <Text style={{ fontFamily: fonts.sansMedium, fontSize: 13.5, color: colors.white }}>Accept</Text>
+                    </Pressable>
+                    <Pressable onPress={() => setDismissed({ ...dismissed, [i]: true })} hitSlop={6} style={{ padding: 6 }}>
+                      <XIcon size={15} />
+                    </Pressable>
+                  </>
+                )))}
+
+                {/* Sent — waiting on them, so Cancel is the only move you have. */}
+                {sent.length > 0 && sectionLabel('Sent')}
+                {sent.map(({ f, i }) => personRow(f, i, (
+                  <>
+                    <View style={{
+                      height: 34, paddingHorizontal: 14, borderRadius: 17, backgroundColor: '#EFE6D2',
+                      borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <Text style={{ fontFamily: fonts.sans, fontSize: 13.5, color: colors.warmGray }}>Pending</Text>
                     </View>
-                  )}
-                </View>
-              );
-            })}
-            {!!query && rows.length === 0 && (
-              <Text style={{ textAlign: 'center', paddingVertical: 44, fontFamily: fonts.sans, fontSize: 14.5, color: colors.warmGray }}>
-                No one matches “{q.trim()}”
-              </Text>
+                    <Pressable onPress={() => setDismissed({ ...dismissed, [i]: true })} hitSlop={6} style={{ padding: 6 }}>
+                      <XIcon size={15} />
+                    </Pressable>
+                  </>
+                )))}
+
+                {received.length === 0 && sent.length === 0 && (
+                  <Text style={{ textAlign: 'center', paddingVertical: 44, fontFamily: fonts.sans, fontSize: 14.5, color: colors.warmGray }}>
+                    {query ? `No one matches “${q.trim()}”` : 'Nothing waiting — you’re all caught up.'}
+                  </Text>
+                )}
+              </>
             )}
           </ScrollView>
         </>
