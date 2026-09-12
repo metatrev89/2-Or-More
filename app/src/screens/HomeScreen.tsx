@@ -200,9 +200,11 @@ export default function HomeScreen() {
   const readCount = homeReadDone.length;
   const dailyRings = schedPlan === 'custom' ? freq : 10;
   const ringsDone = Math.min(4, dailyRings);
-  // 2nd ring rendered terracotta in the design — a session done out of alignment.
-  const ringStroke = (i: number) => (i < ringsDone ? (i === 1 ? colors.terracotta : colors.teal) : colors.border);
-  const ringFill = (i: number) => (i < ringsDone ? (i === 1 ? 'rgba(194,94,76,0.25)' : 'rgba(21,122,110,0.25)') : 'none');
+  // Every closed ring reads the same now (Trevor, Sept 11). The 2nd ring used
+  // to render terracotta to mean "done, but out of alignment" — alignment is
+  // out of v1, and a done session is a done session.
+  const ringStroke = (i: number) => (i < ringsDone ? colors.teal : colors.border);
+  const ringFill = (i: number) => (i < ringsDone ? 'rgba(21,122,110,0.25)' : 'none');
   const weekHeights = [14, 20, 10, 26, 21, 17, 8];
 
   const dateLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });

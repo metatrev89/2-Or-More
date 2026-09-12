@@ -17,7 +17,10 @@ export const colors = {
   sand: '#D9CBB0',
   inactive: '#B5A88F',
   white: '#FFFFFF',
-  terracotta: '#C25E4C', // mood: "Disconnected" — earthy, not alarm-red
+  // The palette's "red" — earthy, deliberately not alarm-red, which is how it
+  // satisfies the brand doc's no-red rule. Now marks the bottom third of
+  // session completion (was the retired "Disconnected" alignment mood).
+  terracotta: '#C25E4C',
   creamOnDark: 'rgba(250,244,232,0.85)',
   creamOnDarkDim: 'rgba(250,244,232,0.6)',
   creamOnDarkFaint: 'rgba(250,244,232,0.16)',
@@ -45,7 +48,6 @@ export const timing = {
   celebStarMs: 1100,
   bigCelebMs: 4200,
   chromeHideMs: 2200,
-  moodDismissMs: 1500,
 } as const;
 
 /** Chakra-mapped life areas, root→crown — order MUST match backend LIFE_AREAS (areaIndex crosses the API). */

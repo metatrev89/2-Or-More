@@ -40,29 +40,21 @@ const card = {
   borderRadius: 20, padding: 20, marginTop: 14,
 } as const;
 
-/** Alignment legend marks (teal check / gold star / terracotta circle-slash). */
-function AlignMark({ kind, size = 13 }: { kind: 'aligned' | 'aligning' | 'disconnected' | 'upcoming'; size?: number }) {
-  if (kind === 'aligned') return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path d="M5.5 12.5l4.2 4.2 8.8-10.2" stroke={colors.teal} strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" />
-    </Svg>
-  );
-  if (kind === 'aligning') return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Path d="M12 3c.55 3 1.3 4.9 2.7 6.3C16.1 10.7 18 11.45 21 12c-3 .55-4.9 1.3-6.3 2.7C13.3 16.1 12.55 18 12 21c-.55-3-1.3-4.9-2.7-6.3C7.9 13.3 6 12.55 3 12c3-.55 4.9-1.3 6.3-2.7C10.7 7.9 11.45 6 12 3z" fill={colors.gold} />
-    </Svg>
-  );
-  if (kind === 'disconnected') return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Circle cx={12} cy={12} r={8} stroke={colors.terracotta} strokeWidth={2.2} />
-      <Path d="M6.5 17.5L17.5 6.5" stroke={colors.terracotta} strokeWidth={2.2} strokeLinecap="round" />
-    </Svg>
-  );
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Circle cx={12} cy={12} r={8} fill="none" stroke={colors.border} strokeWidth={2.4} />
-    </Svg>
-  );
+/**
+ * How far through a session the user got, as a colour (Trevor, Sept 11).
+ *
+ * This replaces the old alignment-driven tint. It is purely completion now —
+ * thirds of the set — so it can never disagree with the percentage sitting
+ * right next to it, which the alignment version could and did.
+ *
+ * Terracotta / gold / teal IS the palette's red / yellow / green. Literal
+ * traffic-light red is still out under the brand doc's no-red rule.
+ */
+function pctColor(frac: number) {
+  if (frac <= 0) return colors.inactive;
+  if (frac < 1 / 3) return colors.terracotta;
+  if (frac < 2 / 3) return colors.gold;
+  return colors.teal;
 }
 
 /** Progress medal (52px disc, ribbon glyph — design's three-state row). */
@@ -99,7 +91,7 @@ function Stepper({ value, width, small, onDown, onUp }: { value: string; width: 
   );
 }
 
-/** Progress (design section 11): daily ring hero, alignment, sessions, week, medals, month. */
+/** Progress (design section 11): daily ring hero, sessions, week, medals, month. */
 export default function ProgressScreen() {
   const { homeReadDone, streakDays, freq, awStart, awEnd, qStart, qEnd, affirmations, set } = useStore();
   const [editing, setEditing] = useState(false);
@@ -112,14 +104,6 @@ export default function ProgressScreen() {
   const r = 52, circ = 2 * Math.PI * r;
   const daySessions = daySessionsFor(affCount);
   const sessionsComplete = daySessions.filter(d => d.done === affCount).length;
-
-  const sessionMark = (done: number, i: number): 'aligned' | 'aligning' | 'disconnected' | 'upcoming' => {
-    const complete = done === affCount;
-    if (complete && i === 1) return 'disconnected'; // design: 9:30 completed out of alignment
-    if (complete) return 'aligned';
-    if (done > 0) return 'aligning';
-    return 'upcoming';
-  };
 
   const rowBetween = { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const };
 
@@ -159,32 +143,9 @@ export default function ProgressScreen() {
           </View>
         </View>
 
-        {/* alignment */}
-        <View style={card}>
-          <View style={rowBetween}>
-            <CardLabel>ALIGNMENT</CardLabel>
-            <Mono size={15} color={colors.teal}>60%</Mono>
-          </View>
-          <View style={{ flexDirection: 'row', height: 10, gap: 2, marginTop: 14 }}>
-            <View style={{ flex: 60, backgroundColor: colors.teal, borderTopLeftRadius: 5, borderBottomLeftRadius: 5 }} />
-            <View style={{ flex: 20, backgroundColor: colors.gold }} />
-            <View style={{ flex: 20, backgroundColor: colors.terracotta, borderTopRightRadius: 5, borderBottomRightRadius: 5 }} />
-          </View>
-          <View style={[rowBetween, { marginTop: 12 }]}>
-            {([
-              ['aligned', 'Fully aligned', 3],
-              ['aligning', 'Aligning', 1],
-              ['disconnected', 'Disconnected', 1],
-            ] as const).map(([kind, label, n]) => (
-              <View key={kind} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <AlignMark kind={kind} />
-                <Text style={{ fontFamily: fonts.sans, fontSize: 12, color: colors.warmGray }}>
-                  {label} · <Mono size={12} color={colors.ink}>{n}</Mono>
-                </Text>
-              </View>
-            ))}
-          </View>
-        </View>
+        {/* The ALIGNMENT card sat here — a 60% bar split across Fully aligned /
+            Aligning / Disconnected. Cut with the rest of alignment (Trevor,
+            Sept 11); its numbers were design placeholders, never computed. */}
 
         {/* today's sessions */}
         <View style={card}>
@@ -204,8 +165,9 @@ export default function ProgressScreen() {
           {!editing ? (
             <View style={{ marginTop: 8 }}>
               {daySessions.map((d, i) => {
-                const mark = sessionMark(d.done, i);
-                const complete = d.done === affCount;
+                // Was hardcoded to 7 — an 8-affirmation set (the intake's
+                // catch-all) drew 7 dots and reported 114%.
+                const frac = Math.min(1, d.done / affCount);
                 return (
                   <View key={d.time} style={{
                     flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9,
@@ -213,7 +175,7 @@ export default function ProgressScreen() {
                   }}>
                     <Mono size={12} color={d.done > 0 ? colors.ink : colors.inactive} style={{ width: 60 }}>{d.time}</Mono>
                     <View style={{ flex: 1, flexDirection: 'row', gap: 3 }}>
-                      {Array.from({ length: 7 }, (_, j) => (
+                      {Array.from({ length: affCount }, (_, j) => (
                         <Svg key={j} width={12} height={12} viewBox="0 0 24 24">
                           <Circle
                             cx={12} cy={12} r={9} strokeWidth={3.6}
@@ -223,12 +185,9 @@ export default function ProgressScreen() {
                         </Svg>
                       ))}
                     </View>
-                    <Mono size={12.5} color={complete ? colors.teal : d.done > 0 ? colors.gold : colors.inactive} style={{ width: 40, textAlign: 'right' }}>
-                      {Math.round((d.done / 7) * 100)}%
+                    <Mono size={12.5} color={pctColor(frac)} style={{ width: 40, textAlign: 'right' }}>
+                      {Math.round(frac * 100)}%
                     </Mono>
-                    <View style={{ width: 14, height: 14, alignItems: 'center', justifyContent: 'center' }}>
-                      <AlignMark kind={mark} size={14} />
-                    </View>
                   </View>
                 );
               })}

@@ -50,7 +50,6 @@ interface State {
   streakDays: number;
   homeReadDone: number[];
   movieWatched: number[];
-  moods: Record<string, number>; // sessionKey -> 0 disconnected | 1 aligning | 2 aligned
   audioSpeed: number;
   // social (design scope — mock-backed until social backend lands)
   feedAffirmed: Record<number, boolean>;
@@ -61,7 +60,6 @@ interface State {
   setVoiceRecording: (affirmationId: string, uri: string | null) => void;
   addMsg: (m: Msg) => void;
   completeCard: (i: number) => void;
-  recordMood: (sessionKey: string, mood: number) => void;
   setSpeed: (v: number) => Promise<void>;
   hydrate: () => Promise<void>;
 }
@@ -93,7 +91,6 @@ export const useStore = create<State>((set, get) => ({
   streakDays: 12,
   homeReadDone: [],
   movieWatched: [],
-  moods: {},
   audioSpeed: 1,
   feedAffirmed: {},
   shareSel: {},
@@ -122,8 +119,6 @@ export const useStore = create<State>((set, get) => ({
     const done = get().homeReadDone;
     if (!done.includes(i)) set({ homeReadDone: [...done, i] });
   },
-
-  recordMood: (sessionKey, mood) => set({ moods: { ...get().moods, [sessionKey]: mood } }),
 
   setSpeed: async (v) => {
     const clamped = Math.round(Math.min(2.5, Math.max(0.5, v)) * 100) / 100;

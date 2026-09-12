@@ -96,7 +96,6 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { err
 function Root() {
   const hydrate = useStore(s => s.hydrate);
   const session = useAudioSession();
-  const moods = useStore(s => s.moods);
   const [route, setRoute] = React.useState('');
   // Live mode: restore a persisted Supabase session and land signed-in users on Main.
   const [authState, setAuthState] = React.useState<'checking' | 'in' | 'out'>(isLiveMode ? 'checking' : 'out');
@@ -173,12 +172,7 @@ function Root() {
 
       {/* Session-complete celebration renders over WHATEVER screen is showing,
           then closes the mini player when dismissed. */}
-      {session.bigCeleb && (
-        <SessionCeleb
-          autoDismiss={moods[`audio-${new Date().toDateString()}`] !== undefined}
-          onDone={session.dismissBigCeleb}
-        />
-      )}
+      {session.bigCeleb && <SessionCeleb onDone={session.dismissBigCeleb} />}
       </View>
     </NavigationContainer>
   );
