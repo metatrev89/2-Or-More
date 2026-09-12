@@ -11,8 +11,8 @@ import type { RootStackParamList } from '../App';
 import { colors, fonts } from '../theme';
 import { Mono, Serif } from '../components/ui';
 import {
-  BellIcon, ChevronDownIcon, DoneMark, FilmIcon, FlameIcon, HeadphonesIcon,
-  MicIcon, PauseFill, PencilIcon, PlayFill, StarBurst, VideoIcon, XIcon,
+  BellIcon, ChevronDownIcon, DoneMark, FlameIcon, HeadphonesIcon,
+  MicIcon, PauseFill, PencilIcon, PlayFill, StarBurst, XIcon,
 } from '../components/brandIcons';
 import { DancingBars } from '../components/AnimatedBars';
 import { BurstRing, CelebStar, ChipPop, Confetti } from '../components/Celebration';
@@ -81,9 +81,14 @@ const greeting = () => {
 };
 
 /**
- * Home (design section 9). Affirmation rows are tracked sessions: audio,
- * video, or an explicit ring-tap completes a card; all 7 triggers the big
- * celebration + mood check-in. Browsing the list itself is untracked.
+ * Home (design section 9). Affirmation rows are tracked sessions: audio or an
+ * explicit ring-tap completes a card; the full set triggers the big celebration
+ * + mood check-in. Browsing the list itself is untracked.
+ *
+ * The mind-movie layer (per-card video, the full-movie tile) was removed here
+ * for v1 on Sept 11 — see the deferred list in Confluence §4. Recording lives
+ * with editing now: the mic beside "YOUR AFFIRMATIONS" records the whole set,
+ * and each row's recorder sits in the edit view.
  */
 export default function HomeScreen() {
   const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -94,8 +99,6 @@ export default function HomeScreen() {
   const [audioIdx, setAudioIdx] = useState(-1);
   const [audioPlaying, setAudioPlaying] = useState(false);
   const [audioPos, setAudioPos] = useState(0);
-  const [videoIdx, setVideoIdx] = useState(-1);
-  const [videoPos, setVideoPos] = useState(0);
   const [celebIdx, setCelebIdx] = useState(-1);
   const [bigCeleb, setBigCeleb] = useState(false);
   const [streakCeleb, setStreakCeleb] = useState(false);
@@ -105,9 +108,7 @@ export default function HomeScreen() {
   const [notifSeen, setNotifSeen] = useState(false);
   const [notifAccepted, setNotifAccepted] = useState<Record<number, boolean>>({});
   const audioTimer = useRef<ReturnType<typeof setInterval> | null>(null);
-  const videoTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const audioPosRef = useRef(0);
-  const videoPosRef = useRef(0);
 
   const affs = affSet(affirmations);
   // Voice coverage drives the record-all prompt. MUST count against `affs`, not
@@ -156,27 +157,25 @@ export default function HomeScreen() {
 
   const clearTimers = () => {
     if (audioTimer.current) clearInterval(audioTimer.current);
-    if (videoTimer.current) clearInterval(videoTimer.current);
-    audioTimer.current = null; videoTimer.current = null;
+    audioTimer.current = null;
   };
   useEffect(() => clearTimers, []);
 
   const cardDur = (i: number) => 14 + ((i * 7) % 12);
 
-  const completeCard = (i: number, autoplay: boolean, video: boolean) => {
+  const completeCard = (i: number, autoplay: boolean) => {
     clearTimers();
     const done = useStore.getState().homeReadDone;
     const wasDone = done.includes(i);
     const nd = wasDone ? done : [...done, i];
     const next = i < affs.length - 1 ? i + 1 : -1;
     set({ homeReadDone: nd });
-    audioPosRef.current = 0; videoPosRef.current = 0;
+    audioPosRef.current = 0;
     setAudioIdx(-1); setAudioPlaying(false); setAudioPos(0);
-    setVideoIdx(-1); setVideoPos(0);
     setExpanded(next);
     setCelebIdx(i);
     setTimeout(() => setCelebIdx(c => (c === i ? -1 : c)), 1100);
-    api.recordExperience('me', affs[i]?.id ?? null, video ? 'watched' : 'listened');
+    api.recordExperience('me', affs[i]?.id ?? null, 'listened');
     // Session celebration fires only when THIS completion newly closes the final
     // ring — replaying an already-completed card never re-triggers it.
     if (!wasDone && nd.length === affs.length) {
@@ -184,20 +183,18 @@ export default function HomeScreen() {
       playCelebrationLarge();
     } else {
       playCelebrationSmall();
-      if (autoplay && next !== -1 && nd.length < affs.length) (video ? playVideo : playAudio)(next);
+      if (autoplay && next !== -1 && nd.length < affs.length) playAudio(next);
     }
   };
 
   const playAudio = (i: number) => {
     clearTimers();
-    videoPosRef.current = 0;
-    setVideoIdx(-1); setVideoPos(0);
     if (audioIdx !== i) { audioPosRef.current = 0; setAudioPos(0); } // resume keeps position
     setAudioIdx(i); setAudioPlaying(true); setExpanded(i);
     const dur = cardDur(i);
     audioTimer.current = setInterval(() => {
       audioPosRef.current += 0.25;
-      if (audioPosRef.current >= dur) completeCard(i, true, false);
+      if (audioPosRef.current >= dur) completeCard(i, true);
       else setAudioPos(audioPosRef.current);
     }, 250);
   };
@@ -207,32 +204,12 @@ export default function HomeScreen() {
     else playAudio(i);
   };
 
-  const playVideo = (i: number) => {
-    clearTimers();
-    audioPosRef.current = 0; videoPosRef.current = 0;
-    setAudioIdx(-1); setAudioPlaying(false); setAudioPos(0);
-    setVideoIdx(i); setVideoPos(0); setExpanded(i);
-    videoTimer.current = setInterval(() => {
-      videoPosRef.current += 0.25;
-      if (videoPosRef.current >= 45) completeCard(i, true, true);
-      else setVideoPos(videoPosRef.current);
-    }, 250);
-  };
-
-  const toggleVideo = (i: number) => {
-    if (videoIdx === i) {
-      clearTimers();
-      videoPosRef.current = 0;
-      setVideoIdx(-1); setVideoPos(0);
-      setExpanded(e => (e === i ? -1 : e));
-    } else playVideo(i);
-  };
 
   const startEdit = () => {
     if (editing) { setEditing(false); return; }
     clearTimers();
     setAudioIdx(-1); setAudioPlaying(false); setAudioPos(0);
-    setVideoIdx(-1); setVideoPos(0); setExpanded(-1);
+    setExpanded(-1);
     setDrafts(affs.map((_, i) => affText(store, i)));
     setEditing(true);
   };
@@ -348,15 +325,23 @@ export default function HomeScreen() {
         {/* affirmations card */}
         <View style={{ backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 20, padding: 20, marginTop: 14 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Pressable onPress={() => nav.navigate('Player', { mode: 'audio' })} style={{
+            <Pressable onPress={() => nav.navigate('Player')} style={{
               flexDirection: 'row', alignItems: 'center', gap: 7,
               backgroundColor: colors.teal, borderRadius: 17, paddingVertical: 8, paddingHorizontal: 14,
             }}>
               <PlayFill size={11} />
               <Text style={{ fontFamily: fonts.sansMedium, fontSize: 13, color: colors.white }}>Play all</Text>
             </Pressable>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            {/* Label, then record-the-set, then edit — same 28px targets so the
+                two icons read as a pair rather than competing affordances. */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <Text style={{ fontFamily: fonts.sansSemi, fontSize: 11.5, letterSpacing: 1.8, color: colors.warmGray }}>YOUR AFFIRMATIONS</Text>
+              <Pressable onPress={() => nav.navigate('VoiceRecorder')} style={{
+                width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+                backgroundColor: 'transparent', marginLeft: 2,
+              }}>
+                <MicIcon size={15} color={colors.inactive} />
+              </Pressable>
               <Pressable onPress={startEdit} style={{
                 width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
                 backgroundColor: editing ? colors.gold : 'transparent',
@@ -366,34 +351,6 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {/* Record-all prompt — the way back in for anyone who skipped the
-              onboarding recorder. Disappears once the whole set is recorded. */}
-          {!editing && unrecordedCount > 0 && (
-            <Pressable
-              onPress={() => nav.navigate('VoiceRecorder')}
-              style={{
-                flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 12,
-                backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
-                borderRadius: 18, paddingVertical: 12, paddingHorizontal: 14,
-              }}
-            >
-              <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center' }}>
-                <MicIcon size={15} color={colors.ink} />
-              </View>
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={{ fontFamily: fonts.sansMedium, fontSize: 14.5, color: colors.ink }}>
-                  {recordedCount === 0 ? 'Record these in your own voice' : `Record the other ${unrecordedCount}`}
-                </Text>
-                <Text style={{ fontFamily: fonts.sans, fontSize: 12.5, color: colors.warmGray, marginTop: 1 }}>
-                  {recordedCount === 0
-                    ? 'Your own voice is the strongest signal'
-                    : `${recordedCount} of ${affs.length} already in your voice`}
-                </Text>
-              </View>
-              <ChevronDownIcon size={16} />
-            </Pressable>
-          )}
-
           {!editing ? (
             <View style={{ marginTop: 8 }}>
               {affs.map((a, i) => {
@@ -401,11 +358,8 @@ export default function HomeScreen() {
                 const done = homeReadDone.includes(i);
                 const active = audioIdx === i;
                 const playing = active && audioPlaying;
-                const videoOpen = videoIdx === i;
                 const isExpanded = expanded === i;
-                const frac = active ? Math.min(1, audioPos / cardDur(i))
-                  : videoOpen ? Math.min(1, videoPos / 45)
-                  : readCount / affs.length;
+                const frac = active ? Math.min(1, audioPos / cardDur(i)) : readCount / affs.length;
                 return (
                   <View key={a.id}>
                     <Pressable onPress={() => setExpanded(isExpanded ? -1 : i)} style={{
@@ -431,13 +385,6 @@ export default function HomeScreen() {
                       }}>
                         {playing ? <PauseFill size={12} /> : <HeadphonesIcon size={14} />}
                       </Pressable>
-                      <Pressable onPress={() => toggleVideo(i)} style={{
-                        width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center',
-                        backgroundColor: videoOpen ? colors.gold : colors.white,
-                        borderWidth: 1, borderColor: videoOpen ? colors.gold : colors.sand,
-                      }}>
-                        <VideoIcon size={14} color={videoOpen ? colors.ink : colors.teal} />
-                      </Pressable>
                       <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
                         <Text numberOfLines={isExpanded ? undefined : 1} style={{
                           fontFamily: fonts.serifItalic, fontSize: 15, lineHeight: 22,
@@ -449,8 +396,8 @@ export default function HomeScreen() {
                           {a.area}
                         </Text>
                       </View>
-                      {isExpanded || playing || videoOpen ? (
-                        <Pressable onPress={() => completeCard(i, false, false)} hitSlop={5} style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}>
+                      {isExpanded || playing ? (
+                        <Pressable onPress={() => completeCard(i, false)} hitSlop={5} style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }}>
                           <Ring size={26} frac={frac} />
                         </Pressable>
                       ) : done ? (
@@ -460,59 +407,6 @@ export default function HomeScreen() {
                       )}
                     </Pressable>
 
-                    {/* voice row — record this one, or hear which voice carries it.
-                        Present for anyone who skipped some (or all) of the
-                        onboarding recorder (Trevor, Sept 11). */}
-                    {isExpanded && (
-                      <Animated.View entering={FadeInUp.duration(280)} style={{
-                        flexDirection: 'row', alignItems: 'center', gap: 10, paddingBottom: 12, paddingTop: 2,
-                      }}>
-                        <Pressable
-                          onPress={() => nav.navigate('VoiceRecorder', { affirmationId: a.id })}
-                          style={{
-                            flexDirection: 'row', alignItems: 'center', gap: 7,
-                            backgroundColor: colors.white, borderWidth: 1, borderColor: colors.sand,
-                            borderRadius: 18, paddingVertical: 7, paddingHorizontal: 13,
-                          }}
-                        >
-                          <MicIcon size={13} color={colors.ink} />
-                          <Text style={{ fontFamily: fonts.sansMedium, fontSize: 13, color: colors.ink }}>
-                            {voiceRecordings[a.id] ? 'Re-record' : 'Record in my voice'}
-                          </Text>
-                        </Pressable>
-                        <Text style={{ fontFamily: fonts.sans, fontSize: 12.5, color: colors.inactive }}>
-                          {voiceRecordings[a.id] ? 'Your voice' : 'AI voice'}
-                        </Text>
-                      </Animated.View>
-                    )}
-
-                    {/* inline scene video */}
-                    {videoOpen && (
-                      <Animated.View entering={FadeInUp.duration(350)} style={{ marginTop: 4, marginBottom: 12, borderRadius: 16, overflow: 'hidden', backgroundColor: colors.ink }}>
-                        <View style={{ aspectRatio: 16 / 9, alignItems: 'center', justifyContent: 'center', padding: 20, overflow: 'hidden' }}>
-                          <View style={{ position: 'absolute', top: -80, left: -60, width: 300, height: 220, borderRadius: 150, backgroundColor: '#3A4A2E', opacity: 0.55 }} />
-                          {/* design: text fades in over 1.2s as the "scene" opens */}
-                          <Animated.View entering={FadeIn.duration(1200)}>
-                            <Serif size={17} color={colors.cream} style={{ textAlign: 'center', lineHeight: 25 }}>“{text}”</Serif>
-                          </Animated.View>
-                          <View style={{ position: 'absolute', top: 12, right: 12 }}>
-                            <DancingBars heights={[11, 11, 11]} color={colors.gold} width={2.5} gap={2.5} />
-                          </View>
-                        </View>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingTop: 10, paddingBottom: 12 }}>
-                          <Pressable onPress={() => toggleVideo(i)} style={{
-                            width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(250,244,232,0.12)',
-                            alignItems: 'center', justifyContent: 'center',
-                          }}>
-                            <PauseFill size={11} color={colors.cream} />
-                          </Pressable>
-                          <View style={{ flex: 1, height: 4, borderRadius: 2, backgroundColor: 'rgba(250,244,232,0.18)', overflow: 'hidden' }}>
-                            <View style={{ height: 4, borderRadius: 2, backgroundColor: colors.gold, width: `${Math.round(Math.min(1, videoPos / 45) * 100)}%` }} />
-                          </View>
-                          <Mono size={12} color={colors.inactive}>0:45</Mono>
-                        </View>
-                      </Animated.View>
-                    )}
                   </View>
                 );
               })}
@@ -534,6 +428,26 @@ export default function HomeScreen() {
                       fontFamily: fonts.serifItalic, fontSize: 15, lineHeight: 22, color: colors.ink, textAlignVertical: 'top',
                     }}
                   />
+                  {/* Record lives with editing now — the two things you'd do to
+                      one affirmation sit together instead of in the dropdown. */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 2 }}>
+                    <Pressable
+                      onPress={() => nav.navigate('VoiceRecorder', { affirmationId: a.id })}
+                      style={{
+                        flexDirection: 'row', alignItems: 'center', gap: 7,
+                        backgroundColor: colors.white, borderWidth: 1, borderColor: colors.sand,
+                        borderRadius: 18, paddingVertical: 7, paddingHorizontal: 13,
+                      }}
+                    >
+                      <MicIcon size={13} color={colors.ink} />
+                      <Text style={{ fontFamily: fonts.sansMedium, fontSize: 13, color: colors.ink }}>
+                        {voiceRecordings[a.id] ? 'Re-record' : 'Record in my voice'}
+                      </Text>
+                    </Pressable>
+                    <Text style={{ fontFamily: fonts.sans, fontSize: 12.5, color: colors.inactive }}>
+                      {voiceRecordings[a.id] ? 'Your voice' : 'AI voice'}
+                    </Text>
+                  </View>
                 </View>
               ))}
               <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
@@ -554,20 +468,9 @@ export default function HomeScreen() {
           )}
         </View>
 
-        {/* full mind movie */}
-        <Pressable onPress={() => nav.navigate('Player', { mode: 'movie' })} style={{
-          backgroundColor: colors.ink, borderRadius: 20, padding: 18, marginTop: 14,
-          flexDirection: 'row', alignItems: 'center', gap: 14,
-        }}>
-          <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center' }}>
-            <FilmIcon size={19} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontFamily: fonts.sansMedium, fontSize: 17, color: colors.cream }}>Full Mind Movie</Text>
-            <Text style={{ fontFamily: fonts.sans, fontSize: 13, color: colors.inactive, marginTop: 3 }}>New scene generated from goal 3</Text>
-          </View>
-          <Mono size={14} color={colors.gold}>0:45</Mono>
-        </Pressable>
+        {/* The full mind movie tile lived here. Removed for v1 (Sept 11) with
+            the rest of the media layer — see the deferred list in Confluence
+            §4. Restore from git when the media release is scheduled. */}
       </ScrollView>
 
       {/* once-a-day streak confetti */}

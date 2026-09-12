@@ -46,7 +46,8 @@ export type RootStackParamList = {
   Schedule: undefined;
   Paywall: undefined;
   Main: undefined;
-  Player: { mode: 'audio' | 'movie' };
+  /** Audio-only for v1; the movie mode param returns with the media layer. */
+  Player: undefined;
   Creation: { step?: 'photo' } | undefined;
   /**
    * No param = record the whole set; affirmationId = re-record just that one.
