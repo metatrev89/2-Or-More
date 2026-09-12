@@ -16,14 +16,14 @@ import {
 } from '../audio/voiceRecordings';
 import { uploadVoiceRecording } from '../api/voiceUpload';
 import { affSet, affText, useStore } from '../store';
-import { useAudioPlayer, useAudioRecorder, useAudioRecorderState } from 'expo-audio';
+import { useAudioPlayer, useAudioPlayerStatus, useAudioRecorder, useAudioRecorderState } from 'expo-audio';
 
 /** Hard stop so a forgotten recording can't fill the disk. */
 const MAX_MS = 90_000;
 
-function PlayIcon({ playing }: { playing: boolean }) {
+function PlayIcon({ playing, size = 19, color = colors.cream }: { playing: boolean; size?: number; color?: string }) {
   return (
-    <Svg width={16} height={16} viewBox="0 0 24 24" fill={colors.ink}>
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
       {playing
         ? <Path d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z" />
         : <Path d="M8 5.5v13l11-6.5z" />}
@@ -61,7 +61,10 @@ export default function VoiceRecorderScreen({ route, navigation }: NativeStackSc
   const aff = cards[idx];
   const existing = aff ? voiceRecordings[aff.id] : undefined;
   const player = useAudioPlayer(existing ?? null);
-  const [previewing, setPreviewing] = useState(false);
+  // Drive the play/pause glyph off the PLAYER, not local state — otherwise the
+  // button sticks on "pause" forever once a clip finishes on its own.
+  const playerStatus = useAudioPlayerStatus(player);
+  const previewing = playerStatus.playing;
 
   // Release the audio session on the way out, whatever route the user took.
   useEffect(() => () => { void exitRecordingMode(); }, []);
@@ -92,7 +95,7 @@ export default function VoiceRecorderScreen({ route, navigation }: NativeStackSc
     if (busy || recState.isRecording) return;
     setBusy(true);
     try {
-      if (previewing) { player.pause(); setPreviewing(false); }
+      if (previewing) player.pause();
       const granted = await ensureMicPermission();
       if (!granted) {
         Alert.alert(
@@ -139,10 +142,11 @@ export default function VoiceRecorderScreen({ route, navigation }: NativeStackSc
 
   const togglePreview = () => {
     if (!existing) return;
-    if (previewing) { player.pause(); setPreviewing(false); return; }
-    player.seekTo(0).catch(() => {}).finally(() => { player.play(); setPreviewing(true); });
-    // Recordings are short; clear the state after the clip would have ended.
-    setTimeout(() => setPreviewing(false), 60_000);
+    if (previewing) { player.pause(); return; }
+    // seekTo is async — it MUST be awaited before play(), or a clip that already
+    // ran to the end replays from its own end and you hear nothing (the same
+    // trap that silenced the celebration chimes).
+    player.seekTo(0).catch(() => {}).finally(() => player.play());
   };
 
   const leave = () => {
@@ -151,7 +155,7 @@ export default function VoiceRecorderScreen({ route, navigation }: NativeStackSc
   };
 
   const advance = () => {
-    if (previewing) { player.pause(); setPreviewing(false); }
+    if (previewing) player.pause();
     if (idx < cards.length - 1) {
       setIdx(idx + 1);
       scrollRef.current?.scrollTo({ y: 0, animated: true });
@@ -231,19 +235,20 @@ export default function VoiceRecorderScreen({ route, navigation }: NativeStackSc
           </View>
 
           <View style={{ marginTop: 14, alignItems: 'center', justifyContent: 'center' }}>
+            {/* Gold mic matches Home's record prompt; ink + stop square while
+                recording. MicIcon defaults to WHITE — always pass a color. */}
             <PulseRing size={78} color={recState.isRecording ? colors.gold : 'transparent'}>
               <Pressable
                 onPress={() => (recState.isRecording ? stopRecording() : startRecording())}
                 style={{
                   width: 78, height: 78, borderRadius: 39,
-                  backgroundColor: recState.isRecording ? colors.ink : colors.white,
-                  borderWidth: recState.isRecording ? 0 : 1.5, borderColor: colors.sand,
+                  backgroundColor: recState.isRecording ? colors.ink : colors.gold,
                   alignItems: 'center', justifyContent: 'center',
                 }}
               >
                 {recState.isRecording
-                  ? <View style={{ width: 24, height: 24, borderRadius: 5, backgroundColor: colors.cream }} />
-                  : <MicIcon />}
+                  ? <View style={{ width: 26, height: 26, borderRadius: 6, backgroundColor: colors.cream }} />
+                  : <MicIcon size={30} color={colors.ink} />}
               </Pressable>
             </PulseRing>
             {savedCeleb && (
@@ -263,11 +268,11 @@ export default function VoiceRecorderScreen({ route, navigation }: NativeStackSc
             <Pressable
               onPress={togglePreview}
               style={{
-                width: 58, height: 58, borderRadius: 29, borderWidth: 1.5, borderColor: colors.sand,
+                width: 58, height: 58, borderRadius: 29, backgroundColor: colors.teal,
                 alignItems: 'center', justifyContent: 'center',
               }}
             >
-              <PlayIcon playing={previewing} />
+              <PlayIcon playing={previewing} size={21} color={colors.cream} />
             </Pressable>
           )}
           <PillButton
