@@ -385,11 +385,20 @@ export default function HomeScreen() {
                         empty so nothing even moved. Expanding now reveals a
                         labelled pill: the same session ring, plus the words.
                         Ink/sand outline — teal is AI-only and gold is reserved
-                        for the achievement moment this tap triggers. */}
+                        for the achievement moment this tap triggers.
+
+                        Right-aligned (Trevor, Sept 11) so the control lands in
+                        the dead space beside the area label and stacks directly
+                        under the status ring it mirrors, instead of drifting off
+                        to the left margin under the text. */}
                     {isExpanded && !done && (
                       <Animated.View entering={FadeInUp.duration(280)} style={{
-                        flexDirection: 'row', alignItems: 'center', gap: 10, paddingTop: 2, paddingBottom: 12,
+                        flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end',
+                        gap: 10, paddingTop: 2, paddingBottom: 11,
                       }}>
+                        <Text style={{ fontFamily: fonts.sans, fontSize: 12.5, color: colors.inactive }}>
+                          {readCount} of {affs.length}
+                        </Text>
                         <Pressable
                           onPress={() => markRead(i)}
                           hitSlop={6}
@@ -404,9 +413,6 @@ export default function HomeScreen() {
                             Mark as read
                           </Text>
                         </Pressable>
-                        <Text style={{ flexShrink: 1, fontFamily: fonts.sans, fontSize: 12.5, color: colors.inactive }}>
-                          {readCount} of {affs.length} this session
-                        </Text>
                       </Animated.View>
                     )}
                   </View>
