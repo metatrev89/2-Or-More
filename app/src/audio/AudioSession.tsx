@@ -26,6 +26,8 @@ interface AudioSessionValue {
   playing: boolean;
   position: number;
   duration: number;
+  /** Progress through the current track — 0 while a swap settles. */
+  trackFrac: number;
   sources: (string | null)[];
   hasAudio: boolean;
   playableCount: number;
@@ -89,13 +91,25 @@ export function AudioSessionProvider({ children }: { children: React.ReactNode }
     const nd = wasDone ? doneNow : [...doneNow, i];
     set({ homeReadDone: nd });
 
+    api.recordExperience('me', list[i]?.id ?? null, kind);
+
+    /**
+     * ONE ring, ONE chime, ONE star — and only when a ring actually closes
+     * (Trevor, Sept 15).
+     *
+     * This used to chime on every completion including repeats, so a second
+     * pass with loop on re-chimed all eight tracks while closing nothing. A
+     * sound that doesn't correspond to a ring teaches the user the sound means
+     * nothing, and it's indistinguishable from a misfire. Replays are now
+     * silent: the set is already won.
+     */
+    if (wasDone) return;
+
     setCelebIndex(i);
     if (celebTimer.current) clearTimeout(celebTimer.current);
     celebTimer.current = setTimeout(() => setCelebIndex(-1), 1100);
 
-    api.recordExperience('me', list[i]?.id ?? null, kind);
-
-    if (!wasDone && nd.length === list.length) {
+    if (nd.length === list.length) {
       setBigCeleb(true);
       playCelebrationLarge();
     } else {
@@ -131,6 +145,7 @@ export function AudioSessionProvider({ children }: { children: React.ReactNode }
     playing: queue.playing,
     position: queue.position,
     duration: queue.duration,
+    trackFrac: queue.trackFrac,
     sources: queue.sources,
     hasAudio: queue.hasAudio,
     playableCount: queue.playableCount,

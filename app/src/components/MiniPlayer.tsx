@@ -34,12 +34,14 @@ export default function MiniPlayer({ onExpand, liftForTabs }: {
 }) {
   const insets = useSafeAreaInsets();
   const store = useStore();
-  const { affs, index, playing, position, duration, celebIndex, toggle, close } = useAudioSession();
+  const { affs, index, playing, trackFrac, celebIndex, toggle, close } = useAudioSession();
 
   const aff = index >= 0 ? affs[index] : undefined;
   if (!aff) return null;
 
-  const frac = duration > 0 ? Math.min(1, position / duration) : 0;
+  // Shared with the full player so both scrubs agree, and so neither shows the
+  // outgoing track's position against the incoming track's duration.
+  const frac = trackFrac;
   const text = affText(store, index) || aff.statement;
 
   return (

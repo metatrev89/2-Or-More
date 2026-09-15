@@ -25,6 +25,21 @@ import * as Haptics from 'expo-haptics';
  */
 const HAPTICS_ENABLED = true;
 
+/**
+ * User-facing mute for ring-completion chimes (Trevor, Sept 15 — toggle lives
+ * beside the sleep-timer chips in the Player).
+ *
+ * Module-level rather than a hook argument because chimes fire from the audio
+ * session, from screens, and from the intake — all of which would otherwise
+ * each need to thread the flag through. `store.hydrate()` pushes the persisted
+ * value in on launch.
+ *
+ * Muting takes the HAPTICS with it: the buzz exists to accompany the chime, so
+ * leaving it on would still interrupt someone who asked for quiet.
+ */
+let muted = false;
+export function setChimesMuted(v: boolean): void { muted = v; }
+
 let large: AudioPlayer | null = null;
 let small: AudioPlayer | null = null;
 
@@ -46,6 +61,7 @@ export function primeCelebrationSounds(): void {
 }
 
 async function playSfx(which: 'large' | 'small'): Promise<void> {
+  if (muted) return;
   if (HAPTICS_ENABLED) {
     // These return promises — a sync try/catch would miss a rejection, so catch
     // on the promise itself. Haptics failing must never affect the sound.

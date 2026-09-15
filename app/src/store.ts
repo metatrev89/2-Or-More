@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { AffirmationDTO } from './api/client';
 import { MOCK_AFFS } from './api/mockData';
 import { photoExists, photoNameFrom, resolvePhotoName } from './media/profilePhoto';
+import { setChimesMuted } from './audio/sfx';
 
 export type OnboardingScreen =
   | 'intro' | 'signup' | 'email' | 'intake' | 'build'
@@ -52,6 +53,8 @@ interface State {
   homeReadDone: number[];
   movieWatched: number[];
   audioSpeed: number;
+  /** Ring-completion chimes (and their haptics) silenced by the user. */
+  chimesMuted: boolean;
   // social (design scope — mock-backed until social backend lands)
   feedAffirmed: Record<number, boolean>;
   shareSel: Record<string, boolean>;
@@ -62,6 +65,7 @@ interface State {
   addMsg: (m: Msg) => void;
   completeCard: (i: number) => void;
   setSpeed: (v: number) => Promise<void>;
+  setChimesMuted: (v: boolean) => void;
   hydrate: () => Promise<void>;
 }
 
@@ -93,6 +97,7 @@ export const useStore = create<State>((set, get) => ({
   homeReadDone: [],
   movieWatched: [],
   audioSpeed: 1,
+  chimesMuted: false,
   feedAffirmed: {},
   shareSel: {},
 
@@ -136,6 +141,13 @@ export const useStore = create<State>((set, get) => ({
     await AsyncStorage.setItem('twoplus_audio_speed', String(clamped));
   },
 
+  /** Persisted, and pushed into sfx immediately so the very next chime obeys. */
+  setChimesMuted: (v) => {
+    set({ chimesMuted: v });
+    setChimesMuted(v);
+    AsyncStorage.setItem('twoplus_chimes_muted', v ? '1' : '0').catch(() => {});
+  },
+
   hydrate: async () => {
     const sp = await AsyncStorage.getItem('twoplus_audio_speed');
     if (sp) {
@@ -146,6 +158,10 @@ export const useStore = create<State>((set, get) => ({
     // photoNameFrom() reduces both to the same thing, so old entries migrate on
     // first launch with no separate migration step. The existence check is what
     // stops a purged or never-copied cache file from leaving a broken <Image>.
+    // sfx keeps its own module-level flag; hydrate is what syncs it on launch.
+    const cm = await AsyncStorage.getItem('twoplus_chimes_muted');
+    if (cm === '1') { set({ chimesMuted: true }); setChimesMuted(true); }
+
     const photo = await AsyncStorage.getItem('twoplus_profile_photo');
     if (photo) {
       const name = photoNameFrom(photo);

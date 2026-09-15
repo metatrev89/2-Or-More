@@ -13,6 +13,16 @@ import { resolveAudioSources } from './affirmationAudio';
 
 export type LoopMode = 'off' | 'once' | 'infinite';
 
+/**
+ * How long after a track swap we distrust the player's status. It still
+ * describes the OUTGOING track for a moment: a `didJustFinish` in this window
+ * is stale, and `currentTime`/`duration` can be mismatched, which made a ring
+ * briefly inherit the previous track's near-full fill.
+ *
+ * No affirmation is a third of a second long, so nothing genuine falls in here.
+ */
+const SWAP_GUARD_MS = 350;
+
 export interface QueueItem { id: string }
 
 export function useAffirmationQueue(opts: {
@@ -52,11 +62,20 @@ export function useAffirmationQueue(opts: {
    * swap was in flight the status still belonged to track 1, so a lingering
    * `didJustFinish` could fire advance() AGAIN — closing track 2's ring and
    * jumping to track 3 without ever playing it (Trevor, Sept 14).
-   *
-   * So: remember what we asked for, start it when it's actually loaded, and
-   * ignore finish events until then.
    */
   const pendingSrcRef = useRef<string | null>(null);
+  /**
+   * When the current swap started. The finish guard is keyed off THIS, not off
+   * `pendingSrcRef` alone (Sept 15).
+   *
+   * A boolean-only guard is unbounded: if the load-confirmed effect never fires
+   * — status already loaded, duration unchanged — the flag sticks and EVERY
+   * later finish is swallowed, so rings stop closing and chimes stop firing.
+   * That's the "some don't have the chime" failure mode, caused by the fix for
+   * the previous one. A time window can't get stuck, and no real affirmation
+   * ends within it, so nothing genuine is ever discarded.
+   */
+  const swapAtRef = useRef(0);
 
   const ids = useMemo(() => items.map(i => i.id).join('|'), [items]);
 
@@ -95,6 +114,7 @@ export function useAffirmationQueue(opts: {
     try {
       player.replace(src);
       pendingSrcRef.current = src;
+      swapAtRef.current = Date.now();
       finishedAtRef.current = -1;
       setIndex(target);
       idxRef.current = target;
@@ -145,9 +165,10 @@ export function useAffirmationQueue(opts: {
   // expo-audio raises didJustFinish once per track; de-dupe by index.
   useEffect(() => {
     if (!status.didJustFinish) return;
-    // A swap is still in flight, so this finish belongs to the OUTGOING track.
-    // Acting on it would advance twice and skip the track we just queued.
-    if (pendingSrcRef.current) return;
+    // Inside the swap window this finish belongs to the OUTGOING track; acting
+    // on it would advance twice and skip the track we just queued. Bounded by
+    // time so it can never swallow a real one — see swapAtRef.
+    if (Date.now() - swapAtRef.current < SWAP_GUARD_MS) return;
     if (finishedAtRef.current === idxRef.current) return;
     finishedAtRef.current = idxRef.current;
     advance();
@@ -193,11 +214,26 @@ export function useAffirmationQueue(opts: {
     }
   }, [nextPlayable, playAt]);
 
+  /**
+   * Progress through the CURRENT track, 0 while a swap is settling.
+   *
+   * Computed here rather than in each screen because only this hook knows a
+   * swap is in flight. During one, `index` has already moved to the new track
+   * while `currentTime`/`duration` still describe the old one — so a screen
+   * dividing one by the other painted the incoming ring nearly full for a
+   * frame before snapping back to empty (Trevor, Sept 15: rings not lining up
+   * with their affirmations).
+   */
+  const settled = Date.now() - swapAtRef.current >= SWAP_GUARD_MS;
+  const dur = status.duration || 0;
+  const trackFrac = settled && dur > 0 ? Math.min(1, (status.currentTime ?? 0) / dur) : 0;
+
   return {
     index,
     playing: status.playing,
-    position: status.currentTime ?? 0,
-    duration: status.duration || 0,
+    position: settled ? status.currentTime ?? 0 : 0,
+    duration: settled ? dur : 0,
+    trackFrac,
     isLoaded: status.isLoaded,
     sources,
     hasAudio,

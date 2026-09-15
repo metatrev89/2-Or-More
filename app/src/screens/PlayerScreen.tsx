@@ -30,6 +30,31 @@ function SkipIcon({ forward = false, color = colors.warmGray }: { forward?: bool
   );
 }
 
+/**
+ * Chime-mute toggle glyph — the ring-completion mark itself (Trevor, Sept 15),
+ * so the icon names exactly what it silences rather than a generic speaker.
+ *
+ * Muted draws the slash AND hollows the check out to the track colour, because
+ * a line over a still-teal mark reads as "ring not done" at a glance. The slash
+ * is cut with a matching cream stroke underneath so it sits ON the glyph
+ * instead of merging into it.
+ */
+function ChimeToggleIcon({ muted: isMuted }: { muted: boolean }) {
+  const tint = isMuted ? colors.inactive : colors.teal;
+  return (
+    <Svg width={19} height={19} viewBox="0 0 24 24" fill="none">
+      <Circle cx={12} cy={12} r={9} stroke={tint} strokeWidth={2.2} />
+      <Path d="M8.2 12.4l2.6 2.6 5.1-5.9" stroke={tint} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+      {isMuted && (
+        <>
+          <Path d="M4.6 19.4L19.4 4.6" stroke={colors.cream} strokeWidth={4.2} strokeLinecap="round" />
+          <Path d="M4.6 19.4L19.4 4.6" stroke={colors.warmGray} strokeWidth={2.2} strokeLinecap="round" />
+        </>
+      )}
+    </Svg>
+  );
+}
+
 /** Loop glyph — circular arrows. */
 function LoopIcon({ color = colors.warmGray }: { color?: string }) {
   return (
@@ -69,7 +94,7 @@ function SessionChip({ onDark = false }: { onDark?: boolean }) {
  */
 export default function PlayerScreen({ navigation }: NativeStackScreenProps<RootStackParamList, 'Player'>) {
   const store = useStore();
-  const { audioSpeed, setSpeed } = store;
+  const { audioSpeed, setSpeed, chimesMuted } = store;
   const affs = affSet(store.affirmations);
   const [sessionChip, setSessionChip] = useState(false);
   const [speedSheet, setSpeedSheet] = useState(false);
@@ -123,9 +148,10 @@ export default function PlayerScreen({ navigation }: NativeStackScreenProps<Root
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ringClosed]);
 
-  // Progress is now the real track position, and the set's progress is "how
-  // many have played through" rather than a fraction of a fake 34s track.
-  const trackFrac = duration > 0 ? Math.min(1, pos / duration) : 0;
+  // Comes from the queue now, not computed here: only the queue knows when a
+  // swap is in flight, and dividing a stale position by a fresh duration is
+  // what made a ring flash nearly-full before snapping back (Sept 15).
+  const trackFrac = queue.trackFrac;
   const curAffIdx = Math.max(0, Math.min(affs.length - 1, curIdx));
   const ink = colors.ink;
   const muted = colors.warmGray;
@@ -273,12 +299,40 @@ export default function PlayerScreen({ navigation }: NativeStackScreenProps<Root
                   {fmt(queue.remainingSec)} left
                 </Text>
               )}
+
+              {/* Chime mute, to the right of the timer chips. Same pill shape so
+                  it reads as part of the row, but it's a toggle not a duration —
+                  hence the icon rather than a label. */}
+              <Pressable
+                onPress={() => store.setChimesMuted(!chimesMuted)}
+                hitSlop={8}
+                accessibilityRole="switch"
+                accessibilityState={{ checked: chimesMuted }}
+                accessibilityLabel={chimesMuted ? 'Unmute completion chimes' : 'Mute completion chimes'}
+                style={{
+                  width: 34, height: 30, borderRadius: 15, marginLeft: 2,
+                  borderWidth: 1, borderColor: chimesMuted ? colors.border : colors.teal,
+                  backgroundColor: chimesMuted ? 'transparent' : colors.aiTint,
+                  alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                <ChimeToggleIcon muted={chimesMuted} />
+              </Pressable>
             </View>
+
+            {/* Says what just happened — a silent ring-close is otherwise
+                indistinguishable from the chime bug we just fixed. */}
+            {chimesMuted && (
+              <Text style={{ fontFamily: fonts.sans, fontSize: 12, color: colors.inactive, textAlign: 'center', marginTop: 8 }}>
+                Chimes muted
+              </Text>
+            )}
             {/* fixed-height slot: hint before completion, daily progress report after (auto-dismisses) */}
             <View style={{ minHeight: 54, alignItems: 'center', justifyContent: 'center', marginTop: 6 }}>
               {!ringClosed ? (
                 <Text style={{ fontFamily: fonts.sans, fontSize: 13, color: colors.warmGray, textAlign: 'center' }}>
-                  Listening through closes ring <Mono size={13} color={colors.warmGray}>7</Mono> automatically.
+                  {/* Was hardcoded to 7 — an 8-affirmation set named the wrong ring. */}
+                  Listening through closes ring <Mono size={13} color={colors.warmGray}>{affs.length}</Mono> automatically.
                 </Text>
               ) : sessionChip ? (
                 <Animated.View entering={FadeInUp.duration(500)}>
