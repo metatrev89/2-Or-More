@@ -12,6 +12,7 @@
  * user skips falls back to the preset AI voice (Trevor, Sept 11).
  */
 import { AudioModule, RecordingPresets, setAudioModeAsync } from 'expo-audio';
+import { restorePlaybackMode } from './audioMode';
 import * as FileSystem from 'expo-file-system/legacy';
 
 /** Where finished recordings live. Recorder output is a cache temp file. */
@@ -39,11 +40,16 @@ export async function enterRecordingMode(): Promise<void> {
   } catch { /* non-fatal: recording may still work */ }
 }
 
-/** Hand the audio session back so celebration chimes behave normally after. */
+/**
+ * Hand the audio session back to PLAYBACK settings.
+ *
+ * This used to set `{ allowsRecording: false, playsInSilentMode: false }`,
+ * which silently undid background playback and lock-screen controls for the
+ * rest of the session — recording once would have broken screen-lock playback
+ * until the next launch (Sept 15). Always restore, never zero out.
+ */
 export async function exitRecordingMode(): Promise<void> {
-  try {
-    await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: false });
-  } catch { /* non-fatal */ }
+  await restorePlaybackMode();
 }
 
 async function ensureDir(): Promise<void> {

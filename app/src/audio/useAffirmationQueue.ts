@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { resolveAudioSources } from './affirmationAudio';
+import { configureForPlayback, ensureMediaNotificationPermission } from './audioMode';
 
 export type LoopMode = 'off' | 'once' | 'infinite';
 
@@ -29,15 +30,28 @@ export function useAffirmationQueue(opts: {
   items: QueueItem[];
   recordings: Record<string, string>;
   speed: number;
+  /** Lock-screen metadata per track: what the user sees on a locked phone. */
+  lockScreenMeta?: (index: number) => { title: string; artist?: string; albumTitle?: string };
   /** Fired when a track finishes playing through (used to close rings). */
   onFinished?: (index: number) => void;
   /** Fired when the queue ends and will not loop again. */
   onQueueEnd?: () => void;
 }) {
-  const { items, recordings, speed, onFinished, onQueueEnd } = opts;
+  const { items, recordings, speed, onFinished, onQueueEnd, lockScreenMeta } = opts;
 
   const player = useAudioPlayer(null);
   const status = useAudioPlayerStatus(player);
+
+  // Background playback + lock-screen controls need the session configured
+  // before anything plays. Once per mount; the provider mounts once.
+  useEffect(() => {
+    void configureForPlayback();
+    void ensureMediaNotificationPermission();
+  }, []);
+
+  const metaRef = useRef(lockScreenMeta); metaRef.current = lockScreenMeta;
+  /** True once this player owns the lock screen, so we only claim/clear once. */
+  const lockHeldRef = useRef(false);
 
   const [sources, setSources] = useState<(string | null)[]>([]);
   const [index, setIndex] = useState(-1);
@@ -101,9 +115,31 @@ export function useAffirmationQueue(opts: {
 
   const stop = useCallback(() => {
     try { player.pause(); } catch { /* player may be unloaded */ }
+    // Give the lock screen back — a stale "now playing" for a session that
+    // ended is worse than no controls at all.
+    if (lockHeldRef.current) {
+      lockHeldRef.current = false;
+      try { player.clearLockScreenControls(); } catch { /* not claimed */ }
+    }
     pendingSrcRef.current = null;
     setIndex(-1);
     idxRef.current = -1;
+  }, [player]);
+
+  /** Claim the lock screen on the first track, then just retitle on each swap. */
+  const publishLockScreen = useCallback((i: number) => {
+    const meta = metaRef.current?.(i);
+    if (!meta) return;
+    try {
+      if (!lockHeldRef.current) {
+        lockHeldRef.current = true;
+        // Seek buttons only — expo-audio's single-player lock screen has no
+        // next/previous, and offering seek is truer than offering nothing.
+        player.setActiveForLockScreen(true, meta, { showSeekForward: true, showSeekBackward: true });
+      } else {
+        player.updateLockScreenMetadata(meta);
+      }
+    } catch { /* controls are a nicety; never let them break playback */ }
   }, [player]);
 
   const playAt = useCallback((i: number) => {
@@ -122,8 +158,9 @@ export function useAffirmationQueue(opts: {
       // The load-confirmed effect below is what guarantees it either way.
       player.setPlaybackRate(speed || 1, 'high');
       player.play();
+      publishLockScreen(target);
     } catch { stop(); }
-  }, [player, speed, nextPlayable, stop]);
+  }, [player, speed, nextPlayable, stop, publishLockScreen]);
 
   // The track we swapped to has finished loading — make sure it's actually
   // running. Without this, a slow load left the optimistic play() above with

@@ -16,7 +16,7 @@
 import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
 import { useAffirmationQueue, type LoopMode } from './useAffirmationQueue';
 import { playCelebrationLarge, playCelebrationSmall } from './sfx';
-import { affSet, useStore } from '../store';
+import { affSet, affText, useStore } from '../store';
 import { api } from '../api/client';
 import type { AffirmationDTO } from '../api/client';
 
@@ -122,6 +122,21 @@ export function AudioSessionProvider({ children }: { children: React.ReactNode }
     recordings: voiceRecordings,
     speed: audioSpeed,
     onFinished: i => completeAffirmation(i, 'listened'),
+    /**
+     * What a locked phone shows. The statement is the title because that IS
+     * the content — an affirmation, not a track name. Trimmed because the lock
+     * screen gives one line and these run 3-4 sentences; the area carries the
+     * context the truncation loses.
+     */
+    lockScreenMeta: i => {
+      const a = affsRef.current[i];
+      const text = affText(useStore.getState(), i) || a?.statement || '';
+      return {
+        title: text.length > 84 ? `${text.slice(0, 83).trimEnd()}…` : text,
+        artist: '2+',
+        albumTitle: a?.area ?? 'Your affirmations',
+      };
+    },
   });
 
   const close = useCallback(() => {
