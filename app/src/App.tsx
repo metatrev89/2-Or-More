@@ -97,6 +97,24 @@ function Root() {
   const hydrate = useStore(s => s.hydrate);
   const session = useAudioSession();
   const [route, setRoute] = React.useState('');
+  /**
+   * Whether the ROOT stack is showing the tab navigator — i.e. whether the
+   * floating glass bar is on screen and the mini player has to clear it.
+   *
+   * This can't come from `getCurrentRoute()`, which returns the DEEPEST route:
+   * inside the tabs that's 'Home' or 'Feed', never 'Main'. The old
+   * `route === 'Main'` check was therefore always false, so the mini player
+   * dropped to its no-tabs offset and sat right on top of the bar (Trevor,
+   * Sept 14). 'Friends' exists as both a tab and a pushed stack screen, so the
+   * leaf name can't disambiguate it either — only the root stack can.
+   */
+  const [onTabs, setOnTabs] = React.useState(false);
+  const syncRoute = React.useCallback(() => {
+    setRoute(navRef.getCurrentRoute()?.name ?? '');
+    const root = navRef.isReady() ? navRef.getRootState() : undefined;
+    const top = root?.routes?.[root.index ?? root.routes.length - 1]?.name;
+    setOnTabs(top === 'Main');
+  }, []);
   // Live mode: restore a persisted Supabase session and land signed-in users on Main.
   const [authState, setAuthState] = React.useState<'checking' | 'in' | 'out'>(isLiveMode ? 'checking' : 'out');
   useEffect(() => {
@@ -133,8 +151,8 @@ function Root() {
     <NavigationContainer
       ref={navRef}
       theme={navTheme}
-      onStateChange={() => setRoute(navRef.getCurrentRoute()?.name ?? '')}
-      onReady={() => setRoute(navRef.getCurrentRoute()?.name ?? '')}
+      onStateChange={syncRoute}
+      onReady={syncRoute}
     >
       <View style={{ flex: 1 }}>
       <StatusBar style="dark" />
@@ -165,7 +183,7 @@ function Root() {
           shown during onboarding (there's no session to carry yet). */}
       {session.active && route !== 'Player' && (
         <MiniPlayer
-          liftForTabs={route === 'Main'}
+          liftForTabs={onTabs}
           onExpand={() => navRef.isReady() && navRef.navigate('Player')}
         />
       )}

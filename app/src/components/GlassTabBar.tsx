@@ -36,6 +36,12 @@ export const LENS_RIM = 'rgba(255, 255, 255, 0.9)';
 const BAR_H = 62;
 const SIDE = 16;
 /**
+ * Total vertical space the floating bar occupies above the safe-area inset,
+ * borders included. Exported so overlays can clear it by arithmetic instead of
+ * a hand-tuned number that silently goes stale when BAR_H changes.
+ */
+export const TAB_BAR_TOTAL_H = BAR_H + 2;
+/**
  * Gap between the lens and its slot edges. The lens is deliberately near
  * slot-width: it has to sit comfortably around the LONGEST label ("Progress",
  * ~50pt at 11pt sansMedium). A tighter inset made the pill narrower than that

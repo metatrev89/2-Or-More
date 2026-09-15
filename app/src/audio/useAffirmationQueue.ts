@@ -43,6 +43,20 @@ export function useAffirmationQueue(opts: {
   const passRef = useRef(0);            // completed passes through the queue
   const timerDoneRef = useRef(false);   // stop at the next track boundary
   const finishedAtRef = useRef(-1);     // de-dupe didJustFinish
+  /**
+   * Source we've asked the player to load but haven't confirmed playing yet.
+   *
+   * `player.replace()` loads asynchronously — the same lesson as `seekTo()`
+   * (Sept 9). Calling `play()` on the very next line often did nothing because
+   * nothing was loaded, which is why track 2 sat there paused. Worse, while the
+   * swap was in flight the status still belonged to track 1, so a lingering
+   * `didJustFinish` could fire advance() AGAIN — closing track 2's ring and
+   * jumping to track 3 without ever playing it (Trevor, Sept 14).
+   *
+   * So: remember what we asked for, start it when it's actually loaded, and
+   * ignore finish events until then.
+   */
+  const pendingSrcRef = useRef<string | null>(null);
 
   const ids = useMemo(() => items.map(i => i.id).join('|'), [items]);
 
@@ -68,6 +82,7 @@ export function useAffirmationQueue(opts: {
 
   const stop = useCallback(() => {
     try { player.pause(); } catch { /* player may be unloaded */ }
+    pendingSrcRef.current = null;
     setIndex(-1);
     idxRef.current = -1;
   }, [player]);
@@ -79,14 +94,30 @@ export function useAffirmationQueue(opts: {
     if (!src) { stop(); return; }
     try {
       player.replace(src);
-      // Rate must be re-applied per track — replace() resets it.
-      player.setPlaybackRate(speed || 1, 'high');
-      player.play();
+      pendingSrcRef.current = src;
       finishedAtRef.current = -1;
       setIndex(target);
       idxRef.current = target;
+      // Optimistic start: instant when the source happens to be ready already.
+      // The load-confirmed effect below is what guarantees it either way.
+      player.setPlaybackRate(speed || 1, 'high');
+      player.play();
     } catch { stop(); }
   }, [player, speed, nextPlayable, stop]);
+
+  // The track we swapped to has finished loading — make sure it's actually
+  // running. Without this, a slow load left the optimistic play() above with
+  // nothing to play and the queue simply stalled between tracks.
+  useEffect(() => {
+    if (!pendingSrcRef.current) return;
+    if (!status.isLoaded) return;
+    pendingSrcRef.current = null;
+    try {
+      player.setPlaybackRate(speed || 1, 'high'); // replace() resets the rate
+      if (!status.playing) player.play();
+    } catch { /* swapped again already */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status.isLoaded, status.duration]);
 
   /** Advance past a finished track, honouring loop mode and the sleep timer. */
   const advance = useCallback(() => {
@@ -114,6 +145,9 @@ export function useAffirmationQueue(opts: {
   // expo-audio raises didJustFinish once per track; de-dupe by index.
   useEffect(() => {
     if (!status.didJustFinish) return;
+    // A swap is still in flight, so this finish belongs to the OUTGOING track.
+    // Acting on it would advance twice and skip the track we just queued.
+    if (pendingSrcRef.current) return;
     if (finishedAtRef.current === idxRef.current) return;
     finishedAtRef.current = idxRef.current;
     advance();

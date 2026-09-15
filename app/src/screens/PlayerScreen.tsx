@@ -145,8 +145,19 @@ export default function PlayerScreen({ navigation }: NativeStackScreenProps<Root
       </View>
 
       <>
-          {/* center: badge, segment rings, quote */}
-          <View style={{ flex: 1, justifyContent: 'center' }}>
+          {/*
+            Scrolls instead of overflowing (Trevor, Sept 14). This was a plain
+            `flex: 1, justifyContent: 'center'` View, which centres fine until
+            the content is TALLER than the space — then it spills past its own
+            bounds in both directions and lands on top of the waveform below.
+            Trevor's real affirmations are 3-4 sentences, so that was the normal
+            case, not an edge case. `flexGrow: 1` keeps short statements centred.
+          */}
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
+            showsVerticalScrollIndicator={false}
+          >
             <View style={{ alignItems: 'center', marginBottom: 30 }}>
               <View style={{ backgroundColor: colors.aiTint, borderRadius: 16, paddingVertical: 7, paddingHorizontal: 14 }}>
                 <Text style={{ fontFamily: fonts.sans, fontSize: 13, color: colors.tealDeep }}>
@@ -178,15 +189,24 @@ export default function PlayerScreen({ navigation }: NativeStackScreenProps<Root
                 </View>
               )}
             </View>
-            <Serif size={27} color={colors.ink} style={{ textAlign: 'center', marginTop: 26, lineHeight: 40 }}>
-              “{affText(store, curAffIdx) || affs[curAffIdx]?.statement}”
-            </Serif>
+            {(() => {
+              // Step the type down for longer statements so most of them still
+              // fit without scrolling at all. 27pt was sized for the design
+              // bundle's one-line samples, not for a real 4-sentence "I AM".
+              const body = affText(store, curAffIdx) || affs[curAffIdx]?.statement || '';
+              const size = body.length > 260 ? 20 : body.length > 170 ? 23 : 27;
+              return (
+                <Serif size={size} color={colors.ink} style={{ textAlign: 'center', marginTop: 26, lineHeight: size * 1.48 }}>
+                  “{body}”
+                </Serif>
+              );
+            })()}
             <Text style={{ fontFamily: fonts.sans, fontSize: 13.5, color: colors.warmGray, textAlign: 'center', marginTop: 18 }}>
               {hasAudio
                 ? `Voice: your own · ${playableCount} of ${affs.length} recorded`
                 : 'No recordings yet — record these in your own voice to listen.'}
             </Text>
-          </View>
+          </ScrollView>
 
           {/* waveform + transport */}
           <View>

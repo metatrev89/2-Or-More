@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts } from '../theme';
 import { PauseFill, PlayFill, XIcon } from './brandIcons';
 import { CelebStar } from './Celebration';
+import { TAB_BAR_TOTAL_H } from './GlassTabBar';
 import { useAudioSession } from '../audio/AudioSession';
 import { affText, useStore } from '../store';
 
@@ -48,7 +49,10 @@ export default function MiniPlayer({ onExpand, liftForTabs }: {
       pointerEvents="box-none"
       style={{
         position: 'absolute', left: 12, right: 12,
-        bottom: insets.bottom + (liftForTabs ? 80 : 14),
+        // Sits clear of the floating glass bar rather than on top of it
+        // (Trevor, Sept 14). Derived from the bar's own height so the two
+        // can't drift apart; 14 is the breathing gap between them.
+        bottom: insets.bottom + (liftForTabs ? TAB_BAR_TOTAL_H + 14 : 14),
         zIndex: 50,
       }}
     >
