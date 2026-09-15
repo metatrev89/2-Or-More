@@ -3,7 +3,7 @@ import { View, Text, TextInput, Pressable, ScrollView, KeyboardAvoidingView, Key
 import Animated, {
   Easing, FadeIn, FadeInUp, useAnimatedStyle, useSharedValue, withRepeat, withTiming,
 } from 'react-native-reanimated';
-import * as ImagePicker from 'expo-image-picker';
+import { permissionRefused, pickProfilePhoto, type PhotoSource } from '../../media/profilePhoto';
 import { Image } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
@@ -341,17 +341,22 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
     pinSent(idx);
   };
 
-  const attachPhoto = async (source: 'library' | 'camera' = 'library') => {
+  // Currently unreachable — the "+" attach button came off the composer on
+  // Sept 14 — but kept wired for when it returns. Routed through the shared
+  // module so it can't drift back into storing a cache uri.
+  const attachPhoto = async (source: PhotoSource = 'library') => {
     setPhotoSheet(false);
-    if (source === 'camera') {
-      const perm = await ImagePicker.requestCameraPermissionsAsync();
-      if (!perm.granted) { Alert.alert('Camera access needed', 'Enable camera access in Settings to take a photo.'); return; }
+    const picked = await pickProfilePhoto(source, { settleMs: 220, facing: 'back' });
+    if (!picked) {
+      if (await permissionRefused(source)) {
+        Alert.alert(
+          source === 'camera' ? 'Camera access needed' : 'Photo access needed',
+          `Enable ${source === 'camera' ? 'camera' : 'photo'} access in Settings to add a photo.`,
+        );
+      }
+      return;
     }
-    const res = source === 'camera'
-      ? await ImagePicker.launchCameraAsync({ quality: 0.8 })
-      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
-    const uri = res.assets?.[0]?.uri;
-    if (!uri) return;
+    const uri = picked.uri;
     addMsg({ isAi: false, text: '', photoUri: uri });
     set({ typing: true });
     scrollDown();

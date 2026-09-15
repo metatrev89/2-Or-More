@@ -6,6 +6,7 @@ import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { AffirmationDTO } from './api/client';
 import { MOCK_AFFS } from './api/mockData';
+import { photoExists, photoNameFrom, resolvePhotoName } from './media/profilePhoto';
 
 export type OnboardingScreen =
   | 'intro' | 'signup' | 'email' | 'intake' | 'build'
@@ -97,10 +98,19 @@ export const useStore = create<State>((set, get) => ({
 
   set: (partial) => set(partial),
 
-  /** Sets + persists the profile photo (survives app restarts; cloud sync lands with R2). */
+  /**
+   * Sets + persists the profile photo. State holds the ABSOLUTE uri (that's
+   * what <Image> wants); storage holds only the BASENAME.
+   *
+   * Storing the absolute path is what made the photo vanish on restart: on iOS
+   * the container UUID inside `file:///var/mobile/Containers/Data/Application/
+   * <UUID>/Documents/…` changes on app update or reinstall, so a perfectly good
+   * file became unreachable through a saved string. The name is stable; the
+   * directory is rebuilt at read time (Trevor, Sept 14).
+   */
   setProfilePhoto: (uri) => {
     set({ profilePhotoUri: uri });
-    if (uri) AsyncStorage.setItem('twoplus_profile_photo', uri).catch(() => {});
+    if (uri) AsyncStorage.setItem('twoplus_profile_photo', photoNameFrom(uri)).catch(() => {});
     else AsyncStorage.removeItem('twoplus_profile_photo').catch(() => {});
   },
 
@@ -132,8 +142,21 @@ export const useStore = create<State>((set, get) => ({
       const v = parseFloat(sp);
       if (!isNaN(v) && v >= 0.5 && v <= 2.5) set({ audioSpeed: v });
     }
+    // Stored value is a basename. Legacy installs hold a full absolute path —
+    // photoNameFrom() reduces both to the same thing, so old entries migrate on
+    // first launch with no separate migration step. The existence check is what
+    // stops a purged or never-copied cache file from leaving a broken <Image>.
     const photo = await AsyncStorage.getItem('twoplus_profile_photo');
-    if (photo) set({ profilePhotoUri: photo });
+    if (photo) {
+      const name = photoNameFrom(photo);
+      if (await photoExists(name)) {
+        const uri = resolvePhotoName(name);
+        set({ profilePhotoUri: uri });
+        if (photo !== name) AsyncStorage.setItem('twoplus_profile_photo', name).catch(() => {});
+      } else {
+        AsyncStorage.removeItem('twoplus_profile_photo').catch(() => {});
+      }
+    }
     const rec = await AsyncStorage.getItem('twoplus_voice_recordings');
     if (rec) {
       try { set({ voiceRecordings: JSON.parse(rec) as Record<string, string> }); } catch { /* corrupt map: start clean */ }

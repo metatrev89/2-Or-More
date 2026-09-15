@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, Alert } from 'react-native';
 import Animated, { FadeIn, FadeInUp, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
-import * as ImagePicker from 'expo-image-picker';
+import { permissionRefused, pickProfilePhoto, type PhotoSource } from '../../media/profilePhoto';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
 import { colors, fonts, timing } from '../../theme';
@@ -71,22 +71,27 @@ export default function CreationScreen({ route, navigation }: NativeStackScreenP
     setTimeout(() => setReady(true), timing.buildDoneMs);
   };
 
-  const pickFromLibrary = async () => {
-    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
-    const uri = res.assets?.[0]?.uri;
-    if (uri) { useStore.getState().setProfilePhoto(uri); runBuild(); }
+  /**
+   * Both paths go through the shared module now (Trevor, Sept 14). This screen
+   * stored the picker's CACHE uri straight into the store, which is why a photo
+   * set during onboarding — the path almost everyone takes — disappeared once
+   * iOS purged the cache. It's copied into Documents before it's saved.
+   */
+  const choosePhoto = async (source: PhotoSource) => {
+    const picked = await pickProfilePhoto(source);
+    if (picked) { useStore.getState().setProfilePhoto(picked.uri); runBuild(); return; }
+    if (await permissionRefused(source)) {
+      Alert.alert(
+        source === 'camera' ? 'Camera access needed' : 'Photo access needed',
+        source === 'camera'
+          ? 'Enable camera access for Expo Go in Settings to take a selfie, or choose from your library instead.'
+          : 'Enable photo access for Expo Go in Settings to choose a photo.',
+      );
+    }
   };
 
-  const takeSelfie = async () => {
-    const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert('Camera access needed', 'Enable camera access for Expo Go in Settings to take a selfie, or choose from your library instead.');
-      return;
-    }
-    const res = await ImagePicker.launchCameraAsync({ quality: 0.8, cameraType: 'front' });
-    const uri = res.assets?.[0]?.uri;
-    if (uri) { useStore.getState().setProfilePhoto(uri); runBuild(); }
-  };
+  const pickFromLibrary = () => choosePhoto('library');
+  const takeSelfie = () => choosePhoto('camera');
 
   const voiceCard = (key: 'aria' | 'james', name: string, desc: string) => (
     <Pressable key={key} onPress={() => selectPresetVoice(key)} style={{

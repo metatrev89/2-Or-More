@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, Pressable, ScrollView, Image, Alert } from 'react-native';
 import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
-import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system/legacy';
+import { permissionRefused, pickProfilePhoto, type PhotoSource } from '../media/profilePhoto';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../App';
@@ -70,28 +69,18 @@ export default function ProfileScreen() {
   const [privacyMode, setPrivacyMode] = useState(false);
   const [photoSheet, setPhotoSheet] = useState(false);
 
-  /** Copy the picked image out of the picker's temp cache so it survives restarts. */
-  const persistPhoto = async (uri: string) => {
-    try {
-      const dest = `${FileSystem.documentDirectory}profile-photo-${Date.now()}.jpg`;
-      await FileSystem.copyAsync({ from: uri, to: dest });
-      setProfilePhoto(dest);
-    } catch {
-      setProfilePhoto(uri); // cache path still works for this session
-    }
-  };
-
-  const pickPhoto = async (source: 'camera' | 'library') => {
+  const pickPhoto = async (source: PhotoSource) => {
     setPhotoSheet(false);
-    if (source === 'camera') {
-      const perm = await ImagePicker.requestCameraPermissionsAsync();
-      if (!perm.granted) { Alert.alert('Camera access needed', 'Enable camera access in Settings to take a selfie.'); return; }
+    // settleMs waits out the closing sheet for the same reason the module waits
+    // out the permission alert — see media/profilePhoto.ts.
+    const picked = await pickProfilePhoto(source, { allowsEditing: true, settleMs: 220 });
+    if (picked) { setProfilePhoto(picked.uri); return; }
+    if (await permissionRefused(source)) {
+      Alert.alert(
+        source === 'camera' ? 'Camera access needed' : 'Photo access needed',
+        `Enable ${source === 'camera' ? 'camera' : 'photo'} access in Settings to add a profile photo.`,
+      );
     }
-    const res = source === 'camera'
-      ? await ImagePicker.launchCameraAsync({ quality: 0.8, cameraType: 'front', allowsEditing: true })
-      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8, allowsEditing: true });
-    const uri = res.assets?.[0]?.uri;
-    if (uri) persistPhoto(uri);
   };
 
   const onCount = (i: number) => SHARE_OPTS.filter(o => shareSel[`${i}-${o.key}`]).length;
