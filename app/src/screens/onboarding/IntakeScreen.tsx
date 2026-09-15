@@ -447,7 +447,11 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
                   <Text style={{ fontFamily: fonts.sansMedium, fontSize: 12.5, letterSpacing: 0.3, color: colors.warmGray }}>2+</Text>
                 </View>
               )}
-              <Text style={{ fontFamily: fonts.sans, fontSize: 16.5, lineHeight: 25, color: colors.ink }}>{m.text}</Text>
+              {/* `selectable` is what enables long-press → Copy. RN <Text> is
+                  NOT selectable by default, so the whole conversation was
+                  un-copyable (Trevor, Sept 14) — which matters here because
+                  these replies become the user's affirmations. */}
+              <Text selectable style={{ fontFamily: fonts.sans, fontSize: 16.5, lineHeight: 25, color: colors.ink }}>{m.text}</Text>
             </Animated.View>
           ) : (
             <Animated.View
@@ -458,7 +462,7 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
             >
               <View style={{ backgroundColor: colors.ink, borderRadius: 20, borderBottomRightRadius: 8, paddingVertical: 12, paddingHorizontal: 16, maxWidth: '82%' }}>
                 {m.photoUri ? <Image source={{ uri: m.photoUri }} style={{ width: 190, height: 190, borderRadius: 12, marginBottom: m.text ? 8 : 0 }} /> : null}
-                {m.text ? <Text style={{ fontFamily: fonts.sans, fontSize: 16, lineHeight: 23, color: colors.cream }}>{m.text}</Text> : null}
+                {m.text ? <Text selectable style={{ fontFamily: fonts.sans, fontSize: 16, lineHeight: 23, color: colors.cream }}>{m.text}</Text> : null}
               </View>
             </Animated.View>
           ))}
