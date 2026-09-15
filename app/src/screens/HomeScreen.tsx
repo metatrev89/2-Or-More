@@ -200,7 +200,11 @@ export default function HomeScreen() {
   };
 
   const readCount = homeReadDone.length;
-  const dailyRings = schedPlan === 'custom' ? freq : 10;
+  // Prime's opening cadence — MUST track the first rung of the ladder in
+  // ScheduleScreen (5 → 4 → 3 as of Sept 14). It read 10 here for a day after
+  // the ladder changed, so Home promised ten rings for a plan that sends five.
+  const PRIME_OPENING_RINGS = 5;
+  const dailyRings = schedPlan === 'custom' ? freq : PRIME_OPENING_RINGS;
   const ringsDone = Math.min(4, dailyRings);
   // Every closed ring reads the same now (Trevor, Sept 11). The 2nd ring used
   // to render terracotta to mean "done, but out of alignment" — alignment is

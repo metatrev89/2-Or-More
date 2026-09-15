@@ -31,13 +31,42 @@ function Stepper({ value, onDown, onUp, small = false }: { value: string; onDown
   );
 }
 
-/** Scheduling (design screen 6): Prime protocol + custom cadence w/ quiet hours. */
+/**
+ * Scheduling (design screen 6): Prime protocol + custom cadence.
+ *
+ * Quiet hours are no longer shown on either card (Trevor, Sept 14). They were
+ * never an independent setting — the steppers below still derive them as the
+ * exact complement of the active window (`qEnd = awStart`, `qStart = awEnd`),
+ * so the row was restating the window the user had just set, in reverse. The
+ * store fields stay accurate because notification scheduling and the Progress
+ * screen read them.
+ */
 export default function ScheduleScreen({ navigation }: NativeStackScreenProps<RootStackParamList, 'Schedule'>) {
-  const { schedPlan, freq, awStart, awEnd, qStart, qEnd, set } = useStore();
+  const { schedPlan, freq, awStart, awEnd, set } = useStore();
   const prime = schedPlan === 'prime';
 
   const row = { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const };
   const rowLabel = { fontFamily: fonts.sans, fontSize: 14.5, color: colors.warmGray };
+
+  /**
+   * Shared by both plans now — the prime protocol picks your cadence FOR you,
+   * but the hours it runs between are still yours. Quiet hours ride along as
+   * the complement so nothing downstream has to recompute it.
+   */
+  const activeWindowRow = (
+    <View style={row}>
+      <Text style={rowLabel}>Active window</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <Stepper small value={fmtHour(awStart)}
+          onDown={() => { const v = Math.max(0, awStart - 1); set({ awStart: v, qEnd: v }); }}
+          onUp={() => { const v = Math.min(awEnd - 1, awStart + 1); set({ awStart: v, qEnd: v }); }} />
+        <Text style={{ color: colors.inactive }}>–</Text>
+        <Stepper small value={fmtHour(awEnd)}
+          onDown={() => { const v = Math.max(awStart + 1, awEnd - 1); set({ awEnd: v, qStart: v }); }}
+          onUp={() => { const v = Math.min(23, awEnd + 1); set({ awEnd: v, qStart: v }); }} />
+      </View>
+    </View>
+  );
 
   return (
     <Animated.View entering={FadeIn.duration(400)} style={{ flex: 1, backgroundColor: colors.cream }}>
@@ -61,18 +90,34 @@ export default function ScheduleScreen({ navigation }: NativeStackScreenProps<Ro
             <GoldCheckCircle checked={prime} />
           </View>
           <Text style={{ fontFamily: fonts.sansSemi, fontSize: 21, color: colors.ink, marginTop: 10 }}>Prime protocol</Text>
+          {/* Ladder eased to 5 → 4 → 3 (Trevor, Sept 14). The old 10× opener
+              was nearly an interruption an hour; the tail is now explicitly
+              perpetual rather than a vague "long walk". */}
           <View style={{ gap: 9, marginTop: 14 }}>
-            {[['10×', 'a day for your first two weeks'], ['5×', 'as the practice takes hold'], ['3×', 'a day, steady, for the long walk']].map(([n, d]) => (
+            {[
+              ['5×', 'a day for your first two weeks'],
+              ['4×', 'as the practice takes hold'],
+              ['3×', 'a day, steady, from there on'],
+            ].map(([n, d]) => (
               <View key={n} style={{ flexDirection: 'row', gap: 10, alignItems: 'baseline' }}>
                 <Mono size={15} color={colors.ink} style={{ width: 34 }}>{n}</Mono>
                 <Text style={{ fontFamily: fonts.sans, fontSize: 14.5, color: colors.warmGray }}>{d}</Text>
               </View>
             ))}
           </View>
+
+          {/* The window is editable on prime too now — but NOT quiet hours,
+              which the window already implies. */}
+          {prime && (
+            <View style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: colors.border }}>
+              {activeWindowRow}
+            </View>
+          )}
+
           <View style={{ marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: colors.border, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.gold }} />
             <Text style={{ fontFamily: fonts.sans, fontSize: 13.5, color: colors.warmGray }}>
-              Staggered wake to wind-down · about <Mono size={13.5} color={colors.ink}>6 min</Mono> of your day
+              Staggered across your window · about <Mono size={13.5} color={colors.ink}>3 min</Mono> of your day
             </Text>
           </View>
         </Pressable>
@@ -95,26 +140,7 @@ export default function ScheduleScreen({ navigation }: NativeStackScreenProps<Ro
                   onDown={() => set({ freq: Math.max(1, freq - 1) })}
                   onUp={() => set({ freq: Math.min(12, freq + 1) })} />
               </View>
-              <View style={row}>
-                <Text style={rowLabel}>Active window</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Stepper small value={fmtHour(awStart)}
-                    onDown={() => { const v = Math.max(0, awStart - 1); set({ awStart: v, qEnd: v }); }}
-                    onUp={() => { const v = Math.min(awEnd - 1, awStart + 1); set({ awStart: v, qEnd: v }); }} />
-                  <Text style={{ color: colors.inactive }}>–</Text>
-                  <Stepper small value={fmtHour(awEnd)}
-                    onDown={() => { const v = Math.max(awStart + 1, awEnd - 1); set({ awEnd: v, qStart: v }); }}
-                    onUp={() => { const v = Math.min(23, awEnd + 1); set({ awEnd: v, qStart: v }); }} />
-                </View>
-              </View>
-              <View style={row}>
-                <Text style={rowLabel}>Quiet hours</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Mono size={14} color={colors.ink}>{fmtHour(qStart)}</Mono>
-                  <Text style={{ color: colors.inactive }}>–</Text>
-                  <Mono size={14} color={colors.ink}>{fmtHour(qEnd)}</Mono>
-                </View>
-              </View>
+              {activeWindowRow}
             </View>
           )}
         </Pressable>
