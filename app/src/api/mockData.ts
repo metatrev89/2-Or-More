@@ -43,7 +43,7 @@ export const CREATION_LINES = ['Recording your affirmations…', 'Painting your 
 
 export const MANIFESTO_LINES = [
   "You carry a vision for your life. You shouldn't carry it alone.",
-  '2+ turns your goals into daily affirmations — written and spoken.',
+  '2+ (Two or More) turns your goals into daily affirmations — written and spoken.',
   'An intelligence and community that agrees with your vision, on a schedule that rewires your mind.',
 ];
 
