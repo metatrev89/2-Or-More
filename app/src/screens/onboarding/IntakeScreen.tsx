@@ -19,6 +19,13 @@ import { playCelebrationLarge, playCelebrationSmall, primeCelebrationSounds } fr
 import { DancingBars, PulseRing } from '../../components/AnimatedBars';
 import { CelebStar } from '../../components/Celebration';
 
+/**
+ * Composer field bounds. One line of 21pt leading plus 8/8 padding rests at 37;
+ * three lines is the ceiling before it starts eating the conversation.
+ */
+const INPUT_MIN_H = 37;
+const INPUT_MAX_H = 79;
+
 /** Gentle bobbing chevron directing attention to the CTA below. */
 function BobbingArrow() {
   const y = useSharedValue(0);
@@ -106,6 +113,8 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
   const [viewportH, setViewportH] = useState(0);
   const [listH, setListH] = useState(0);
   const [pinIdx, setPinIdx] = useState(-1);
+  /** Measured content height of the composer field; clamped where it's used. */
+  const [inputH, setInputH] = useState(INPUT_MIN_H);
 
   const pinY = pinIdx >= 0 ? msgY.current[pinIdx] ?? 0 : 0;
   // Only as much empty runway as the pin actually needs. `listH - pinY` is what
@@ -408,7 +417,9 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
         style={{ flex: 1 }}
         onLayout={e => setViewportH(e.nativeEvent.layout.height)}
         keyboardDismissMode="interactive"
-        contentContainerStyle={{ paddingHorizontal: 22, paddingTop: 10 }}
+        // A little breathing room so the last line doesn't sit flush against
+        // the composer's top edge and read as clipped mid-sentence.
+        contentContainerStyle={{ paddingHorizontal: 22, paddingTop: 10, paddingBottom: 8 }}
       >
         <View onLayout={e => setListH(e.nativeEvent.layout.height)} style={{ gap: 16 }}>
           {msgs.map((m, i) => m.isAi ? (
@@ -479,19 +490,42 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         {!intakeDone ? (
-          <View style={{ paddingHorizontal: 18, paddingBottom: 22, paddingTop: 6 }}>
+          /*
+            Composer shrunk to Meta's footprint (Trevor, Sept 14). Three fixes:
+
+            1. The "+" attach button is gone — nothing gets attached to THIS
+               chat, so it was buying a control the user can't use. The photo
+               sheet below is now unreachable but left intact for when it
+               returns. The mic stays: it's the hook for Spark dictation at v1.
+            2. With one control left, the two-row layout was spending a whole
+               44pt row on a single button. It's inline beside the field now,
+               which is what actually collapses the height — ~104pt empty down
+               to ~52pt.
+            3. THE BALLOONING: a `multiline` TextInput with no explicit height
+               falls back to iOS's own intrinsic height — about 88pt of empty
+               white for a field with nothing in it. `maxHeight` never helped
+               because 88 was already under the cap. The height is driven from
+               `onContentSizeChange` now and clamped both ways, so it rests at
+               one line and stops at three.
+
+            Gap to the keyboard is 14pt, measured off the Meta recording.
+          */
+          <View style={{ paddingHorizontal: 18, paddingBottom: 14, paddingTop: 6 }}>
             <View style={{
-              backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 26,
-              paddingTop: 14, paddingRight: 14, paddingBottom: 12, paddingLeft: 18, gap: 10,
+              backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 24,
+              flexDirection: 'row', alignItems: 'flex-end', gap: 8,
+              paddingVertical: 6, paddingLeft: 16, paddingRight: 6,
               shadowColor: colors.ink, shadowOpacity: 0.07, shadowRadius: 24, shadowOffset: { width: 0, height: 8 }, elevation: 4,
             }}>
               {/*
                 Multiline so a long answer wraps in place instead of scrolling
                 sideways through a one-line slot — intake answers are sentences,
                 not search queries. `submitBehavior="blurAndSubmit"` is what
-                makes Return send AND drop the keyboard in one gesture, which is
-                the behaviour Trevor asked for; the send button below does the
-                same thing through pinSent().
+                makes Return send AND drop the keyboard in one gesture; the
+                button beside it does the same thing through pinSent().
+
+                Explicit vertical padding: iOS multiline inputs pick their own
+                otherwise, and it doesn't match the single-line metrics.
               */}
               <TextInput
                 ref={inputRef}
@@ -502,48 +536,43 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
                 returnKeyType="send"
                 submitBehavior="blurAndSubmit"
                 onSubmitEditing={() => draft.trim() && answer(draft.trim())}
+                onContentSizeChange={e => setInputH(e.nativeEvent.contentSize.height)}
                 style={{
-                  fontFamily: fonts.sans, fontSize: 16, lineHeight: 22, color: colors.ink,
-                  paddingHorizontal: 4, paddingTop: 0, maxHeight: 108,
+                  flex: 1, fontFamily: fonts.sans, fontSize: 16, lineHeight: 21, color: colors.ink,
+                  paddingTop: 8, paddingBottom: 8,
+                  // Driven height, NOT maxHeight alone — see the note above.
+                  // Empty short-circuits to the floor so the field is guaranteed
+                  // to collapse after a send, even if the measure callback
+                  // doesn't fire on the way back down.
+                  height: draft ? Math.min(INPUT_MAX_H, Math.max(INPUT_MIN_H, inputH)) : INPUT_MIN_H,
                 }}
               />
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <Pressable onPress={() => { Keyboard.dismiss(); setPhotoSheet(true); }} style={{
-                  width: 44, height: 44, borderRadius: 22, backgroundColor: colors.white,
-                  borderWidth: 1, borderColor: colors.sand, alignItems: 'center', justifyContent: 'center',
+              {draft.trim() ? (
+                <Pressable onPress={() => answer(draft.trim())} style={{
+                  width: 38, height: 38, borderRadius: 19, backgroundColor: colors.ink,
+                  alignItems: 'center', justifyContent: 'center',
                 }}>
-                  <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={colors.ink} strokeWidth={2} strokeLinecap="round">
-                    <Path d="M12 5v14M5 12h14" />
+                  <Svg width={17} height={17} viewBox="0 0 24 24" fill="none" stroke={colors.cream} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                    <Path d="M12 19V5M5 12l7-7 7 7" />
                   </Svg>
                 </Pressable>
-                <View style={{ flex: 1 }} />
-                {draft.trim() ? (
-                  <Pressable onPress={() => answer(draft.trim())} style={{
-                    width: 44, height: 44, borderRadius: 22, backgroundColor: colors.ink,
+              ) : listening ? (
+                <PulseRing size={38} color={colors.teal}>
+                  <View style={{
+                    width: 38, height: 38, borderRadius: 19, backgroundColor: colors.tealDeep,
                     alignItems: 'center', justifyContent: 'center',
                   }}>
-                    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={colors.cream} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                      <Path d="M12 19V5M5 12l7-7 7 7" />
-                    </Svg>
-                  </Pressable>
-                ) : listening ? (
-                  <PulseRing size={44} color={colors.teal}>
-                    <View style={{
-                      width: 44, height: 44, borderRadius: 22, backgroundColor: colors.tealDeep,
-                      alignItems: 'center', justifyContent: 'center',
-                    }}>
-                      <DancingBars heights={[12, 18, 10, 15]} color={colors.white} />
-                    </View>
-                  </PulseRing>
-                ) : (
-                  <Pressable onPress={micTap} style={{
-                    width: 44, height: 44, borderRadius: 22, backgroundColor: colors.teal,
-                    alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    <MicIcon />
-                  </Pressable>
-                )}
-              </View>
+                    <DancingBars heights={[10, 15, 8, 13]} color={colors.white} />
+                  </View>
+                </PulseRing>
+              ) : (
+                <Pressable onPress={micTap} style={{
+                  width: 38, height: 38, borderRadius: 19, backgroundColor: colors.teal,
+                  alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <MicIcon size={17} />
+                </Pressable>
+              )}
             </View>
           </View>
         ) : (
