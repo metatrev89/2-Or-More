@@ -58,20 +58,73 @@ describe('IntakeService', () => {
     session.areaIndex = LIFE_AREAS.length;
     await svc.nextQuestion(session);
     await svc.submitAnswer(session, answer);
+    // Naming something now earns the why follow-up before the goal is built.
+    expect(session.completed).toBe(false);
+    await svc.nextQuestion(session);
+    await svc.submitAnswer(session, 'because it is the thing I keep putting off');
     expect(session.completed).toBe(true);
     expect(session.goals.length).toBe(1);
     expect(session.goals[0]!.area).toBe('open_capture');
   });
 
-  it('the catch-all asks exactly once', async () => {
+  // ── The catch-all's why follow-up (Trevor, Sept 14) ────────────────────
+  // It used to take a single answer, which made the 8th affirmation the only
+  // one in the set written without a why — and therefore the only one that
+  // couldn't end on purpose, which is the entire "I AM" house style.
+
+  it('asks the catch-all, then a why for what they named', async () => {
     const svc = new IntakeService(new MockIntakeLLM());
     const session = svc.newSession('u1');
-    session.areaIndex = LIFE_AREAS.length; // jump straight to the catch-all
+    session.areaIndex = LIFE_AREAS.length;
     expect(svc.currentArea(session)).toBe('open_capture');
+    expect(svc.phase(session)).toBe('catch_all');
+
     await svc.nextQuestion(session);
-    await svc.submitAnswer(session, 'I want to finish writing my book this year');
+    const r1 = await svc.submitAnswer(session, 'I want to finish writing my book this year');
+    expect(r1.areaComplete).toBe(false);
+    expect(svc.phase(session)).toBe('why');       // second beat, same as any area
+
+    await svc.nextQuestion(session);
+    const r2 = await svc.submitAnswer(session, 'because the message in it was never mine to keep');
+    expect(r2.sessionComplete).toBe(true);
+    expect(session.goals).toHaveLength(1);
+    expect(session.goals[0]!.whyText).toBeTruthy();
+  });
+
+  it('a thin why never deletes the goal they already named', async () => {
+    // isDecline() must only ever run on the FIRST catch-all answer. A why like
+    // "no real reason" is brush-off vocabulary end to end.
+    const svc = new IntakeService(new MockIntakeLLM());
+    const session = svc.newSession('u1');
+    session.areaIndex = LIFE_AREAS.length;
+    await svc.nextQuestion(session);
+    await svc.submitAnswer(session, 'I want to run a marathon');
+    await svc.nextQuestion(session);
+    await svc.submitAnswer(session, 'no real reason, it just is');
+    expect(session.goals).toHaveLength(1);
+    expect(session.goals[0]!.area).toBe('open_capture');
+  });
+
+  it('skipping the catch-all why keeps the goal they already gave', async () => {
+    const svc = new IntakeService(new MockIntakeLLM());
+    const session = svc.newSession('u1');
+    session.areaIndex = LIFE_AREAS.length;
+    await svc.nextQuestion(session);
+    await svc.submitAnswer(session, 'I want to buy a home for my family');
+    await svc.nextQuestion(session);
+    await svc.skipArea(session); // "enough elaborating" — not "withdraw it"
     expect(session.completed).toBe(true);
-    expect(session.goals.length).toBe(1);
+    expect(session.goals).toHaveLength(1);
+  });
+
+  it('declining the catch-all never reaches the why', async () => {
+    const svc = new IntakeService(new MockIntakeLLM());
+    const session = svc.newSession('u1');
+    session.areaIndex = LIFE_AREAS.length;
+    await svc.nextQuestion(session);
+    const r = await svc.submitAnswer(session, "no, that's it");
+    expect(r.sessionComplete).toBe(true);
+    expect(session.goals).toHaveLength(0);
   });
 
   it('skipping an area records no goal', async () => {
@@ -129,8 +182,8 @@ describe('IntakeService', () => {
       await svc.nextQuestion(session);
       await svc.submitAnswer(session, 'a real answer with enough words to not read as a decline');
     }
-    // Seven areas x (goal, why), then one catch-all.
-    const expected = [...LIFE_AREAS.flatMap(() => ['goal', 'why']), 'catch_all'];
+    // Seven areas x (goal, why), then the catch-all ask and its why.
+    const expected = [...LIFE_AREAS.flatMap(() => ['goal', 'why']), 'catch_all', 'why'];
     expect(seen).toEqual(expected);
   });
 

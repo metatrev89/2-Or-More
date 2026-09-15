@@ -91,7 +91,13 @@ export class IntakeService {
    * told rather than left to infer it from a conversation that was just wiped.
    */
   phase(session: IntakeSession): IntakePhase {
-    if (this.isCatchAll(session)) return 'catch_all';
+    // The catch-all now runs the same two beats as a real area (Trevor,
+    // Sept 14): the optional ask, then — only if they named something — the
+    // why. An 8th affirmation written without a why would be the one statement
+    // in the set that doesn't end on purpose, which is the whole house style.
+    if (this.isCatchAll(session)) {
+      return this.answersInArea(session) === 0 ? 'catch_all' : 'why';
+    }
     return this.answersInArea(session) === 0 ? 'goal' : 'why';
   }
 
@@ -116,11 +122,21 @@ export class IntakeService {
   async submitAnswer(session: IntakeSession, answer: string): Promise<{ areaComplete: boolean; sessionComplete: boolean }> {
     session.turns.push({ role: 'user', content: answer });
 
-    // Catch-all: exactly one question. Something real becomes the 8th goal;
-    // "no thanks" finishes the intake with the seven they already gave.
+    // Catch-all, two beats:
+    //   answer 1 — a decline ends the intake at seven; anything real earns the
+    //              same why follow-up every other area gets.
+    //   answer 2 — the why. Now the 8th goal is built.
+    // The decline check applies ONLY to the first answer: a thin why like
+    // "just because" must never delete a goal the user already named.
     if (this.isCatchAll(session)) {
-      if (isDecline(answer)) this.advance(session, null);
-      else await this.completeArea(session);
+      if (this.answersInArea(session) === 1) {
+        if (isDecline(answer)) {
+          this.advance(session, null);
+          return { areaComplete: true, sessionComplete: session.completed };
+        }
+        return { areaComplete: false, sessionComplete: false }; // ask the why
+      }
+      await this.completeArea(session);
       return { areaComplete: true, sessionComplete: session.completed };
     }
 
@@ -131,6 +147,13 @@ export class IntakeService {
 
   /** User taps "Not this session" — skip the area with no goal. */
   async skipArea(session: IntakeSession): Promise<void> {
+    // Exception: skipping the catch-all's WHY, after they've already named
+    // something, keeps the goal rather than binning it. They asked to stop
+    // elaborating, not to withdraw the thing they just told us.
+    if (this.isCatchAll(session) && this.answersInArea(session) > 0) {
+      await this.completeArea(session);
+      return;
+    }
     const label = AREA_META[this.currentArea(session)]?.label;
     this.advance(session, null);
     // advance() wipes turns, so without this the model would see an empty

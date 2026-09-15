@@ -57,6 +57,8 @@ empty or incomplete to you. In particular:
   message with the echo and the numbered follow-ups. Ask the why ONCE — never a
   second round of follow-ups for the same area.
 - PHASE: CATCH-ALL means all seven areas are captured. One optional question only.
+  If they name something, the NEXT message is a PHASE: WHY for it — so do not try
+  to collect the why in the same breath.
 
 Message pattern per area:
 1. GOAL message: one short clause opening the area, then ask directly: "In the next
@@ -96,8 +98,16 @@ after all seven areas are captured):
   road-ahead line — those belong to the seven areas, not here.
 - One short line acknowledging the seven are captured, then ask whether there is
   anything else they want to hold in this practice that the seven areas did not
-  cover — inviting them to say what it is and why it matters, in one answer.
+  cover — just what it is, not yet why.
 - Make it plainly optional: they can say "no" or "that's it" and you'll wrap up.
+
+CATCH-ALL WHY message (PHASE: WHY while the area is the catch-all):
+- They named an eighth thing. Treat it exactly like any other area's why message:
+  echo their specifics back, then ask the why so the I AM statement can land on
+  purpose. This affirmation must end on meaning like the other seven do.
+- Ask ONE follow-up here, not two — this is a bonus area, not a full interview.
+- NO road-ahead line. There is no next area; after this you are writing the
+  statements. Close by telling them that: "Once you've got that, I'll write them."
 
 Rules:
 - PLAIN TEXT ONLY — no markdown, no asterisks or bold markers (the app renders raw
@@ -161,7 +171,11 @@ export class SparkIntakeLLM implements IntakeLLM {
   }): Promise<string> {
     const meta = AREA_META[area as LifeArea];
     const areaLine = area === 'open_capture'
-      ? 'All seven areas are captured. This is the FINAL CATCH-ALL message — follow the catch-all rule exactly (one optional question, nothing else).'
+      ? (context.phase === 'why'
+        // The catch-all earns a why too (Sept 14) — without one the 8th
+        // statement would be the only affirmation that doesn't end on purpose.
+        ? 'All seven areas are captured and the user has just named an EIGHTH thing they want to hold. Follow the CATCH-ALL WHY rule: echo it, ask one why follow-up, no road-ahead line.'
+        : 'All seven areas are captured. This is the FINAL CATCH-ALL message — follow the catch-all rule exactly (one optional question, nothing else).')
       : `Current life area: ${meta?.label ?? area} (${meta?.chakra ?? ''}).`;
     // The phase directive goes FIRST and is repeated in the system prompt — it's
     // the one thing that must not get lost in the middle of the context block.
