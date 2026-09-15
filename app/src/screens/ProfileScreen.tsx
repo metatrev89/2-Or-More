@@ -14,10 +14,15 @@ import { CameraFrontIcon, LibraryFrameIcon, XIcon } from '../components/brandIco
 import { affText, useStore } from '../store';
 import { MOCK_AFFS } from '../api/mockData';
 
+/**
+ * What a friend can see of one affirmation. Video came out with the mind movie
+ * (Trevor, Sept 14) — offering a sharing toggle for media the app cannot
+ * produce in v1 is a promise the product can't keep. Three options fit one row,
+ * which is what shortens each card.
+ */
 const SHARE_OPTS = [
   { key: 'text', label: 'Text', d: 'M4 6h16M4 12h16M4 18h10' },
   { key: 'audio', label: 'Audio', d: 'M11 5L6 9H3v6h3l5 4V5zM16.5 8.5a5 5 0 0 1 0 7' },
-  { key: 'video', label: 'Video', d: 'M15.5 10l5-3v10l-5-3M3 6.5h12.5v11H3z' },
   { key: 'rings', label: 'Rings', d: 'M12 3a9 9 0 1 1-6.4 2.6' },
 ] as const;
 
@@ -146,17 +151,18 @@ export default function ProfileScreen() {
         {/* privacy chip + section label */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 28 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            {/* Filled teal at rest so it reads as a control, not a label
+                (Trevor, Sept 14) — white-on-border with warm gray text looked
+                like a static chip and nobody tapped it. Ink while open: teal
+                says "tap me", ink says "you're in it, tap to finish". */}
             <Pressable onPress={() => setPrivacyMode(!privacyMode)} style={{
               flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 16,
-              paddingVertical: 5, paddingHorizontal: 11,
-              backgroundColor: privacyMode ? colors.ink : colors.white,
-              borderWidth: 1, borderColor: privacyMode ? colors.ink : colors.border,
+              paddingVertical: 6, paddingHorizontal: 13,
+              backgroundColor: privacyMode ? colors.ink : colors.teal,
+              borderWidth: 1, borderColor: privacyMode ? colors.ink : colors.teal,
             }}>
-              <PrivacyLock color={privacyMode ? colors.cream : colors.warmGray} />
-              <Text style={{
-                fontFamily: privacyMode ? fonts.sansMedium : fonts.sans, fontSize: 12,
-                color: privacyMode ? colors.cream : colors.warmGray,
-              }}>
+              <PrivacyLock color={colors.cream} />
+              <Text style={{ fontFamily: fonts.sansMedium, fontSize: 12, color: colors.cream }}>
                 {privacyMode ? 'Done' : 'Privacy'}
               </Text>
             </Pressable>
@@ -213,7 +219,9 @@ export default function ProfileScreen() {
                           {n === 0 ? 'Private' : n === SHARE_OPTS.length ? 'Everything' : `${n} of ${SHARE_OPTS.length}`}
                         </Text>
                       </View>
-                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 9 }}>
+                      {/* No wrap — three chips fit one row, and that's the
+                          point: the card used to run two rows deep. */}
+                      <View style={{ flexDirection: 'row', gap: 7, marginTop: 9 }}>
                         {SHARE_OPTS.map(o => {
                           const on = !!shareSel[`${i}-${o.key}`];
                           const ink = on ? colors.white : colors.warmGray;
