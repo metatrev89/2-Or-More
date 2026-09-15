@@ -1,5 +1,5 @@
 import type { IntakeLLM, RewriteLLM } from '../types.js';
-import { AREA_META, type IntakeTurn, type LifeArea } from '../../types.js';
+import { AREA_META, type IntakePhase, type IntakeTurn, type LifeArea } from '../../types.js';
 import { config } from '../../config.js';
 
 /**
@@ -45,6 +45,19 @@ The app greets the user itself before your first message — never write a welco
 greeting, or journey overview of your own. Your first message opens directly with
 Area 1 and its goal question.
 
+THE PHASE LINE IS AN ORDER, NOT A HINT. Every request begins with a line reading
+"PHASE: GOAL", "PHASE: WHY" or "PHASE: CATCH-ALL". Write EXACTLY that message type
+and nothing else. Never decide for yourself which stage the conversation is at —
+the app tracks that and it is always right, even when the conversation above looks
+empty or incomplete to you. In particular:
+- PHASE: GOAL means ask the goal question for the named area. Do NOT ask a why, do
+  NOT write an echo block, do NOT write numbered follow-ups, even if the previous
+  area's why is quoted to you for the receiving line.
+- PHASE: WHY means the user has just given their goal for this area. Write the why
+  message with the echo and the numbered follow-ups. Ask the why ONCE — never a
+  second round of follow-ups for the same area.
+- PHASE: CATCH-ALL means all seven areas are captured. One optional question only.
+
 Message pattern per area:
 1. GOAL message: one short clause opening the area, then ask directly: "In the next
    12 months, what is your goal for [area]?" Concrete and goal-oriented — numbers,
@@ -61,8 +74,11 @@ Message pattern per area:
      mission?").
    - Close with a road-ahead line: "Take a sec on those and then we'll roll into
      Area N: [next area name]."
-3. NEXT AREA message (after their why lands): one warm line receiving the why — then
-   "Area N: [name]." and its goal question. Never re-summarize the finished area.
+3. NEXT AREA message: this is a PHASE: GOAL message that happens to follow a
+   finished area. The why you are receiving will be quoted to you as "The why they
+   just gave" — the conversation above is empty by design, because each area starts
+   fresh. Write one warm line receiving that why, then "Area N: [name]." and its
+   goal question. Never re-summarize the finished area, and never ask about it again.
 
 SKIPPED AREA (when the context says the user tapped "Not this session"):
 - They gave you nothing for that area. Do NOT thank them for an answer, do NOT
@@ -86,8 +102,8 @@ after all seven areas are captured):
 Rules:
 - PLAIN TEXT ONLY — no markdown, no asterisks or bold markers (the app renders raw
   text). Use "1." / "2." numbering and blank lines between blocks.
-- The user answers twice per area (goal, then why). After their why answer, always move
-  to the next area. The catch-all is answered once.
+- The user answers twice per area (goal, then why) — no more, no less. The phase line
+  tells you which one you are asking for. The catch-all is answered once.
 - Energetic, personal, never preachy. Never use alarm or shame.
 
 Example WHY message (target register — match this):
@@ -139,15 +155,29 @@ async function openAICompatChat(baseUrl: string, apiKey: string, model: string, 
 }
 
 export class SparkIntakeLLM implements IntakeLLM {
-  async nextMessage(turns: IntakeTurn[], area: string, context: { priorGoals: string[]; userName?: string; isFirstMessage?: boolean; skippedArea?: string }): Promise<string> {
+  async nextMessage(turns: IntakeTurn[], area: string, context: {
+    priorGoals: string[]; userName?: string; isFirstMessage?: boolean;
+    skippedArea?: string; phase: IntakePhase; lastWhy?: string;
+  }): Promise<string> {
     const meta = AREA_META[area as LifeArea];
     const areaLine = area === 'open_capture'
       ? 'All seven areas are captured. This is the FINAL CATCH-ALL message — follow the catch-all rule exactly (one optional question, nothing else).'
       : `Current life area: ${meta?.label ?? area} (${meta?.chakra ?? ''}).`;
+    // The phase directive goes FIRST and is repeated in the system prompt — it's
+    // the one thing that must not get lost in the middle of the context block.
+    const phaseLine = context.phase === 'catch_all'
+      ? 'PHASE: CATCH-ALL'
+      : context.phase === 'why'
+        ? 'PHASE: WHY — they have given their goal for this area and nothing else. Write the why message now. Do not ask for the goal again.'
+        : 'PHASE: GOAL — ask this area\'s goal question. Do NOT write an echo block or numbered follow-ups.';
     const contextLines = [
+      phaseLine,
       `${areaLine} Goals already captured: ${context.priorGoals.join('; ') || 'none yet'}.`,
       context.userName ? `The user's name is ${context.userName}.` : '',
       context.isFirstMessage ? 'This is the first message of onboarding, and the app has ALREADY greeted the user and explained the journey. Do NOT write a greeting, welcome, or overview — open directly with Area 1 and its goal question.' : '',
+      // Supplied because turns are wiped per area — without it the model is told
+      // to "receive the why" while looking at an empty conversation.
+      context.lastWhy ? `The why they just gave for the previous area: "${context.lastWhy}". Open with ONE warm line receiving it, then move into this area's goal question.` : '',
       context.skippedArea ? `The user just tapped "Not this session" for ${context.skippedArea} — they gave NO goal and NO why for it. Follow the skipped-area rule.` : '',
     ].filter(Boolean);
     const messages = [

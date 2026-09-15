@@ -48,15 +48,18 @@ export function createApp() {
     })),
     completed: z.boolean(),
     skippedArea: z.string().optional(), // survives the client round-trip
+    lastWhy: z.string().optional(),     // ditto — see IntakeSession.lastWhy
   });
 
   app.post('/intake/start', async c => {
     const { userId, name } = z.object({ userId: z.string(), name: z.string().max(80).optional() }).parse(await c.req.json());
     const intake = new IntakeService(await getIntakeLLM());
     const session = intake.newSession(userId, name);
+    // Captured before nextQuestion so it describes the message being returned.
+    const phase = intake.phase(session);
     const question = await intake.nextQuestion(session);
     sessions.set(userId, session);
-    return c.json({ area: intake.currentArea(session), question, areaIndex: session.areaIndex, session });
+    return c.json({ area: intake.currentArea(session), question, phase, areaIndex: session.areaIndex, session });
   });
 
   app.post('/intake/answer', async c => {
@@ -75,8 +78,9 @@ export function createApp() {
     if (session.completed) {
       return c.json({ completed: true, goals: session.goals, session });
     }
+    const phase = intake.phase(session);
     const question = await intake.nextQuestion(session);
-    return c.json({ completed: false, area: intake.currentArea(session), question, areaIndex: session.areaIndex, session });
+    return c.json({ completed: false, area: intake.currentArea(session), question, phase, areaIndex: session.areaIndex, session });
   });
 
   // ── Affirmations (the reveal — pre-paywall, text only) ─────────────

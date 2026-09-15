@@ -15,11 +15,20 @@ const BASE_URL = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, '');
 /** True when intake/affirmations run against the real backend (→ Spark). */
 export const apiLive = Boolean(BASE_URL);
 
+/** Mirrors the backend's IntakePhase — which question the returned message IS. */
+export type IntakePhase = 'goal' | 'why' | 'catch_all';
+
 export interface IntakeStep {
   area: number;
   ai: string[];
   chips: string[] | null;
   done: boolean;
+  /**
+   * The step the server just produced. The app used to track this itself with a
+   * counter that could drift out of sync with the server's view; now the server
+   * is the single source of truth (Sept 14).
+   */
+  phase?: IntakePhase;
 }
 
 export interface AffirmationDTO {
@@ -86,9 +95,9 @@ export const api = {
       return { area: s.area, ai: s.ai, chips: s.chips, done: false };
     }
     const uid = await resolveUserId(userId);
-    const r = await post<{ areaIndex: number; question: string; session?: unknown }>('/intake/start', { userId: uid, name: name?.trim() || undefined });
+    const r = await post<{ areaIndex: number; question: string; phase?: IntakePhase; session?: unknown }>('/intake/start', { userId: uid, name: name?.trim() || undefined });
     intakeSession = r.session ?? null;
-    return { area: r.areaIndex, ai: [r.question], chips: null, done: false };
+    return { area: r.areaIndex, ai: [r.question], chips: null, done: false, phase: r.phase };
   },
 
   async intakeAnswer(userId: string, answer: string, stepIdx: number, skip = false): Promise<IntakeStep> {
@@ -98,11 +107,11 @@ export const api = {
       return { area: next.area, ai: next.ai, chips: next.chips, done: !next.user };
     }
     const uid = await resolveUserId(userId);
-    const r = await post<{ completed: boolean; areaIndex?: number; question?: string; session?: unknown }>(
+    const r = await post<{ completed: boolean; areaIndex?: number; question?: string; phase?: IntakePhase; session?: unknown }>(
       '/intake/answer', { userId: uid, answer, skip, session: intakeSession ?? undefined });
     intakeSession = r.session ?? intakeSession;
     if (r.completed) return { area: 6, ai: [], chips: null, done: true };
-    return { area: r.areaIndex ?? 0, ai: [r.question ?? ''], chips: null, done: false };
+    return { area: r.areaIndex ?? 0, ai: [r.question ?? ''], chips: null, done: false, phase: r.phase };
   },
 
   async generateAffirmations(userId: string): Promise<AffirmationDTO[]> {

@@ -1,7 +1,7 @@
 import type {
   IntakeLLM, RewriteLLM, TTSProvider, ImageProvider, VideoProvider, StorageProvider,
 } from './types.js';
-import type { IntakeTurn } from '../types.js';
+import type { IntakePhase, IntakeTurn } from '../types.js';
 import { mkdir, writeFile, rm } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 
@@ -26,12 +26,14 @@ const AREA_QUESTIONS: Record<string, string[]> = {
 };
 
 export class MockIntakeLLM implements IntakeLLM {
-  async nextMessage(turns: IntakeTurn[], area: string, context?: { skippedArea?: string }): Promise<string> {
+  async nextMessage(_turns: IntakeTurn[], area: string, context: { skippedArea?: string; phase: IntakePhase }): Promise<string> {
     const qs = AREA_QUESTIONS[area] ?? ['Tell me about this area of your life.', 'Why does it matter?'];
-    const asked = turns.filter(t => t.role === 'assistant').length;
-    const q = qs[Math.min(asked, qs.length - 1)]!;
+    // Driven by the phase the service handed down, NOT by counting turns
+    // (Sept 14) — the mock now fails the same way the live model would if the
+    // service ever got the phase wrong, instead of quietly compensating.
+    const q = (context.phase === 'why' ? qs[1] : qs[0]) ?? qs[0]!;
     // Mirror the live adapter: acknowledge a skip, then ask, never re-sell it.
-    return context?.skippedArea && asked === 0
+    return context.skippedArea && context.phase === 'goal'
       ? `No problem — we'll leave ${context.skippedArea} for now.\n\n${q}`
       : q;
   }

@@ -9,7 +9,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
 import { AREAS, AREA_CHAKRAS, CATCH_ALL_AREA, colors, fonts, timing } from '../../theme';
 import { MOCK_SCRIPT } from '../../api/mockData';
-import { api, apiLive } from '../../api/client';
+import { api, apiLive, type IntakePhase } from '../../api/client';
 import Svg, { Path } from 'react-native-svg';
 // Wordmark dropped with the compact header — see the header comment below.
 import { AiSpark, BackButton, Mono, PillButton, SegmentBar } from '../../components/ui';
@@ -167,16 +167,19 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
   const scrollDown = () => setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
 
   // ── What the AI is doing while the user waits ──────────────────────────
-  // Which stages to show depends on what kind of answer was just sent, so we
-  // count answers within the current area (first = goal, second = why).
-  const answersInArea = useRef(0);
-  useEffect(() => { answersInArea.current = 0; }, [areaIdx]);
+  // Which stages to show depends on what kind of answer was just sent. This
+  // used to be a local counter incremented per answer, which could drift out
+  // of step with the server's own view of the conversation; the server now
+  // reports the phase of every message it sends and we just echo it back
+  // (Sept 14). `phase` is the phase of the message currently on screen — i.e.
+  // the one the user is about to answer.
+  const [phase, setPhase] = useState<IntakePhase>('goal');
 
   const nextAreaLabel = (from: number): string =>
     from + 1 >= AREAS.length ? CATCH_ALL_AREA.label : AREAS[from + 1]!;
 
   const stagesFor = (kind: 'open' | 'goal' | 'why' | 'skip'): string[] => {
-    const atCatchAll = areaIdx >= AREAS.length;
+    const atCatchAll = phase === 'catch_all' || areaIdx >= AREAS.length;
     switch (kind) {
       case 'open': return [`Opening ${AREAS[0]}…`];
       case 'goal': return ['Taking that in…'];
@@ -199,6 +202,7 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
     try {
       const step = await api.intakeStart('me', userName);
       liveStarted.current = true;
+      if (step.phase) setPhase(step.phase);
       const st = useStore.getState();
       st.set({
         typing: false,
@@ -223,16 +227,17 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
     }
     const idx = useStore.getState().msgs.length;
     addMsg({ isAi: false, text: skip ? 'Not this session.' : text });
-    answersInArea.current += 1;
-    // First answer in an area is the goal (one step); the second is the why,
-    // which also triggers goal extraction and the next area (three steps).
-    setStages(stagesFor(skip ? 'skip' : answersInArea.current >= 2 ? 'why' : 'goal'));
+    // A goal answer is one round trip; a why answer also extracts the goal and
+    // composes the next area, hence three stages. The server told us which of
+    // the two they're answering.
+    setStages(stagesFor(skip ? 'skip' : phase === 'why' ? 'why' : 'goal'));
     set({ typing: true, listening: false });
     setChips([]);
     setDraft('');
     pinSent(idx);
     try {
       const step = await api.intakeAnswer('me', text, scriptIdx, skip);
+      if (step.phase) setPhase(step.phase);
       const st = useStore.getState();
       st.set({
         typing: false,
@@ -279,8 +284,9 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
     if (!step?.user) return;
     const idx = useStore.getState().msgs.length;
     addMsg({ isAi: false, text: text || step.user });
-    answersInArea.current += 1;
-    setStages(stagesFor(answersInArea.current >= 2 ? 'why' : 'goal'));
+    // Mock path has no server phase; alternate goal/why per answer instead.
+    setStages(stagesFor(phase === 'why' ? 'why' : 'goal'));
+    setPhase(p => (p === 'why' ? 'goal' : 'why'));
     set({ typing: true });
     setChips([]);
     setDraft('');

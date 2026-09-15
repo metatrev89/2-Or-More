@@ -111,6 +111,78 @@ describe('IntakeService', () => {
     expect(session.completed).toBe(false);
     expect(svc.isCatchAll(session)).toBe(true);
   });
+
+  // ── Two questions per area, always (Trevor, Sept 14) ───────────────────
+  // A live session double-asked the follow-up in area 1 and skipped it in
+  // area 2, because the model inferred which message to write from a
+  // conversation that gets wiped at every area boundary. Phase is now handed
+  // down by the service, and area completion counts USER answers — so neither
+  // depends on what the model chooses to say.
+
+  it('asks goal then why in every area, regardless of what the model emits', async () => {
+    const svc = new IntakeService(new MockIntakeLLM());
+    const session = svc.newSession('u1');
+    const seen: string[] = [];
+    let guard = 0;
+    while (!session.completed && guard++ < 50) {
+      seen.push(svc.phase(session));
+      await svc.nextQuestion(session);
+      await svc.submitAnswer(session, 'a real answer with enough words to not read as a decline');
+    }
+    // Seven areas x (goal, why), then one catch-all.
+    const expected = [...LIFE_AREAS.flatMap(() => ['goal', 'why']), 'catch_all'];
+    expect(seen).toEqual(expected);
+  });
+
+  it('survives a duplicated question — an extra assistant turn must not close the area', async () => {
+    // This is the exact shape of Trevor's Sept 14 report: one area asked the
+    // follow-up twice, the next area skipped it entirely. A retried or
+    // double-fired /intake/answer pushes a SECOND assistant turn with no user
+    // answer between. The old rule counted assistant turns, so two questions
+    // and one answer looked like a finished area: the area closed early, and
+    // the duplicate question surfaced as a second follow-up.
+    const svc = new IntakeService(new MockIntakeLLM());
+    const session = svc.newSession('u1');
+
+    await svc.nextQuestion(session);
+    const r1 = await svc.submitAnswer(session, 'my goal is seven figures');
+    expect(r1.areaComplete).toBe(false);
+
+    await svc.nextQuestion(session);
+    await svc.nextQuestion(session);              // the duplicate
+    expect(session.turns.filter(t => t.role === 'assistant')).toHaveLength(3);
+    expect(svc.phase(session)).toBe('why');       // still owed the why
+    expect(session.areaIndex).toBe(0);            // and still on area 1
+
+    const r2 = await svc.submitAnswer(session, 'because my family depends on it');
+    expect(r2.areaComplete).toBe(true);
+    expect(session.areaIndex).toBe(1);
+    expect(svc.phase(session)).toBe('goal');      // next area starts at goal
+  });
+
+  it('carries the why across the area boundary so the next opener can receive it', async () => {
+    const svc = new IntakeService(new MockIntakeLLM());
+    const session = svc.newSession('u1');
+    await svc.nextQuestion(session);
+    await svc.submitAnswer(session, 'my goal is to be strong at 70');
+    await svc.nextQuestion(session);
+    await svc.submitAnswer(session, 'because I want to keep up with my kids');
+
+    expect(session.turns).toHaveLength(0);        // wiped, as designed
+    expect(session.lastWhy).toBeTruthy();         // but the why survived
+
+    await svc.nextQuestion(session);
+    expect(session.lastWhy).toBeUndefined();      // one-shot, consumed
+  });
+
+  it('skipping still lands the next area on its goal question', async () => {
+    const svc = new IntakeService(new MockIntakeLLM());
+    const session = svc.newSession('u1');
+    await svc.nextQuestion(session);
+    await svc.skipArea(session);
+    expect(svc.phase(session)).toBe('goal');
+    expect(session.areaIndex).toBe(1);
+  });
 });
 
 describe('AffirmationService', () => {

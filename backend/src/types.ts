@@ -82,7 +82,26 @@ export interface IntakeSession {
    * gave. One-shot — cleared as soon as it's used.
    */
   skippedArea?: string;
+  /**
+   * The why the user just gave, carried across the per-area turn wipe so the
+   * next area's opening message can receive it warmly. Without this the model
+   * is asked to "receive the why" while looking at an empty conversation.
+   * One-shot, like skippedArea.
+   */
+  lastWhy?: string;
 }
+
+/**
+ * Which message the interviewer owes the user right now. Derived from how many
+ * times the USER has answered in the current area — never inferred by the model.
+ *
+ * This exists because `turns` is wiped at every area boundary, so on the first
+ * message of an area the model saw nothing but a context line and had to guess
+ * which of the three message patterns to write. It guessed wrong often enough
+ * to double-ask a follow-up in one area and skip it entirely in the next
+ * (Trevor, Sept 14).
+ */
+export type IntakePhase = 'goal' | 'why' | 'catch_all';
 
 export type JobType = 'media_stage1' | 'media_stage2' | 'regen_asset';
 

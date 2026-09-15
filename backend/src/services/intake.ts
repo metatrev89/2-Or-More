@@ -1,8 +1,18 @@
 import type { IntakeLLM } from '../adapters/types.js';
-import type { Goal, IntakeSession, IntakeTurn, LifeArea } from '../types.js';
+import type { Goal, IntakePhase, IntakeSession, IntakeTurn, LifeArea } from '../types.js';
 import { AREA_META, LIFE_AREAS } from '../types.js';
 
-const MAX_QUESTIONS_PER_AREA = 3;
+/**
+ * Every area asks exactly two questions — the goal, then the why — and is done
+ * when the USER has answered twice.
+ *
+ * This counts user answers, not assistant messages (Trevor, Sept 14). The old
+ * rule counted assistant turns, which made area progression depend on how many
+ * messages the model happened to emit: an acknowledgment with no question still
+ * ticked the counter, so an area could close after one real question. The user
+ * answering is the only event this state machine can actually trust.
+ */
+const ANSWERS_PER_AREA = 2;
 
 /**
  * The catch-all phase (added Sept 9, 2026) sits one step past the seven areas,
@@ -70,15 +80,34 @@ export class IntakeService {
     return session.areaIndex >= LIFE_AREAS.length;
   }
 
+  /** How many times the user has answered inside the CURRENT area. */
+  private answersInArea(session: IntakeSession): number {
+    return session.turns.filter(t => t.role === 'user').length;
+  }
+
+  /**
+   * Which message is owed right now. The service knows this with certainty —
+   * it is a function of how many times the user has answered — so the model is
+   * told rather than left to infer it from a conversation that was just wiped.
+   */
+  phase(session: IntakeSession): IntakePhase {
+    if (this.isCatchAll(session)) return 'catch_all';
+    return this.answersInArea(session) === 0 ? 'goal' : 'why';
+  }
+
   async nextQuestion(session: IntakeSession): Promise<string> {
     const area = this.currentArea(session);
     const priorGoals = session.goals.map(g => g.rawText);
     const isFirstMessage = session.areaIndex === 0 && session.turns.length === 0;
     const skippedArea = session.skippedArea;
+    const lastWhy = session.lastWhy;
     const q = await this.llm.nextMessage(session.turns, area, {
-      priorGoals, userName: session.name, isFirstMessage, skippedArea,
+      priorGoals, userName: session.name, isFirstMessage, skippedArea, lastWhy,
+      phase: this.phase(session),
     });
-    session.skippedArea = undefined; // one-shot: acknowledge once, then move on
+    // Both are one-shot: consumed by the message that opens the next area.
+    session.skippedArea = undefined;
+    session.lastWhy = undefined;
     session.turns.push({ role: 'assistant', content: q });
     return q;
   }
@@ -95,8 +124,7 @@ export class IntakeService {
       return { areaComplete: true, sessionComplete: session.completed };
     }
 
-    const questionsAsked = session.turns.filter(t => t.role === 'assistant').length;
-    const areaComplete = questionsAsked >= MAX_QUESTIONS_PER_AREA - 1; // 2 Qs default; 3rd is optional depth
+    const areaComplete = this.answersInArea(session) >= ANSWERS_PER_AREA;
     if (areaComplete) await this.completeArea(session);
     return { areaComplete, sessionComplete: session.completed };
   }
@@ -122,6 +150,8 @@ export class IntakeService {
       actionItems: extracted.actionItems.slice(0, 2), // scope guardrail: starter actions only
     };
     this.advance(session, goal);
+    // Carried across the turn wipe so the next area can open by receiving it.
+    if (!session.completed) session.lastWhy = extracted.whyText;
   }
 
   private advance(session: IntakeSession, goal: Goal | null): void {

@@ -1,4 +1,4 @@
-import type { IntakeTurn } from '../types.js';
+import type { IntakePhase, IntakeTurn } from '../types.js';
 
 /**
  * Every AI vendor sits behind one of these interfaces.
@@ -9,7 +9,16 @@ import type { IntakeTurn } from '../types.js';
 
 export interface IntakeLLM {
   /** Next interviewer message given conversation so far. */
-  nextMessage(turns: IntakeTurn[], area: string, context: { priorGoals: string[]; userName?: string; isFirstMessage?: boolean; skippedArea?: string }): Promise<string>;
+  nextMessage(turns: IntakeTurn[], area: string, context: {
+    priorGoals: string[];
+    userName?: string;
+    isFirstMessage?: boolean;
+    skippedArea?: string;
+    /** Authoritative — the adapter must write THIS message type, not choose. */
+    phase: IntakePhase;
+    /** The why just given, for the warm receiving line (turns are wiped). */
+    lastWhy?: string;
+  }): Promise<string>;
   /** Extract a structured goal from the completed area conversation. */
   extractGoal(turns: IntakeTurn[], area: string): Promise<{ rawText: string; whyText: string; actionItems: string[] }>;
 }
