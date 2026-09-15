@@ -3,6 +3,8 @@ import { View, Text, Pressable, ScrollView, Image, Alert } from 'react-native';
 import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { permissionRefused, pickProfilePhoto, type PhotoSource } from '../media/profilePhoto';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { TAB_BAR_TOTAL_H } from '../components/GlassTabBar';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../App';
@@ -68,6 +70,7 @@ export default function ProfileScreen() {
   const affs = store.affirmations.length ? store.affirmations : MOCK_AFFS;
   const [privacyMode, setPrivacyMode] = useState(false);
   const [photoSheet, setPhotoSheet] = useState(false);
+  const insets = useSafeAreaInsets();
 
   const pickPhoto = async (source: PhotoSource) => {
     setPhotoSheet(false);
@@ -244,7 +247,12 @@ export default function ProfileScreen() {
             position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(38,32,26,0.4)',
           }} />
           <Animated.View entering={FadeInUp.duration(300)} style={{
-            position: 'absolute', left: 8, right: 8, bottom: 8,
+            // Stops above the floating glass bar, which the navigator paints
+            // over anything a screen renders — at bottom:8 the sheet's actions
+            // were underneath it (Trevor, Sept 14). Same arithmetic as the
+            // mini player and Home's notification sheet.
+            position: 'absolute', left: 8, right: 8,
+            bottom: (insets.bottom > 0 ? insets.bottom : 12) + TAB_BAR_TOTAL_H + 12,
             backgroundColor: colors.cream, borderRadius: 30, paddingTop: 22, paddingHorizontal: 20, paddingBottom: 14,
           }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4, paddingBottom: 8 }}>

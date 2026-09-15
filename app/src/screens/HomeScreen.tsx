@@ -16,6 +16,7 @@ import {
   MicIcon, PencilIcon, PlayFill, XIcon,
 } from '../components/brandIcons';
 import { DancingBars } from '../components/AnimatedBars';
+import { TAB_BAR_TOTAL_H } from '../components/GlassTabBar';
 import { CelebStar, Confetti } from '../components/Celebration';
 import { affSet, affText, useStore } from '../store';
 import { useAudioSession } from '../audio/AudioSession';
@@ -513,7 +514,7 @@ export default function HomeScreen() {
               bar height (62) + its own bottom offset + a breathing gap. */}
           <Animated.View entering={FadeInUp.duration(300)} style={{
             position: 'absolute', left: 8, right: 8, zIndex: 41,
-            bottom: (insets.bottom > 0 ? insets.bottom : 12) + 74,
+            bottom: (insets.bottom > 0 ? insets.bottom : 12) + TAB_BAR_TOTAL_H + 12,
             backgroundColor: colors.cream, borderRadius: 30, paddingTop: 22, paddingHorizontal: 20, paddingBottom: 12,
             maxHeight: '70%',
           }}>
