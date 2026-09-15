@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, Pressable, ScrollView } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import Svg, { Circle, Path } from 'react-native-svg';
@@ -7,6 +7,7 @@ import { HeartIcon, MedalIcon } from '../../components/brandIcons';
 import SocialAvatar from '../../components/Avatar';
 import { CelebStar } from '../../components/Celebration';
 import { AVATAR_STYLES, FEED_ITEMS } from '../../api/socialMock';
+import { playCelebrationSmall, primeCelebrationSounds } from '../../audio/sfx';
 import { useStore } from '../../store';
 
 const RING_CIRC = 2 * Math.PI * 18;
@@ -42,10 +43,17 @@ export default function FeedScreen() {
   const { feedAffirmed, set } = useStore();
   const [affirmCeleb, setAffirmCeleb] = useState(-1);
 
+  // The chimes are lazily loaded, so the first one is silent unless it's been
+  // primed — same reason IntakeScreen primes on mount.
+  useEffect(() => { primeCelebrationSounds(); }, []);
+
   const toggleAffirm = (i: number) => {
     const on = !feedAffirmed[i];
     set({ feedAffirmed: { ...feedAffirmed, [i]: on } });
+    // Sound only on the way ON, matching the star. Un-affirming is a correction,
+    // not an achievement — celebrating it would make the gold mean nothing.
     if (on) {
+      playCelebrationSmall();
       setAffirmCeleb(i);
       setTimeout(() => setAffirmCeleb(c => (c === i ? -1 : c)), 1100);
     }
