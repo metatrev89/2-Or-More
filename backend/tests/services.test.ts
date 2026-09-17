@@ -267,10 +267,11 @@ describe('AffirmationService', () => {
 
 describe('scheduling', () => {
   it('prime protocol phases: 10 -> 5 -> 3', () => {
-    expect(primeProtocolPerDay(0)).toBe(10);
-    expect(primeProtocolPerDay(13)).toBe(10);
-    expect(primeProtocolPerDay(14)).toBe(5);
-    expect(primeProtocolPerDay(29)).toBe(5);
+    // Ladder eased to 5 → 4 → 3 (Sept 14); this function was missed until Sept 17.
+    expect(primeProtocolPerDay(0)).toBe(5);
+    expect(primeProtocolPerDay(13)).toBe(5);
+    expect(primeProtocolPerDay(14)).toBe(4);
+    expect(primeProtocolPerDay(29)).toBe(4);
     expect(primeProtocolPerDay(30)).toBe(3);
   });
 

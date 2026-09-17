@@ -6,20 +6,28 @@ import { colors, fonts } from '../theme';
 import { Mono } from '../components/ui';
 import { FlameIcon, PencilIcon } from '../components/brandIcons';
 import { useStore } from '../store';
-
-const DAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-const WEEK_BIG_HEIGHTS = [30, 42, 12, 52, 44, 36, 16];
+import { useTracking } from '../tracking/useTracking';
 
 /**
- * Design's daySessions: 7 scheduled sessions, per-session ring completion.
- * `done` counts affirmation RINGS closed in that session, so it scales with the
- * user's affirmation count (7, or 8 when the intake's catch-all was answered).
- * The session times themselves are the schedule cadence — a different number
- * from the affirmation count, and deliberately not tied to it.
+ * Weekday initials for the week chart, rotated so the last column is TODAY
+ * rather than assuming the week starts on Monday — the bars are the last seven
+ * days, so the labels have to follow the same window.
  */
-const SESSION_TIMES = ['7:00 AM', '9:30 AM', '12:00 PM', '3:00 PM', '5:30 PM', '8:00 PM', '9:45 PM'];
-const daySessionsFor = (affCount: number) =>
-  SESSION_TIMES.map((time, i) => ({ time, done: [affCount, affCount, affCount, affCount, 3, 0, 0][i]! }));
+const DAY_INITIALS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const weekDayLabels = (end: Date): string[] =>
+  Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(end);
+    d.setDate(d.getDate() - (6 - i));
+    return DAY_INITIALS[d.getDay()]!;
+  });
+
+/** "07:00" → "7:00 AM", for the session rows. */
+const fmtSlot = (mins: number): string => {
+  const h24 = Math.floor(mins / 60);
+  const m = mins % 60;
+  const h = h24 % 12 === 0 ? 12 : h24 % 12;
+  return `${h}:${String(m).padStart(2, '0')} ${h24 < 12 ? 'AM' : 'PM'}`;
+};
 
 const NUM_WORDS = ['Zero', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight'];
 /** Spelled-out where we have a word, numeral beyond — never renders "undefined". */
@@ -93,17 +101,42 @@ function Stepper({ value, width, small, onDown, onUp }: { value: string; width: 
 
 /** Progress (design section 11): daily ring hero, sessions, week, medals, month. */
 export default function ProgressScreen() {
-  const { homeReadDone, streakDays, freq, awStart, awEnd, qStart, qEnd, affirmations, set } = useStore();
+  const { freq, awStart, awEnd, qStart, qEnd, affirmations, set } = useStore();
   const [editing, setEditing] = useState(false);
+  // Everything on this screen is real as of Sept 17 — the session list was a
+  // hardcoded table of [full, full, full, full, 3, 0, 0] that never moved.
+  const track = useTracking();
+  const streakDays = track.streakDays;
   // Rings track the user's real affirmation count — 7, or 8 with the catch-all.
   // Falls back to 7 before onboarding has populated the set.
   const affCount = affirmations.length || 7;
-  const readCount = homeReadDone.length;
-  const frac = Math.min(1, readCount / affCount);
+  const readCount = track.currentDoneIdx.length;
+  const frac = track.sessionFrac;
   const remaining = Math.max(0, affCount - readCount);
   const r = 52, circ = 2 * Math.PI * r;
-  const daySessions = daySessionsFor(affCount);
-  const sessionsComplete = daySessions.filter(d => d.done === affCount).length;
+
+  /** One row per scheduled slot, with what actually happened in it. */
+  const daySessions = track.slots.map((mins, i) => ({
+    time: fmtSlot(mins),
+    done: Math.round((track.today.sessions[i] ?? 0) * affCount),
+    isNow: i === track.currentSlot,
+  }));
+  const sessionsComplete = track.today.ringsClosed;
+  const weekLabels = weekDayLabels(new Date());
+  const weekPcts = track.week.map(d => d.dayPct);
+  const weekPeak = Math.max(...weekPcts, 0.01);
+  const monthLabel = `${new Date().toLocaleDateString('en-US', { month: 'long' }).toUpperCase()} SO FAR`;
+  const monthRings = track.monthRings;
+
+  /**
+   * Names the real paused day instead of the old hardcoded "Tuesday paused your
+   * streak…". Brand rule: streaks pause, never break — so this only appears
+   * when there's an actual gap with practice on both sides of it, and it never
+   * scolds.
+   */
+  const pauseNote = track.pausedDate
+    ? `${new Date(`${track.pausedDate}T12:00:00`).toLocaleDateString('en-US', { weekday: 'long' })} paused your streak — no shame in a full day. You picked it back up after.`
+    : null;
 
   const rowBetween = { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const };
 
@@ -240,52 +273,66 @@ export default function ProgressScreen() {
         <View style={card}>
           <View style={rowBetween}>
             <CardLabel>THIS WEEK</CardLabel>
-            <Mono size={15} color={colors.ink}>92%</Mono>
+            <Mono size={15} color={colors.ink}>{track.weekPct}%</Mono>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8, height: 56, marginTop: 16 }}>
-            {WEEK_BIG_HEIGHTS.map((h, i) => (
+            {/* Last seven days, oldest → today. Scaled to the best day so a
+                modest week still has shape; an empty day keeps a visible stub. */}
+            {weekPcts.map((p, i) => (
               <View key={i} style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-end', gap: 6, height: '100%' }}>
-                <View style={{ width: '100%', height: h, borderRadius: 5, backgroundColor: i < 6 ? colors.gold : colors.border }} />
-                <Mono size={10.5} color={colors.inactive}>{DAYS[i]}</Mono>
+                <View style={{
+                  width: '100%', borderRadius: 5,
+                  height: p <= 0 ? 5 : Math.max(10, Math.round((p / weekPeak) * 52)),
+                  backgroundColor: p > 0 ? colors.gold : colors.border,
+                }} />
+                <Mono size={10.5} color={i === weekPcts.length - 1 ? colors.ink : colors.inactive}>{weekLabels[i]}</Mono>
               </View>
             ))}
           </View>
         </View>
 
-        {/* medals */}
+        {/* medals — earned from the real streak, not hardcoded states */}
         <View style={card}>
           <CardLabel>MEDALS</CardLabel>
           <View style={{ flexDirection: 'row', gap: 16, marginTop: 16 }}>
-            <Medal label="First week" bg={colors.gold} border={null} ink={colors.ink} labelC={colors.ink} />
-            <Medal label="Perfect day" bg={colors.goldSoft} border={colors.gold} ink={colors.ink} labelC={colors.ink} />
-            <Medal label="Early riser" bg={colors.white} border={colors.border} ink={colors.inactive} labelC={colors.inactive} />
+            {([
+              ['First week', streakDays >= 7],
+              ['Perfect day', track.week.some(d => d.ringsClosed >= d.target)],
+              ['30 days', streakDays >= 30],
+            ] as const).map(([label, earned]) => (
+              <Medal
+                key={label}
+                label={label}
+                bg={earned ? colors.gold : colors.white}
+                border={earned ? null : colors.border}
+                ink={earned ? colors.ink : colors.inactive}
+                labelC={earned ? colors.ink : colors.inactive}
+              />
+            ))}
           </View>
         </View>
 
-        {/* streak pause note — encouraging, never condemning */}
-        <View style={[card, { paddingVertical: 18 }]}>
-          <Text style={{ fontFamily: fonts.sans, fontSize: 14.5, color: colors.warmGray, lineHeight: 22 }}>
-            Tuesday paused your streak — no shame in a full day. You picked it right back up Wednesday morning.
-          </Text>
-        </View>
+        {/* Streak note — encouraging, never condemning. Only shown when there's
+            a real pause to speak to; the old copy invented a Tuesday. */}
+        {pauseNote && (
+          <View style={[card, { paddingVertical: 18 }]}>
+            <Text style={{ fontFamily: fonts.sans, fontSize: 14.5, color: colors.warmGray, lineHeight: 22 }}>
+              {pauseNote}
+            </Text>
+          </View>
+        )}
 
         {/* month so far */}
         <View style={[card, { marginBottom: 10 }]}>
-          <CardLabel>JULY SO FAR</CardLabel>
+          <CardLabel>{monthLabel}</CardLabel>
           <View style={{ gap: 12, marginTop: 14 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
               <Text style={{ fontFamily: fonts.sans, fontSize: 14.5, color: colors.ink }}>Experiences</Text>
-              <Mono size={15} color={colors.ink}>132</Mono>
+              <Mono size={15} color={colors.ink}>{track.monthExperiences}</Mono>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <Text style={{ fontFamily: fonts.sans, fontSize: 14.5, color: colors.ink }}>Minutes in practice</Text>
-              <Mono size={15} color={colors.ink}>96</Mono>
-            </View>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 14 }}>
-              <Text style={{ fontFamily: fonts.sans, fontSize: 14.5, color: colors.ink }}>Most heard</Text>
-              <Text style={{ flex: 1, fontFamily: fonts.serifItalic, fontSize: 14, color: colors.warmGray, textAlign: 'right' }}>
-                "I am a present father…"
-              </Text>
+              <Text style={{ fontFamily: fonts.sans, fontSize: 14.5, color: colors.ink }}>Sessions closed</Text>
+              <Mono size={15} color={colors.ink}>{monthRings}</Mono>
             </View>
           </View>
         </View>

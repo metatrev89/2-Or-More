@@ -1,14 +1,21 @@
 import type { SchedulePlan } from '../types.js';
 
 /**
- * Cadence engine (US-7): the "Prime protocol" — 10x/day for 14 days,
- * 5x/day through day 30, steady 3x/day after — or a custom frequency.
+ * Cadence engine (US-7): the "Prime protocol" — 5x/day for the first two weeks,
+ * 4x/day through day 30, steady 3x/day in perpetuity — or a custom frequency.
  * Slots are staggered evenly through the user's active window.
+ *
+ * The ladder was eased from 10 → 5 → 3 on Sept 14, 2026 because a 10x opener is
+ * nearly an interruption an hour. This function was MISSED in that change and
+ * still returned the old numbers until Sept 17 — the app copy said 5 while the
+ * scheduler would have generated 10 slots. Slot count is the day's session
+ * target, so tracking reads it too: if this drifts, every ring count is wrong.
+ * It must match the ladder rendered in `ScheduleScreen`.
  */
 
 export function primeProtocolPerDay(daysSinceStart: number): number {
-  if (daysSinceStart < 14) return 10;
-  if (daysSinceStart < 30) return 5;
+  if (daysSinceStart < 14) return 5;
+  if (daysSinceStart < 30) return 4;
   return 3;
 }
 

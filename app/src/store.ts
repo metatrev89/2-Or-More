@@ -8,6 +8,7 @@ import type { AffirmationDTO } from './api/client';
 import { MOCK_AFFS } from './api/mockData';
 import { photoExists, photoNameFrom, resolvePhotoName } from './media/profilePhoto';
 import { setChimesMuted } from './audio/sfx';
+import { dayKey, pruneLog, withExperience, type DayLog } from './tracking/sessions';
 
 export type OnboardingScreen =
   | 'intro' | 'signup' | 'email' | 'intake' | 'build'
@@ -49,8 +50,16 @@ interface State {
   // daily practice
   userName: string;
   welcome: boolean; // day-one banner on Home, set when entering from creation
-  streakDays: number;
-  homeReadDone: number[];
+  /**
+   * Every experience, by day and session slot, keyed by affirmation ID.
+   *
+   * Replaced `homeReadDone: number[]` (Sept 17). That array held INDEXES, was
+   * memory-only, and was never reset — so "today's ring" really meant "since
+   * this launch", it never rolled over at midnight, and editing the set
+   * reassigned which affirmations counted as done. `streakDays` was a literal
+   * `12` that nothing ever wrote.
+   */
+  dayLog: DayLog;
   movieWatched: number[];
   audioSpeed: number;
   /** Ring-completion chimes (and their haptics) silenced by the user. */
@@ -63,7 +72,10 @@ interface State {
   setProfilePhoto: (uri: string | null) => void;
   setVoiceRecording: (affirmationId: string, uri: string | null) => void;
   addMsg: (m: Msg) => void;
-  completeCard: (i: number) => void;
+  /** Log one experience into the current day + session slot, and persist it. */
+  logExperience: (affirmationId: string, slot: number) => void;
+  /** Replace the log after merging server history in. */
+  setDayLog: (log: DayLog) => void;
   setSpeed: (v: number) => Promise<void>;
   setChimesMuted: (v: boolean) => void;
   hydrate: () => Promise<void>;
@@ -93,8 +105,7 @@ export const useStore = create<State>((set, get) => ({
   profilePhotoUri: null,
   userName: 'Trevor',
   welcome: false,
-  streakDays: 12,
-  homeReadDone: [],
+  dayLog: {},
   movieWatched: [],
   audioSpeed: 1,
   chimesMuted: false,
@@ -130,9 +141,21 @@ export const useStore = create<State>((set, get) => ({
 
   addMsg: (m) => set({ msgs: [...get().msgs, m] }),
 
-  completeCard: (i) => {
-    const done = get().homeReadDone;
-    if (!done.includes(i)) set({ homeReadDone: [...done, i] });
+  /**
+   * The single write path for tracking. Idempotent per (day, slot,
+   * affirmation), so replaying a statement can't inflate a session past 100%.
+   * Pruned on write — an unbounded log would grow forever in AsyncStorage.
+   */
+  logExperience: (affirmationId, slot) => {
+    const next = pruneLog(withExperience(get().dayLog, affirmationId, { date: dayKey(), slot }));
+    set({ dayLog: next });
+    AsyncStorage.setItem('twoplus_day_log', JSON.stringify(next)).catch(() => {});
+  },
+
+  setDayLog: (log) => {
+    const next = pruneLog(log);
+    set({ dayLog: next });
+    AsyncStorage.setItem('twoplus_day_log', JSON.stringify(next)).catch(() => {});
   },
 
   setSpeed: async (v) => {
@@ -158,6 +181,12 @@ export const useStore = create<State>((set, get) => ({
     // photoNameFrom() reduces both to the same thing, so old entries migrate on
     // first launch with no separate migration step. The existence check is what
     // stops a purged or never-copied cache file from leaving a broken <Image>.
+    // Tracking survives relaunch now — this is what makes a streak possible.
+    const log = await AsyncStorage.getItem('twoplus_day_log');
+    if (log) {
+      try { set({ dayLog: pruneLog(JSON.parse(log) as DayLog) }); } catch { /* corrupt: start clean */ }
+    }
+
     // sfx keeps its own module-level flag; hydrate is what syncs it on launch.
     const cm = await AsyncStorage.getItem('twoplus_chimes_muted');
     if (cm === '1') { set({ chimesMuted: true }); setChimesMuted(true); }

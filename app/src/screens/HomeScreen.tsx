@@ -17,6 +17,8 @@ import {
 } from '../components/brandIcons';
 import { DancingBars } from '../components/AnimatedBars';
 import { TAB_BAR_TOTAL_H } from '../components/GlassTabBar';
+import { makeSlotResolver, useTracking } from '../tracking/useTracking';
+import { loadExperienceLog, mergeLogs } from '../api/sessionsRepo';
 import { CelebStar, Confetti } from '../components/Celebration';
 import { affSet, affText, useStore } from '../store';
 import { useAudioSession } from '../audio/AudioSession';
@@ -94,7 +96,10 @@ const greeting = () => {
 export default function HomeScreen() {
   const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const store = useStore();
-  const { affirmations, homeReadDone, streakDays, userName, welcome, schedPlan, freq, edits, voiceRecordings, set } = store;
+  const { affirmations, userName, welcome, edits, voiceRecordings, set } = store;
+  // Rings, streak and the week are real as of Sept 17 — see tracking/sessions.ts.
+  const track = useTracking();
+  const streakDays = track.streakDays;
 
   const [expanded, setExpanded] = useState(-1);
   const [streakCeleb, setStreakCeleb] = useState(false);
@@ -126,6 +131,25 @@ export default function HomeScreen() {
     })();
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /**
+   * Pull experience history down once per launch and merge it into the local
+   * log. Local wins nothing and loses nothing — the merge is a union — so an
+   * event recorded offline survives, and a fresh install or a second device
+   * gets its streak back instead of starting from zero.
+   */
+  useEffect(() => {
+    if (!isLiveMode) return;
+    let alive = true;
+    (async () => {
+      const s = useStore.getState();
+      const perDay = s.schedPlan === 'custom' ? Math.max(1, s.freq) : 5;
+      const remote = await loadExperienceLog(400, makeSlotResolver(perDay, s.awStart, s.awEnd));
+      if (!alive || !remote) return;
+      useStore.getState().setDayLog(mergeLogs(useStore.getState().dayLog, remote));
+    })();
+    return () => { alive = false; };
   }, []);
 
   // Streak pill pop — design: chipPop 0.8s bezier(0.34,1.56,0.64,1) 0.3s both.
@@ -171,7 +195,7 @@ export default function HomeScreen() {
    */
   const markRead = (i: number) => {
     queue.completeAffirmation(i, 'read');
-    const doneAfter = [...useStore.getState().homeReadDone, i];
+    const doneAfter = [...track.currentDoneIdx, i];
     const unread = (from: number) => affs.findIndex((_, j) => j >= from && !doneAfter.includes(j));
     const next = unread(i + 1) >= 0 ? unread(i + 1) : unread(0);
     setExpanded(next);
@@ -200,19 +224,31 @@ export default function HomeScreen() {
     setEditing(false);
   };
 
-  const readCount = homeReadDone.length;
-  // Prime's opening cadence — MUST track the first rung of the ladder in
-  // ScheduleScreen (5 → 4 → 3 as of Sept 14). It read 10 here for a day after
-  // the ladder changed, so Home promised ten rings for a plan that sends five.
-  const PRIME_OPENING_RINGS = 5;
-  const dailyRings = schedPlan === 'custom' ? freq : PRIME_OPENING_RINGS;
-  const ringsDone = Math.min(4, dailyRings);
-  // Every closed ring reads the same now (Trevor, Sept 11). The 2nd ring used
-  // to render terracotta to mean "done, but out of alignment" — alignment is
-  // out of v1, and a done session is a done session.
+  /**
+   * Progress through the CURRENT session — resets when the clock crosses into
+   * the next scheduled slot, and at midnight. Was `homeReadDone.length`, which
+   * never reset and so meant "since this launch".
+   */
+  const readCount = track.currentDoneIdx.length;
+
+  // Real counts now (Sept 17). `ringsDone` was literally `Math.min(4, …)` — it
+  // always rendered "4/5" no matter what the user had done.
+  const dailyRings = track.perDay;
+  const ringsDone = track.today.ringsClosed;
+  // Every closed ring reads the same (Trevor, Sept 11). The 2nd ring used to
+  // render terracotta to mean "done, but out of alignment" — alignment is out
+  // of v1, and a done session is a done session.
   const ringStroke = (i: number) => (i < ringsDone ? colors.teal : colors.border);
   const ringFill = (i: number) => (i < ringsDone ? 'rgba(21,122,110,0.25)' : 'none');
-  const weekHeights = [14, 20, 10, 26, 21, 17, 8];
+
+  /**
+   * Week sparkline, oldest → newest. Bars are scaled to the tallest day so a
+   * quiet week still reads as a shape rather than a flat line; a day with
+   * nothing keeps a 4pt stub so the column is visibly empty, not missing.
+   */
+  const weekPcts = track.week.map(d => d.dayPct);
+  const peak = Math.max(...weekPcts, 0.01);
+  const weekHeights = weekPcts.map(p => (p <= 0 ? 4 : Math.max(6, Math.round((p / peak) * 26))));
 
   const dateLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
@@ -296,12 +332,17 @@ export default function HomeScreen() {
           </View>
           <View style={{ flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 20, padding: 18 }}>
             <Text style={{ fontFamily: fonts.monoMedium, fontSize: 24, color: colors.ink }}>
-              92<Text style={{ fontSize: 16 }}>%</Text>
+              {track.weekPct}<Text style={{ fontSize: 16 }}>%</Text>
             </Text>
             <Text style={{ fontFamily: fonts.sans, fontSize: 14, color: colors.warmGray, marginTop: 3 }}>This week</Text>
             <View style={{ flexDirection: 'row', gap: 5, alignItems: 'flex-end', height: 26, marginTop: 10 }}>
+              {/* Gold = a day with practice in it; sand = a day with none. The
+                  index-based `i < 6` this replaced always painted "6 of 7". */}
               {weekHeights.map((h, i) => (
-                <View key={i} style={{ flex: 1, height: h, borderRadius: 4, backgroundColor: i < 6 ? colors.gold : colors.sand }} />
+                <View key={i} style={{
+                  flex: 1, height: h, borderRadius: 4,
+                  backgroundColor: (weekPcts[i] ?? 0) > 0 ? colors.gold : colors.sand,
+                }} />
               ))}
             </View>
           </View>
@@ -340,7 +381,7 @@ export default function HomeScreen() {
             <View style={{ marginTop: 8 }}>
               {affs.map((a, i) => {
                 const text = affText(store, i);
-                const done = homeReadDone.includes(i);
+                const done = track.currentDoneIdx.includes(i);
                 const active = audioIdx === i;
                 const playing = active && audioPlaying;
                 const isExpanded = expanded === i;

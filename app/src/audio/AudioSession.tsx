@@ -17,7 +17,8 @@ import React, { createContext, useCallback, useContext, useMemo, useRef, useStat
 import { useAffirmationQueue, type LoopMode } from './useAffirmationQueue';
 import { playCelebrationLarge, playCelebrationSmall } from './sfx';
 import { affSet, affText, useStore } from '../store';
-import { api } from '../api/client';
+import { recordExperience } from '../api/sessionsRepo';
+import { useTracking } from '../tracking/useTracking';
 import type { AffirmationDTO } from '../api/client';
 
 interface AudioSessionValue {
@@ -68,6 +69,11 @@ export function AudioSessionProvider({ children }: { children: React.ReactNode }
 
   const affs = useMemo(() => affSet(affirmations), [affirmations]);
 
+  // Read through a ref: completeAffirmation must see the CURRENT slot without
+  // re-creating itself (and the queue) every minute when the tick fires.
+  const tracking = useTracking();
+  const trackingRef = useRef(tracking); trackingRef.current = tracking;
+
   const [active, setActive] = useState(false);
   const [celebIndex, setCelebIndex] = useState(-1);
   const [bigCeleb, setBigCeleb] = useState(false);
@@ -86,12 +92,28 @@ export function AudioSessionProvider({ children }: { children: React.ReactNode }
    */
   const completeAffirmation = useCallback((i: number, kind: 'listened' | 'read' = 'listened') => {
     const list = affsRef.current;
-    const doneNow = useStore.getState().homeReadDone;
-    const wasDone = doneNow.includes(i);
-    const nd = wasDone ? doneNow : [...doneNow, i];
-    set({ homeReadDone: nd });
+    const id = list[i]?.id;
+    if (!id) return;
 
-    api.recordExperience('me', list[i]?.id ?? null, kind);
+    /*
+      Tracking is real as of Sept 17. Two things changed here:
+
+      - "done" is now scoped to the CURRENT session slot and keyed by
+        affirmation id. It used to be a flat array of indexes that never reset,
+        so a ring closed on Monday still read as closed on Friday.
+      - the durable write goes straight to Supabase. `api.recordExperience`
+        POSTed to `/events/record`, a Worker route that does not exist — every
+        event 404'd into a silent catch.
+
+      Local state first, network second: a closed ring must never depend on a
+      request succeeding.
+    */
+    const track = trackingRef.current;
+    const wasDone = track.currentDoneIds.includes(id);
+    if (!wasDone) {
+      useStore.getState().logExperience(id, track.currentSlot);
+      void recordExperience(id, kind);
+    }
 
     /**
      * ONE ring, ONE chime, ONE star — and only when a ring actually closes
@@ -109,7 +131,10 @@ export function AudioSessionProvider({ children }: { children: React.ReactNode }
     if (celebTimer.current) clearTimeout(celebTimer.current);
     celebTimer.current = setTimeout(() => setCelebIndex(-1), 1100);
 
-    if (nd.length === list.length) {
+    // The big celebration marks a SESSION completed — the last affirmation of
+    // this pass, not of all time. `+ 1` because the log write above hasn't
+    // re-rendered the hook yet.
+    if (track.currentDoneIds.length + 1 >= list.length) {
       setBigCeleb(true);
       playCelebrationLarge();
     } else {

@@ -10,9 +10,8 @@ import { ChevronDownIcon, DoneMark, PauseFill, PlayFill } from '../components/br
 import { CelebStar } from '../components/Celebration';
 import { affSet, affText, useStore } from '../store';
 import { useAudioSession } from '../audio/AudioSession';
+import { useTracking } from '../tracking/useTracking';
 
-/** Mock daily-progress figure shown in the session-complete chip (live: from stats/summary). */
-const SESSIONS_TODAY = '3 of 7';
 const SESSION_CHIP_MS = 5200; // linger through the celebration, then slip away
 const PLAYER_HEIGHTS = [10, 22, 15, 34, 20, 42, 26, 14, 30, 18, 38, 24, 12, 28, 16, 36, 22, 10, 26, 15, 33, 19, 12, 24, 40, 17, 29, 13, 35, 21, 11, 25, 16, 31, 18, 12];
 const SPEED_CHIPS = [0.7, 1, 1.2, 1.5, 1.7, 2];
@@ -67,8 +66,12 @@ function LoopIcon({ color = colors.warmGray }: { color?: string }) {
   );
 }
 
-/** Session-complete chip — the day's progress report (same styling both players). */
-function SessionChip({ onDark = false }: { onDark?: boolean }) {
+/**
+ * Session-complete chip — the day's progress report.
+ * `sessions` was the literal string '3 of 7' until Sept 17; it now counts real
+ * closed rings against the real schedule.
+ */
+function SessionChip({ sessions, onDark = false }: { sessions: string; onDark?: boolean }) {
   return (
     <View style={{
       flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.ink,
@@ -77,7 +80,7 @@ function SessionChip({ onDark = false }: { onDark?: boolean }) {
     }}>
       <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.gold }} />
       <Text style={{ fontFamily: fonts.sans, fontSize: 13, color: colors.gold }}>
-        Session complete — <Mono size={13} color={colors.gold}>{SESSIONS_TODAY}</Mono> sessions today
+        Session complete — <Mono size={13} color={colors.gold}>{sessions}</Mono> sessions today
       </Text>
     </View>
   );
@@ -126,7 +129,9 @@ export default function PlayerScreen({ navigation }: NativeStackScreenProps<Root
   const { index: curIdx, playing, position: pos, duration, hasAudio, playableCount, celebIndex } = queue;
   const togglePlay = queue.toggle;
   const skip = (fwd: boolean) => queue.skip(fwd);
-  const done = useStore(s => s.homeReadDone);
+  // Current SESSION's completions, not "everything since launch" (Sept 17).
+  const track = useTracking();
+  const done = track.currentDoneIdx;
   const ringClosed = done.length >= affs.length && affs.length > 0;
 
   // Autoplay on entry — the notification landing behavior. Waits for sources to
@@ -336,7 +341,7 @@ export default function PlayerScreen({ navigation }: NativeStackScreenProps<Root
                 </Text>
               ) : sessionChip ? (
                 <Animated.View entering={FadeInUp.duration(500)}>
-                  <SessionChip />
+                  <SessionChip sessions={`${track.today.ringsClosed} of ${track.perDay}`} />
                 </Animated.View>
               ) : null}
             </View>
