@@ -4,7 +4,7 @@ import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
 import Svg, { Circle, Path } from 'react-native-svg';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../App';
-import { colors, fonts } from '../theme';
+import { areaAccent, areaTint, colors, fonts } from '../theme';
 import { Mono, Serif } from '../components/ui';
 import { ChevronDownIcon, DoneMark, PauseFill, PlayFill } from '../components/brandIcons';
 import { CelebStar } from '../components/Celebration';
@@ -190,8 +190,10 @@ export default function PlayerScreen({ navigation }: NativeStackScreenProps<Root
             showsVerticalScrollIndicator={false}
           >
             <View style={{ alignItems: 'center', marginBottom: 30 }}>
-              <View style={{ backgroundColor: colors.aiTint, borderRadius: 16, paddingVertical: 7, paddingHorizontal: 14 }}>
-                <Text style={{ fontFamily: fonts.sans, fontSize: 13, color: colors.tealDeep }}>
+              {/* Was aiTint + tealDeep, which claimed AI authorship for what is
+                  really just the area's name. It wears its own accent now. */}
+              <View style={{ backgroundColor: areaTint(affs[curAffIdx]?.area), borderRadius: 16, paddingVertical: 7, paddingHorizontal: 14 }}>
+                <Text style={{ fontFamily: fonts.sansMedium, fontSize: 13, color: areaAccent(affs[curAffIdx]?.area) }}>
                   {affs[curAffIdx]?.area} · I am
                 </Text>
               </View>

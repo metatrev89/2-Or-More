@@ -3,7 +3,7 @@ import { View, Text, TextInput, Pressable, ScrollView } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
-import { colors, fonts } from '../../theme';
+import { areaAccent, areaTint, colors, fonts } from '../../theme';
 import { BackButton, Label, PillButton, Serif, Wordmark } from '../../components/ui';
 import { PencilIcon, RewordIcon } from '../../components/brandIcons';
 import { BurstRing, CelebStar, ChipPop, Confetti } from '../../components/Celebration';
@@ -76,13 +76,15 @@ export default function ReviewScreen({ navigation }: NativeStackScreenProps<Root
         <Text style={{ fontFamily: fonts.sans, fontSize: 16, color: colors.ink }}>
           Affirmation {reviewIndex + 1} of {affirmations.length}
         </Text>
-        <View style={{ backgroundColor: colors.white, borderWidth: 1, borderColor: colors.sand, borderRadius: 18, paddingVertical: 7, paddingHorizontal: 14, maxWidth: 132 }}>
-          <Text numberOfLines={1} style={{ fontFamily: fonts.sans, fontSize: 13, color: colors.ink }}>{aff.area}</Text>
+        {/* Tint fill + accent text (Sept 17). Ink clears 12:1 on every tint,
+            so the chip is more legible coloured than it was on white. */}
+        <View style={{ backgroundColor: areaTint(aff.area), borderRadius: 18, paddingVertical: 7, paddingHorizontal: 14, maxWidth: 132 }}>
+          <Text numberOfLines={1} style={{ fontFamily: fonts.sansMedium, fontSize: 13, color: areaAccent(aff.area) }}>{aff.area}</Text>
         </View>
       </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 16 }}>
-        <View style={{ borderLeftWidth: 3, borderLeftColor: colors.sand, paddingLeft: 16, paddingVertical: 4, marginTop: 22 }}>
+        <View style={{ borderLeftWidth: 3, borderLeftColor: areaAccent(aff.area), paddingLeft: 16, paddingVertical: 4, marginTop: 22 }}>
           <Label>You said</Label>
           <Text style={{ fontFamily: fonts.sans, fontSize: 18, lineHeight: 26, color: colors.warmGray, marginTop: 8 }}>
             “{aff.youSaid}”

@@ -7,7 +7,7 @@ import { permissionRefused, pickProfilePhoto, type PhotoSource } from '../../med
 import { Image } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
-import { AREAS, AREA_CHAKRAS, CATCH_ALL_AREA, colors, fonts, timing } from '../../theme';
+import { AREAS, AREA_ACCENTS, AREA_CHAKRAS, CATCH_ALL_AREA, areaAccent, colors, fonts, timing } from '../../theme';
 import { MOCK_SCRIPT } from '../../api/mockData';
 import { api, apiLive, type IntakePhase } from '../../api/client';
 import Svg, { Path } from 'react-native-svg';
@@ -396,7 +396,12 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
           <Text numberOfLines={1} style={{ fontFamily: fonts.sansSemi, fontSize: 16.5, color: colors.ink, letterSpacing: -0.2 }}>
             {isCatchAll ? CATCH_ALL_AREA.label : AREAS[areaIdx]}
           </Text>
-          <Text numberOfLines={1} style={{ fontFamily: fonts.serifItalic, fontSize: 11.5, color: colors.inactive, marginTop: 0.5 }}>
+          {/* The chakra line carries its area's accent — the catch-all falls
+              back to warm gray via areaAccent(), because it isn't a chakra. */}
+          <Text numberOfLines={1} style={{
+            fontFamily: fonts.serifItalic, fontSize: 11.5, marginTop: 0.5,
+            color: isCatchAll ? colors.inactive : areaAccent(areaIdx),
+          }}>
             {isCatchAll ? CATCH_ALL_AREA.note : AREA_CHAKRAS[areaIdx]}
           </Text>
         </View>
@@ -405,7 +410,7 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
 
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 22, paddingTop: 10, paddingBottom: 8 }}>
         <View style={{ flex: 1 }}>
-          <SegmentBar total={7} activeCount={barIdx + 1} />
+          <SegmentBar total={7} activeCount={barIdx + 1} segmentColors={AREA_ACCENTS} />
           {barCeleb >= 0 && (
             <View pointerEvents="none" style={{
               position: 'absolute', top: -14, left: `${((barCeleb + 0.5) / 7) * 100}%`, marginLeft: -8, zIndex: 2,

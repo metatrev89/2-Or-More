@@ -92,15 +92,25 @@ export function AiSpark({ size = 32 }: { size?: number }) {
   );
 }
 
-export function SegmentBar({ total, activeCount, activeColor = colors.teal, height = 6 }: {
-  total: number; activeCount: number; activeColor?: string; height?: number;
+/**
+ * `segmentColors` gives each segment its own colour — used by the intake bar so
+ * the seven segments are the seven chakra areas (Sept 17, 2026). Seven
+ * identical teal bars told you how many areas you'd covered; the spectrum tells
+ * you WHICH, and fills root → crown as you climb.
+ *
+ * Falls back to a single `activeColor` when omitted, so every other caller is
+ * unaffected.
+ */
+export function SegmentBar({ total, activeCount, activeColor = colors.teal, segmentColors, height = 6 }: {
+  total: number; activeCount: number; activeColor?: string;
+  segmentColors?: readonly string[]; height?: number;
 }) {
   return (
     <View style={{ flexDirection: 'row', gap: 5, flex: 1 }}>
       {Array.from({ length: total }, (_, i) => (
         <View key={i} style={{
           flex: 1, height, borderRadius: height / 2,
-          backgroundColor: i < activeCount ? activeColor : colors.border,
+          backgroundColor: i < activeCount ? (segmentColors?.[i] ?? activeColor) : colors.border,
         }} />
       ))}
     </View>

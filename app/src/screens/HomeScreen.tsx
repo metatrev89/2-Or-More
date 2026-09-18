@@ -9,7 +9,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../App';
-import { colors, fonts } from '../theme';
+import { areaAccent, colors, fonts } from '../theme';
 import { Mono, Serif } from '../components/ui';
 import {
   BellIcon, ChevronDownIcon, DoneMark, FlameIcon,
@@ -423,7 +423,10 @@ export default function HomeScreen() {
                         }}>
                           “{text}”
                         </Text>
-                        <Text style={{ fontFamily: fonts.sansSemi, fontSize: 10.5, letterSpacing: 1.4, color: colors.inactive, textTransform: 'uppercase' }}>
+                        {/* Area label takes its chakra accent (Sept 17). The
+                            ring beside it stays teal — accents say WHICH area,
+                            never how far along you are. */}
+                        <Text style={{ fontFamily: fonts.sansSemi, fontSize: 10.5, letterSpacing: 1.4, color: areaAccent(a.area), textTransform: 'uppercase' }}>
                           {a.area}
                         </Text>
                       </View>
@@ -477,7 +480,7 @@ export default function HomeScreen() {
             <View style={{ gap: 14, marginTop: 16 }}>
               {affs.map((a, i) => (
                 <View key={a.id} style={{ gap: 6 }}>
-                  <Text style={{ fontFamily: fonts.sansSemi, fontSize: 10.5, letterSpacing: 1.4, color: colors.inactive, textTransform: 'uppercase' }}>
+                  <Text style={{ fontFamily: fonts.sansSemi, fontSize: 10.5, letterSpacing: 1.4, color: areaAccent(a.area), textTransform: 'uppercase' }}>
                     {a.area}
                   </Text>
                   <TextInput
