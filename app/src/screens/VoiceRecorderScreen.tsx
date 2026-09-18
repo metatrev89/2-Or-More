@@ -6,7 +6,7 @@ import Animated, {
 import Svg, { Path } from 'react-native-svg';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../App';
-import { colors, fonts } from '../theme';
+import { areaAccent, colors, fonts } from '../theme';
 import { BackButton, Label, Mono, PillButton, SegmentBar, Serif, Wordmark } from '../components/ui';
 import { ChevronDownIcon, MicIcon, StarBurst } from '../components/brandIcons';
 import { PulseRing } from '../components/AnimatedBars';
@@ -248,7 +248,9 @@ export default function VoiceRecorderScreen({ route, navigation }: NativeStackSc
         ) : (
         <>
         <View style={{ marginTop: 6 }}>
-          <Label>{aff.area}</Label>
+          {/* Matches Home / Review / Player / Profile — the area you're
+              recording looks like itself here too (Sept 17). */}
+          <Label color={areaAccent(aff.area)}>{aff.area}</Label>
         </View>
 
         <Animated.View

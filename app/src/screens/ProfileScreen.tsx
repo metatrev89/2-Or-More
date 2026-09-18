@@ -8,7 +8,7 @@ import { TAB_BAR_TOTAL_H } from '../components/GlassTabBar';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../App';
-import { colors, fonts } from '../theme';
+import { areaAccent, colors, fonts } from '../theme';
 import { Mono } from '../components/ui';
 import { CameraFrontIcon, LibraryFrameIcon, XIcon } from '../components/brandIcons';
 import { affText, useStore } from '../store';
@@ -203,7 +203,9 @@ export default function ProfileScreen() {
                   </Pressable>
                 )}
                 <View style={{ flex: 1, minWidth: 0, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 16 }}>
-                  <Text style={{ fontFamily: fonts.sansSemi, fontSize: 11, letterSpacing: 1.6, color: colors.warmGray, textTransform: 'uppercase' }}>
+                  {/* Same chakra accent as Home, Review and the Player, so one
+                      area looks like itself everywhere (Sept 17). */}
+                  <Text style={{ fontFamily: fonts.sansSemi, fontSize: 11, letterSpacing: 1.6, color: areaAccent(a.area), textTransform: 'uppercase' }}>
                     {a.area}
                   </Text>
                   <Text style={{ fontFamily: fonts.serifItalic, fontSize: 16.5, lineHeight: 24, color: colors.ink, marginTop: 9 }}>
