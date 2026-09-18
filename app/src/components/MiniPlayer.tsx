@@ -3,7 +3,7 @@ import { View, Text, Pressable } from 'react-native';
 import Animated, { FadeInDown, FadeOutDown } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, fonts } from '../theme';
+import { areaAccent, colors, fonts } from '../theme';
 import { PauseFill, PlayFill, XIcon } from './brandIcons';
 import { CelebStar } from './Celebration';
 import { TAB_BAR_TOTAL_H } from './GlassTabBar';
@@ -58,19 +58,33 @@ export default function MiniPlayer({ onExpand, liftForTabs }: {
         zIndex: 50,
       }}
     >
-      <View style={{
-        backgroundColor: colors.white, borderRadius: 18,
-        borderWidth: 1, borderColor: colors.border,
-        paddingTop: 10, paddingBottom: 8, paddingHorizontal: 10,
-        shadowColor: colors.ink, shadowOpacity: 0.16, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 8,
-      }}>
+      {/*
+        The WHOLE bar expands (Trevor, Sept 17). It used to be a 32pt chevron
+        button — the smallest target on a control the user is most likely to
+        reach for one-handed, and every other media player on the phone expands
+        on a tap anywhere. The chevron stays as the affordance but is now
+        decoration; play/pause and close are still their own Pressables and win
+        the touch, because in React Native the innermost responder takes it.
+      */}
+      <Pressable
+        onPress={onExpand}
+        accessibilityRole="button"
+        accessibilityLabel="Expand player"
+        style={({ pressed }) => ({
+          backgroundColor: pressed ? colors.borderSoft : colors.white,
+          borderRadius: 18,
+          borderWidth: 1, borderColor: colors.border,
+          paddingTop: 10, paddingBottom: 8, paddingHorizontal: 10,
+          shadowColor: colors.ink, shadowOpacity: 0.16, shadowRadius: 18, shadowOffset: { width: 0, height: 8 }, elevation: 8,
+        })}
+      >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <Pressable onPress={onExpand} hitSlop={6} style={{
+          <View pointerEvents="none" style={{
             width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center',
             borderWidth: 1, borderColor: colors.sand,
           }}>
             <ExpandIcon />
-          </Pressable>
+          </View>
 
           <Pressable onPress={toggle} hitSlop={6} style={{
             width: 32, height: 32, borderRadius: 16, backgroundColor: colors.teal,
@@ -83,7 +97,8 @@ export default function MiniPlayer({ onExpand, liftForTabs }: {
             <Text numberOfLines={1} style={{ fontFamily: fonts.serifItalic, fontSize: 14, color: colors.ink }}>
               “{text}”
             </Text>
-            <Text style={{ fontFamily: fonts.sansSemi, fontSize: 9.5, letterSpacing: 1.3, color: colors.inactive, textTransform: 'uppercase', marginTop: 1 }}>
+            {/* Chakra accent, matching Home / Review / Player / Profile. */}
+            <Text style={{ fontFamily: fonts.sansSemi, fontSize: 9.5, letterSpacing: 1.3, color: areaAccent(aff.area), textTransform: 'uppercase', marginTop: 1 }}>
               {aff.area}
             </Text>
           </View>
@@ -95,8 +110,10 @@ export default function MiniPlayer({ onExpand, liftForTabs }: {
           </Pressable>
         </View>
 
-        {/* live scrub */}
-        <View style={{ height: 3, borderRadius: 2, backgroundColor: colors.borderSoft, marginTop: 9, overflow: 'hidden' }}>
+        {/* Live scrub — stays TEAL. It's progress, and accents never mark
+            progress; that separation is the whole reason the accents could be
+            added without touching the existing palette rules. */}
+        <View pointerEvents="none" style={{ height: 3, borderRadius: 2, backgroundColor: colors.borderSoft, marginTop: 9, overflow: 'hidden' }}>
           <View style={{ height: 3, borderRadius: 2, backgroundColor: colors.teal, width: `${Math.round(frac * 100)}%` }} />
         </View>
 
@@ -106,7 +123,7 @@ export default function MiniPlayer({ onExpand, liftForTabs }: {
             <CelebStar key={celebIndex} size={16} durMs={1000} />
           </View>
         )}
-      </View>
+      </Pressable>
     </Animated.View>
   );
 }
