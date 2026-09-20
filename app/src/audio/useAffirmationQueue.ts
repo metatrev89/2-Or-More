@@ -152,6 +152,10 @@ export function useAffirmationQueue(opts: {
       pendingSrcRef.current = src;
       swapAtRef.current = Date.now();
       finishedAtRef.current = -1;
+      // A new track has, by definition, not finished. Clearing the edge marker
+      // means the NEXT rising edge is detectable even if the player never
+      // reported `didJustFinish` going false across the swap.
+      sawFinishRef.current = false;
       setIndex(target);
       idxRef.current = target;
       // Optimistic start: instant when the source happens to be ready already.
@@ -199,9 +203,31 @@ export function useAffirmationQueue(opts: {
     onQueueEnd?.();
   }, [nextPlayable, playAt, stop, onFinished, onQueueEnd, timerMin]);
 
-  // expo-audio raises didJustFinish once per track; de-dupe by index.
+  /**
+   * Track finished → close its ring and move on.
+   *
+   * THE RISING EDGE IS DETECTED BY HAND, and the effect depends on the whole
+   * `status` object rather than on `status.didJustFinish` (Trevor, Sept 20 —
+   * third report of chimes not firing; the first two fixes were both about
+   * stale finishes, and this is the opposite failure).
+   *
+   * Keying the effect on the boolean meant React only ran it when the value
+   * CHANGED. `replace()` does not reliably clear `didJustFinish`, so after
+   * track 1 the flag could sit at `true` forever: no transition, no effect, no
+   * `onFinished`, and therefore no ring and no chime for tracks 2..N. Exactly
+   * one chime per session, on the first track.
+   *
+   * Depending on `status` re-runs this on every player tick, which also means
+   * `advance` is always the current closure instead of one captured whenever
+   * the boolean last flipped.
+   */
+  const sawFinishRef = useRef(false);
   useEffect(() => {
-    if (!status.didJustFinish) return;
+    const finished = !!status.didJustFinish;
+    const rising = finished && !sawFinishRef.current;
+    sawFinishRef.current = finished;
+    if (!rising) return;
+
     // Inside the swap window this finish belongs to the OUTGOING track; acting
     // on it would advance twice and skip the track we just queued. Bounded by
     // time so it can never swallow a real one — see swapAtRef.
@@ -210,7 +236,7 @@ export function useAffirmationQueue(opts: {
     finishedAtRef.current = idxRef.current;
     advance();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status.didJustFinish]);
+  }, [status]);
 
   // Speed changes apply to the track already playing.
   useEffect(() => {

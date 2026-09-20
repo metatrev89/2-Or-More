@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, ScrollView, TextInput } from 'react-native';
 import Animated, {
-  Easing, Extrapolation, FadeIn, FadeInUp, interpolate,
-  useAnimatedStyle, useSharedValue, withDelay, withTiming,
+  Easing, Extrapolation, FadeIn, FadeInUp, interpolate, interpolateColor,
+  useAnimatedStyle, useSharedValue, withDelay, withSequence, withTiming,
 } from 'react-native-reanimated';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
@@ -27,9 +27,56 @@ import { loadAffirmations, updateAffirmationText } from '../api/affirmationsRepo
 import { MOCK_AFFS } from '../api/mockData';
 import { NOTIFS } from '../api/socialMock';
 import SocialAvatar from '../components/Avatar';
-import { playCelebrationLarge } from '../audio/sfx';
+import { playCelebrationLarge, playCelebrationSmall } from '../audio/sfx';
 
 const AI_SPARK_PATH = 'M7 1v12M1 7h12M2.8 2.8l8.4 8.4M11.2 2.8l-8.4 8.4';
+
+/**
+ * Gap between the two stat cards celebrating (Trevor, Sept 20: "left to right,
+ * not firing both at the same time"). Long enough that the two chimes read as
+ * a one-two rather than a chord, short enough to still feel like one moment.
+ */
+const STAT_CELEB_STAGGER_MS = 560;
+const STAT_CELEB_HOLD_MS = 1150;
+
+/**
+ * A stat card that reacts when its number changes.
+ *
+ * The pop is deliberately small — 5% and a gold border flash. These cards are
+ * read at a glance while the eye is elsewhere on the screen, so the job is to
+ * pull attention, not to perform. Gold is correct here under the brand rule:
+ * this IS an achievement moment.
+ */
+function StatCard({ celebrating, children }: { celebrating: boolean; children: React.ReactNode }) {
+  const pop = useSharedValue(0);
+  useEffect(() => {
+    if (!celebrating) return;
+    pop.value = withSequence(
+      withTiming(1, { duration: 240, easing: Easing.out(Easing.back(2.2)) }),
+      withTiming(0, { duration: 620, easing: Easing.out(Easing.quad) }),
+    );
+  }, [celebrating, pop]);
+
+  const style = useAnimatedStyle(() => ({
+    transform: [{ scale: 1 + pop.value * 0.05 }],
+    borderColor: interpolateColor(pop.value, [0, 1], [colors.border, colors.gold]),
+    shadowOpacity: pop.value * 0.18,
+  }));
+
+  return (
+    <Animated.View style={[{
+      flex: 1, backgroundColor: colors.white, borderWidth: 1, borderRadius: 20, padding: 18,
+      shadowColor: colors.gold, shadowRadius: 14, shadowOffset: { width: 0, height: 4 },
+    }, style]}>
+      {children}
+      {celebrating && (
+        <View pointerEvents="none" style={{ position: 'absolute', top: -10, right: 14 }}>
+          <CelebStar size={18} durMs={1000} />
+        </View>
+      )}
+    </Animated.View>
+  );
+}
 
 const NOTIF_AV = [
   { bg: colors.teal, ink: colors.cream }, { bg: '#EFE6D2', ink: colors.ink },
@@ -250,6 +297,45 @@ export default function HomeScreen() {
   const peak = Math.max(...weekPcts, 0.01);
   const weekHeights = weekPcts.map(p => (p <= 0 ? 4 : Math.max(6, Math.round((p / peak) * 26))));
 
+  /**
+   * Stat celebration (Trevor, Sept 20).
+   *
+   * Fires whenever a SESSION closes — which covers both routes into it, the
+   * Home reader flow and the play-all Player, because both land in the same
+   * `ringsClosed` count rather than in any one screen's state.
+   *
+   * Two stages so it can't collide with the full-screen `SessionCeleb`, which
+   * owns the screen for ~4s: stage one only marks that a celebration is OWED,
+   * stage two runs it once the overlay is gone. Coming back from the Player,
+   * that means it plays as you arrive on Home — which is exactly when you'd be
+   * looking at the stats anyway.
+   */
+  const [statCeleb, setStatCeleb] = useState(-1);
+  const [statCelebOwed, setStatCelebOwed] = useState(false);
+  const prevRings = useRef<number | null>(null);
+
+  useEffect(() => {
+    const rings = track.today.ringsClosed;
+    // First render establishes the baseline — opening the app on a day with
+    // sessions already banked must not throw a celebration for old work.
+    if (prevRings.current === null) { prevRings.current = rings; return; }
+    if (rings > prevRings.current) setStatCelebOwed(true);
+    prevRings.current = rings;
+  }, [track.today.ringsClosed]);
+
+  useEffect(() => {
+    if (!statCelebOwed || queue.bigCeleb) return;
+    setStatCelebOwed(false);
+
+    // Left card, then right — one chime each, never together. The chime
+    // carries the haptic with it (sfx.playSfx), so both cards buzz.
+    setStatCeleb(0);
+    playCelebrationSmall();
+    const t1 = setTimeout(() => { setStatCeleb(1); playCelebrationSmall(); }, STAT_CELEB_STAGGER_MS);
+    const t2 = setTimeout(() => setStatCeleb(-1), STAT_CELEB_STAGGER_MS + STAT_CELEB_HOLD_MS);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [statCelebOwed, queue.bigCeleb]);
+
   const dateLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
   return (
@@ -319,7 +405,7 @@ export default function HomeScreen() {
       <ScrollView contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 108 }}>
         {/* stat cards — first scrolling element */}
         <View style={{ flexDirection: 'row', gap: 14, marginTop: 12 }}>
-          <View style={{ flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 20, padding: 18 }}>
+          <StatCard celebrating={statCeleb === 0}>
             <Text style={{ fontFamily: fonts.monoMedium, fontSize: 24, color: colors.ink }}>{ringsDone}/{dailyRings}</Text>
             <Text style={{ fontFamily: fonts.sans, fontSize: 14, color: colors.warmGray, marginTop: 3 }}>Session rings today</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 3, marginTop: 14 }}>
@@ -329,8 +415,8 @@ export default function HomeScreen() {
                 </Svg>
               ))}
             </View>
-          </View>
-          <View style={{ flex: 1, backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border, borderRadius: 20, padding: 18 }}>
+          </StatCard>
+          <StatCard celebrating={statCeleb === 1}>
             <Text style={{ fontFamily: fonts.monoMedium, fontSize: 24, color: colors.ink }}>
               {track.weekPct}<Text style={{ fontSize: 16 }}>%</Text>
             </Text>
@@ -345,7 +431,7 @@ export default function HomeScreen() {
                 }} />
               ))}
             </View>
-          </View>
+          </StatCard>
         </View>
 
         {/* affirmations card */}
