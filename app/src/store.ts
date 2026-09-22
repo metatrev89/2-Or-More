@@ -8,7 +8,7 @@ import type { AffirmationDTO } from './api/client';
 import { MOCK_AFFS } from './api/mockData';
 import { photoExists, photoNameFrom, resolvePhotoName } from './media/profilePhoto';
 import { setChimesMuted } from './audio/sfx';
-import { dayKey, pruneLog, withExperience, type DayLog } from './tracking/sessions';
+import { dayKey, migrateLog, pruneLog, withExperience, type DayLog } from './tracking/sessions';
 
 export type OnboardingScreen =
   | 'intro' | 'signup' | 'email' | 'intake' | 'build'
@@ -73,7 +73,7 @@ interface State {
   setVoiceRecording: (affirmationId: string, uri: string | null) => void;
   addMsg: (m: Msg) => void;
   /** Log one experience into the current day + session slot, and persist it. */
-  logExperience: (affirmationId: string, slot: number) => void;
+  logExperience: (affirmationId: string, slot: number, affCount: number) => void;
   /** Replace the log after merging server history in. */
   setDayLog: (log: DayLog) => void;
   setSpeed: (v: number) => Promise<void>;
@@ -142,12 +142,18 @@ export const useStore = create<State>((set, get) => ({
   addMsg: (m) => set({ msgs: [...get().msgs, m] }),
 
   /**
-   * The single write path for tracking. Idempotent per (day, slot,
-   * affirmation), so replaying a statement can't inflate a session past 100%.
+   * The single write path for tracking. Idempotent per (day, slot, affirmation)
+   * WITHIN a pass, so scrubbing back over a statement can't inflate that pass —
+   * but a genuine second lap opens a new pass and does count (Sept 22).
    * Pruned on write — an unbounded log would grow forever in AsyncStorage.
+   *
+   * `affCount` has to come from the caller: the model needs to know how long a
+   * full pass is before it can tell whether this experience closed one.
    */
-  logExperience: (affirmationId, slot) => {
-    const next = pruneLog(withExperience(get().dayLog, affirmationId, { date: dayKey(), slot }));
+  logExperience: (affirmationId, slot, affCount) => {
+    const next = pruneLog(withExperience(get().dayLog, affirmationId, {
+      date: dayKey(), slot, affCount,
+    }));
     set({ dayLog: next });
     AsyncStorage.setItem('twoplus_day_log', JSON.stringify(next)).catch(() => {});
   },
@@ -184,7 +190,9 @@ export const useStore = create<State>((set, get) => ({
     // Tracking survives relaunch now — this is what makes a streak possible.
     const log = await AsyncStorage.getItem('twoplus_day_log');
     if (log) {
-      try { set({ dayLog: pruneLog(JSON.parse(log) as DayLog) }); } catch { /* corrupt: start clean */ }
+      // migrateLog upgrades the pre-Sept-22 shape (slot → id[]) to passes, so
+      // an existing install keeps its history instead of resetting to zero.
+      try { set({ dayLog: pruneLog(migrateLog(JSON.parse(log))) }); } catch { /* corrupt: start clean */ }
     }
 
     // sfx keeps its own module-level flag; hydrate is what syncs it on launch.

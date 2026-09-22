@@ -109,9 +109,11 @@ export function AudioSessionProvider({ children }: { children: React.ReactNode }
       request succeeding.
     */
     const track = trackingRef.current;
+    // "Done" is scoped to the OPEN pass now, so a second lap round the set
+    // counts again instead of being swallowed as a repeat (Sept 22).
     const wasDone = track.currentDoneIds.includes(id);
     if (!wasDone) {
-      useStore.getState().logExperience(id, track.currentSlot);
+      useStore.getState().logExperience(id, track.currentSlot, list.length);
       void recordExperience(id, kind);
     }
 
@@ -173,10 +175,22 @@ export function AudioSessionProvider({ children }: { children: React.ReactNode }
   const start = useCallback((from = 0) => { setActive(true); queue.start(from); }, [queue]);
   const playAt = useCallback((i: number) => { setActive(true); queue.playAt(i); }, [queue]);
 
-  /** Celebration dismissed — the session is over, so the bar goes away too. */
+  /**
+   * Celebration dismissed.
+   *
+   * It used to unconditionally `close()`, which the Sept 22 lap model turned
+   * into a bug: on loop (or a sleep timer) the queue keeps playing into the
+   * next lap, and closing the session would have stopped the audio the user
+   * explicitly asked to repeat — the celebration killing the very thing it was
+   * celebrating. `queue.playing` is the honest signal for "is this session
+   * actually over", so the bar and the session only go away when the audio has
+   * genuinely stopped. A second lap gets its own celebration when it closes.
+   */
+  const stillRunningRef = useRef(false);
+  stillRunningRef.current = queue.playing;
   const dismissBigCeleb = useCallback(() => {
     setBigCeleb(false);
-    close();
+    if (!stillRunningRef.current) close();
   }, [close]);
 
   const value = useMemo<AudioSessionValue>(() => ({

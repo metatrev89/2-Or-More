@@ -25,20 +25,69 @@
  * BOTH or delete one.
  */
 
-/** Affirmation ids experienced in one session slot. Ids, never indexes — indexes shift. */
-export type SlotLog = Record<number, string[]>;
-/** YYYY-MM-DD (user-local) → slot index → affirmation ids. */
+/**
+ * ONE PASS over the affirmation set (Trevor, Sept 22, 2026).
+ *
+ * The log used to be a flat set of ids per slot, which made a second listen
+ * literally unrepresentable: the ids were already there, so the distinct count
+ * didn't move and the rings stayed full. Trevor wants to listen on loop and
+ * have every pass count, with the rings resetting the moment a pass closes.
+ *
+ * A pass is therefore the unit, and a slot holds a LIST of them. The last pass
+ * in the list is the live one; when it fills up it closes and the next
+ * experience opens a fresh, empty pass. Rings read off the open pass, so they
+ * reset by construction rather than by anyone remembering to clear them.
+ *
+ * Ids, never indexes — indexes shift when the set is edited.
+ */
+export interface SessionPass {
+  /** Distinct affirmation ids experienced in this pass. */
+  ids: string[];
+  /**
+   * Minutes since local midnight when this pass CLOSED. Undefined while open.
+   * This is what lets "Today's sessions" show the time you actually finished
+   * rather than the time the slot was scheduled for.
+   */
+  closedAt?: number;
+}
+
+/** Slot index → the passes made in it, oldest first. */
+export type SlotLog = Record<number, SessionPass[]>;
+/** YYYY-MM-DD (user-local) → slot index → passes. */
 export type DayLog = Record<string, SlotLog>;
+
+export interface SessionSummary {
+  /** Passes completed in full. 4 here renders as "×4" and 400%. */
+  reps: number;
+  /**
+   * Total completion, 1.0 per finished pass plus the open pass's fraction.
+   * UNCAPPED: four passes is 4.0, and that is the point.
+   */
+  pct: number;
+  /** When the slot first reached a full pass, minutes-of-day. null if never. */
+  closedAt: number | null;
+  /** Ids in the pass currently open — empty right after one closes. */
+  openIds: string[];
+}
 
 export interface DaySummary {
   date: string;
-  /** One entry per scheduled slot: fraction of the set experienced, 0..1. */
-  sessions: number[];
-  /** Sessions at 100% — the "session rings today" numerator. */
+  /** One entry per scheduled slot. */
+  sessions: SessionSummary[];
+  /**
+   * Slots holding at least one completed pass — the "rings today" numerator.
+   * Repetitions deliberately DON'T raise this: doing four passes at 9am is one
+   * slot attended, so the other four slots stay open for their own times.
+   */
   ringsClosed: number;
   /** Scheduled sessions that day. */
   target: number;
-  /** Mean session completion across the day, 0..1 — drives the week bars. */
+  /**
+   * Total passes (incl. partials) ÷ scheduled sessions. Four full passes on a
+   * five-session day is 80%, per Trevor: repetitions carry FULL day credit,
+   * and it's the individual slots — not the percentage — that stay open.
+   * May exceed 1.0; callers cap it for ring geometry, never for the number.
+   */
   dayPct: number;
 }
 
@@ -121,7 +170,11 @@ export function slotIndexFor(mins: number, slots: number[]): number {
   return idx;
 }
 
-/** Roll one day's log into per-session percentages. */
+/** A pass is complete once it holds the whole set. */
+export const isPassClosed = (p: SessionPass, affCount: number): boolean =>
+  affCount > 0 && new Set(p.ids).size >= affCount;
+
+/** Roll one day's log into per-session summaries. */
 export function summarizeDay(
   date: string,
   log: SlotLog | undefined,
@@ -129,16 +182,62 @@ export function summarizeDay(
   affCount: number,
 ): DaySummary {
   const target = Math.max(1, perDay);
-  const sessions = Array.from({ length: target }, (_, i) => {
-    if (!log || affCount <= 0) return 0;
-    const ids = log[i] ?? [];
-    // Distinct guard: replaying an affirmation must not push a session past 100%.
-    const distinct = new Set(ids).size;
-    return Math.min(1, distinct / affCount);
+  const sessions: SessionSummary[] = Array.from({ length: target }, (_, i) => {
+    const passes = (log?.[i] ?? []).filter(p => p.ids.length > 0);
+    if (affCount <= 0 || passes.length === 0) {
+      return { reps: 0, pct: 0, closedAt: null, openIds: [] };
+    }
+    let reps = 0;
+    let pct = 0;
+    let closedAt: number | null = null;
+    let openIds: string[] = [];
+    for (const p of passes) {
+      // Distinct guard per pass: replaying one affirmation inside a pass must
+      // not push that pass past 100%. Across passes it SHOULD accumulate.
+      const distinct = new Set(p.ids).size;
+      if (distinct >= affCount) {
+        reps += 1;
+        pct += 1;
+        // First close is when the session was completed; later reps are extra.
+        if (closedAt === null && p.closedAt !== undefined) closedAt = p.closedAt;
+      } else {
+        pct += distinct / affCount;
+        openIds = p.ids;
+      }
+    }
+    return { reps, pct, closedAt, openIds };
   });
-  const ringsClosed = sessions.filter(s => s >= 1).length;
-  const dayPct = sessions.reduce((a, b) => a + b, 0) / target;
+  const ringsClosed = sessions.filter(s => s.reps >= 1).length;
+  const dayPct = sessions.reduce((a, s) => a + s.pct, 0) / target;
   return { date, sessions, ringsClosed, target, dayPct };
+}
+
+/**
+ * Migrate the pre-Sept-22 log shape (slot → id[]) to passes.
+ *
+ * Runs on hydrate over whatever is in AsyncStorage, so an existing install
+ * keeps its streak instead of starting from zero. A legacy slot becomes ONE
+ * pass with no `closedAt` — the completion time was never recorded back then,
+ * so those rows fall back to their scheduled label rather than inventing a
+ * time. Shape is detected per slot, so a half-migrated log is still safe.
+ */
+export function migrateLog(raw: unknown): DayLog {
+  if (!raw || typeof raw !== 'object') return {};
+  const out: DayLog = {};
+  for (const [date, slots] of Object.entries(raw as Record<string, unknown>)) {
+    if (!slots || typeof slots !== 'object') continue;
+    const day: SlotLog = {};
+    for (const [slot, val] of Object.entries(slots as Record<string, unknown>)) {
+      const n = Number(slot);
+      if (!Array.isArray(val)) continue;
+      if (val.length === 0) { day[n] = []; continue; }
+      day[n] = typeof val[0] === 'string'
+        ? [{ ids: val as string[] }]                     // legacy
+        : (val as SessionPass[]).filter(p => p && Array.isArray(p.ids));
+    }
+    out[date] = day;
+  }
+  return out;
 }
 
 /** The last `count` calendar dates ending at `end`, oldest first. */
@@ -248,16 +347,48 @@ export function summarizeTracking(opts: {
   };
 }
 
-/** Add one experience to the log, without mutating the input. */
+/**
+ * Add one experience to the log, without mutating the input.
+ *
+ * THIS IS WHERE THE RINGS RESET. The experience joins the slot's last pass if
+ * that pass is still open; if the last pass is full — or there are none yet —
+ * it opens a new one. So the instant a pass closes, the next affirmation the
+ * user experiences starts a fresh pass with empty rings, which is exactly the
+ * "listen on loop and have every lap count" behaviour, and it falls out of the
+ * data rather than needing a screen to clear anything.
+ *
+ * Idempotent WITHIN a pass: re-experiencing the same affirmation before the
+ * pass closes is a no-op, so scrubbing back doesn't inflate progress. Across
+ * passes it counts, because that genuinely is another lap.
+ */
 export function withExperience(
   log: DayLog,
   affirmationId: string,
-  opts: { date: string; slot: number },
+  opts: { date: string; slot: number; affCount: number; atMinutes?: number },
 ): DayLog {
   const day = log[opts.date] ?? {};
-  const ids = day[opts.slot] ?? [];
-  if (ids.includes(affirmationId)) return log; // already counted this session
-  return { ...log, [opts.date]: { ...day, [opts.slot]: [...ids, affirmationId] } };
+  const passes = day[opts.slot] ?? [];
+  const last = passes[passes.length - 1];
+  const lastIsOpen = !!last && !isPassClosed(last, opts.affCount);
+
+  if (lastIsOpen && last!.ids.includes(affirmationId)) return log;
+
+  let nextPasses: SessionPass[];
+  if (lastIsOpen) {
+    const updated: SessionPass = { ...last!, ids: [...last!.ids, affirmationId] };
+    // Stamp the close time as it happens — it can't be recovered afterwards.
+    if (isPassClosed(updated, opts.affCount)) {
+      updated.closedAt = opts.atMinutes ?? minutesOfDay();
+    }
+    nextPasses = [...passes.slice(0, -1), updated];
+  } else {
+    const fresh: SessionPass = { ids: [affirmationId] };
+    // A one-affirmation set closes on its first experience.
+    if (isPassClosed(fresh, opts.affCount)) fresh.closedAt = opts.atMinutes ?? minutesOfDay();
+    nextPasses = [...passes, fresh];
+  }
+
+  return { ...log, [opts.date]: { ...day, [opts.slot]: nextPasses } };
 }
 
 /**

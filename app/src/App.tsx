@@ -164,7 +164,11 @@ function Root() {
    * hand-off needs no coordination beyond this — see HomeScreen.
    */
   const endSessionCeleb = React.useCallback(() => {
-    if (navRef.isReady() && navRef.getCurrentRoute()?.name === 'Player') {
+    // Only show the Player out if playback has actually finished. On loop or a
+    // sleep timer the next lap is already running, and ejecting the user to
+    // Home mid-track would be the opposite of what they asked for (Sept 22).
+    const ending = !session.playing;
+    if (ending && navRef.isReady() && navRef.getCurrentRoute()?.name === 'Player') {
       navRef.navigate('Main', { screen: 'Home' });
     }
     session.dismissBigCeleb();

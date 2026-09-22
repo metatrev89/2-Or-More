@@ -35,12 +35,18 @@ export interface Tracking extends TrackingSummary {
   slots: number[];
   /** Which session is live right now. */
   currentSlot: number;
-  /** Affirmation ids experienced in the CURRENT session only. */
+  /**
+   * Affirmation ids in the OPEN pass of the current session — so this goes
+   * back to empty the moment a pass closes, which is what makes the rings
+   * reset across the app right after the celebration (Trevor, Sept 22).
+   */
   currentDoneIds: string[];
   /** Same, as indexes into the current set — what the existing UI wants. */
   currentDoneIdx: number[];
-  /** Progress through the current session, 0..1. */
+  /** Progress through the open pass, 0..1. */
   sessionFrac: number;
+  /** Completed passes in the current slot — drives the "×4" badge. */
+  currentReps: number;
 }
 
 /** Ticks on a minute boundary so a slot change lands as soon as it happens. */
@@ -70,7 +76,13 @@ export function useTracking(): Tracking {
 
     const d = new Date(now);
     const currentSlot = slotIndexFor(minutesOfDay(d), slots);
-    const currentDoneIds = dayLog[dayKey(d)]?.[currentSlot] ?? [];
+
+    const summary = summarizeTracking({ log: dayLog as DayLog, perDay, affCount, now: d });
+
+    // Read the OPEN pass, not the whole slot. `openIds` is empty whenever the
+    // last pass finished, so the rings clear themselves between laps.
+    const here = summary.today.sessions[currentSlot];
+    const currentDoneIds = here?.openIds ?? [];
 
     // Ids → indexes for the existing row/segment UI. An id that no longer
     // exists (the set was edited) simply drops out rather than marking the
@@ -80,8 +92,6 @@ export function useTracking(): Tracking {
       .map(id => idToIdx.get(id))
       .filter((i): i is number => i !== undefined);
 
-    const summary = summarizeTracking({ log: dayLog as DayLog, perDay, affCount, now: d });
-
     return {
       ...summary,
       perDay,
@@ -90,6 +100,7 @@ export function useTracking(): Tracking {
       currentDoneIds,
       currentDoneIdx,
       sessionFrac: Math.min(1, currentDoneIdx.length / affCount),
+      currentReps: here?.reps ?? 0,
     };
   }, [now, dayLog, affirmations, schedPlan, freq, awStart, awEnd]);
 }

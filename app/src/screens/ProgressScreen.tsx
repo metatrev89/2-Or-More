@@ -131,12 +131,33 @@ export default function ProgressScreen() {
   const remaining = Math.max(0, affCount - readCount);
   const r = 52, circ = 2 * Math.PI * r;
 
-  /** One row per scheduled slot, with what actually happened in it. */
-  const daySessions = track.slots.map((mins, i) => ({
-    time: fmtSlot(mins),
-    done: Math.round((track.today.sessions[i] ?? 0) * affCount),
-    isNow: i === track.currentSlot,
-  }));
+  /**
+   * One row per scheduled slot.
+   *
+   * The label is a PLAIN NUMBER until the session is actually completed, then
+   * it flips to the time it was completed (Trevor, Sept 22). The old row
+   * always showed the slot's scheduled time, which read as a promise the user
+   * hadn't made — "7:00 AM" sitting there at 9pm is a time that never
+   * happened. A bare "Session 3" claims nothing; the real timestamp, once it
+   * exists, is a record.
+   *
+   * `dots` is the OPEN pass, so the row empties out between laps exactly like
+   * the rings elsewhere. `reps` drives the ×N badge.
+   */
+  const daySessions = track.slots.map((mins, i) => {
+    const s = track.today.sessions[i];
+    const closedAt = s?.closedAt ?? null;
+    return {
+      key: `slot-${i}`,
+      label: closedAt !== null ? fmtSlot(closedAt) : `Session ${i + 1}`,
+      /** Scheduled time, kept for the edit panel and for a11y. */
+      scheduled: fmtSlot(mins),
+      dots: Math.round((s?.openIds.length ?? 0)),
+      reps: s?.reps ?? 0,
+      pct: s?.pct ?? 0,
+      isNow: i === track.currentSlot,
+    };
+  });
   const sessionsComplete = track.today.ringsClosed;
   const weekLabels = weekDayLabels(new Date());
   // Reversed for display only — today first. See weekDayLabels above.
@@ -219,28 +240,42 @@ export default function ProgressScreen() {
           {!editing ? (
             <View style={{ marginTop: 8 }}>
               {daySessions.map((d, i) => {
-                // Was hardcoded to 7 — an 8-affirmation set (the intake's
-                // catch-all) drew 7 dots and reported 114%.
-                const frac = Math.min(1, d.done / affCount);
+                /*
+                  Dots show the pass IN PROGRESS. Once a pass closes they clear
+                  and the ×N badge carries the count instead — otherwise a
+                  finished lap and a lap that just started look identical.
+
+                  A completed session fills every dot so the row still reads as
+                  done at a glance while it sits at reps>0 with nothing open.
+                */
+                const complete = d.reps > 0 && d.dots === 0;
+                const lit = complete ? affCount : d.dots;
+                // pctColor expects 0..1; a repeated session is off that scale,
+                // so anything at or past one full pass takes the top colour.
                 return (
-                  <View key={d.time} style={{
+                  <View key={d.key} style={{
                     flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9,
                     borderBottomWidth: 1, borderBottomColor: i < daySessions.length - 1 ? colors.borderSoft : 'transparent',
                   }}>
-                    <Mono size={12} color={d.done > 0 ? colors.ink : colors.inactive} style={{ width: 60 }}>{d.time}</Mono>
-                    <View style={{ flex: 1, flexDirection: 'row', gap: 3 }}>
+                    <Mono size={12} color={d.pct > 0 ? colors.ink : colors.inactive} style={{ width: 60 }}>{d.label}</Mono>
+                    <View style={{ flex: 1, flexDirection: 'row', gap: 3, alignItems: 'center' }}>
                       {Array.from({ length: affCount }, (_, j) => (
                         <Svg key={j} width={12} height={12} viewBox="0 0 24 24">
                           <Circle
                             cx={12} cy={12} r={9} strokeWidth={3.6}
-                            fill={j < d.done ? 'rgba(21,122,110,0.25)' : 'none'}
-                            stroke={j < d.done ? colors.teal : colors.border}
+                            fill={j < lit ? 'rgba(21,122,110,0.25)' : 'none'}
+                            stroke={j < lit ? colors.teal : colors.border}
                           />
                         </Svg>
                       ))}
+                      {/* Gold: finishing the set more than once is achievement,
+                          which is the one thing gold is allowed to mean. */}
+                      {d.reps > 1 && (
+                        <Mono size={11} color={colors.gold} style={{ marginLeft: 4 }}>×{d.reps}</Mono>
+                      )}
                     </View>
-                    <Mono size={12.5} color={pctColor(frac)} style={{ width: 40, textAlign: 'right' }}>
-                      {Math.round(frac * 100)}%
+                    <Mono size={12.5} color={pctColor(Math.min(1, d.pct))} style={{ width: 44, textAlign: 'right' }}>
+                      {Math.round(d.pct * 100)}%
                     </Mono>
                   </View>
                 );

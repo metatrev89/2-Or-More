@@ -202,7 +202,11 @@ export default function HomeScreen() {
     (async () => {
       const s = useStore.getState();
       const perDay = s.schedPlan === 'custom' ? Math.max(1, s.freq) : 5;
-      const remote = await loadExperienceLog(400, makeSlotResolver(perDay, s.awStart, s.awEnd));
+      const remote = await loadExperienceLog(
+        400,
+        makeSlotResolver(perDay, s.awStart, s.awEnd),
+        affSet(s.affirmations).length || 1,
+      );
       if (!alive || !remote) return;
       useStore.getState().setDayLog(mergeLogs(useStore.getState().dayLog, remote));
     })();

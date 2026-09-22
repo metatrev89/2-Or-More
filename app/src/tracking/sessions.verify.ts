@@ -7,16 +7,19 @@
  *
  *     npx tsx src/tracking/sessions.verify.ts
  *
- * It earned its keep immediately: `streakFrom` originally walked the LOG'S OWN
+ * It has earned its keep twice. `streakFrom` originally walked the LOG'S OWN
  * KEYS instead of calendar days, so a gap week [Mon, Thu, Fri] counted as a
- * 3-day streak because the missing days simply weren't in the log. Every
- * streak in the app would have been inflated.
+ * 3-day streak. And on Sept 22 the streak tests all used fully-complete days,
+ * which is precisely why they sailed through a bug where a single completed
+ * session scored 0.20 and didn't count at all — the lesson being that a test
+ * built from a tidy fixture proves nothing about the shapes real users make.
  *
  * Move these into a real suite when `app/` gets a runner.
  */
 import {
   dayKey, slotTimes, slotIndexFor, summarizeDay, summarizeTracking,
-  withExperience, pruneLog, recentDates, type DayLog,
+  withExperience, pruneLog, recentDates, migrateLog,
+  type DayLog, type SessionPass,
 } from './sessions';
 
 let pass = 0, fail = 0;
@@ -25,6 +28,14 @@ const eq = (name: string, got: unknown, want: unknown) => {
   ok ? pass++ : fail++;
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${ok ? '' : `\n        got  ${JSON.stringify(got)}\n        want ${JSON.stringify(want)}`}`);
 };
+
+/** One closed pass over a set of `n`. */
+const donePass = (n: number, closedAt?: number): SessionPass => ({
+  ids: Array.from({ length: n }, (_, i) => `a${i}`),
+  ...(closedAt !== undefined ? { closedAt } : {}),
+});
+/** A partial pass holding the first `k` of `n`. */
+const partPass = (k: number): SessionPass => ({ ids: Array.from({ length: k }, (_, i) => `a${i}`) });
 
 // ── slots ────────────────────────────────────────────────────────────────
 eq('5 slots across 7am-10pm', slotTimes(5, 7, 22), [420, 645, 870, 1095, 1320]);
@@ -40,19 +51,51 @@ eq('11:59pm -> last session', slotIndexFor(1439, S), 4);
 eq('5am, before the window -> session 0, not discarded', slotIndexFor(300, S), 0);
 
 // ── partial sessions (Trevor: "5/8 = my progress for that session") ──────
-const day = { 0: ['a','b','c','d','e'], 1: ['a','b','c','d','e','f','g','h'] };
+const day = { 0: [partPass(5)], 1: [donePass(8)] };
 const d1 = summarizeDay('2026-09-17', day, 5, 8);
-eq('session 0 = 5/8', Math.round(d1.sessions[0]! * 100), 63);
-eq('session 1 complete', d1.sessions[1], 1);
-eq('untouched sessions are 0', [d1.sessions[2], d1.sessions[3], d1.sessions[4]], [0,0,0]);
-eq('rings closed counts only 100%', d1.ringsClosed, 1);
-eq('day pct = mean of sessions', Math.round(d1.dayPct * 100), 33);
+eq('session 0 = 5/8', Math.round(d1.sessions[0]!.pct * 100), 63);
+eq('session 1 complete', d1.sessions[1]!.pct, 1);
+eq('untouched sessions are 0', d1.sessions.slice(2).map(s => s.pct), [0, 0, 0]);
+eq('rings closed counts only finished passes', d1.ringsClosed, 1);
+eq('day pct = total passes / target', Math.round(d1.dayPct * 100), 33);
 
-// replays must not inflate past 100%
-eq('duplicate ids do not exceed 1', summarizeDay('x', { 0: ['a','a','a','b'] }, 1, 2).sessions[0], 1);
+// replays inside ONE pass must not inflate it
+eq('duplicate ids inside a pass do not exceed 1',
+  summarizeDay('x', { 0: [{ ids: ['a', 'a', 'a', 'b'] }] }, 1, 2).sessions[0]!.pct, 1);
+
+// ── repetitions (Trevor, Sept 22: "400% for 4x on session") ─────────────
+const fourLaps = summarizeDay('x', { 0: [donePass(8, 540), donePass(8, 600), donePass(8, 640), donePass(8, 700)] }, 5, 8);
+eq('4 passes -> reps 4', fourLaps.sessions[0]!.reps, 4);
+eq('4 passes -> 400%', Math.round(fourLaps.sessions[0]!.pct * 100), 400);
+eq('closedAt is the FIRST close, not the latest', fourLaps.sessions[0]!.closedAt, 540);
+eq('no pass is open after a clean lap', fourLaps.sessions[0]!.openIds, []);
+/*
+  The two halves of Trevor's answer, and they pull in different directions:
+  the DAY gets full credit for every lap (4 laps on a 5-session day = 80%),
+  while the SLOTS stay open so the other four sessions can still be practised
+  at their own times. So dayPct moves and ringsClosed does not.
+*/
+eq('4 laps in one slot -> day is 80%', Math.round(fourLaps.dayPct * 100), 80);
+eq('4 laps in one slot -> only ONE slot counted closed', fourLaps.ringsClosed, 1);
+eq('the other four slots stay open', fourLaps.sessions.slice(1).map(s => s.reps), [0, 0, 0, 0]);
+const fiveLaps = summarizeDay('x', { 0: [donePass(4), donePass(4), donePass(4), donePass(4), donePass(4)] }, 5, 4);
+eq('5 laps back-to-back -> day reads 100%', Math.round(fiveLaps.dayPct * 100), 100);
+eq('...but still only one slot attended', fiveLaps.ringsClosed, 1);
+
+// ── the ring reset: a closed pass opens a fresh one ──────────────────────
+const AFF = 3;
+let reset: DayLog = {};
+for (const id of ['a0', 'a1', 'a2']) reset = withExperience(reset, id, { date: 'D', slot: 0, affCount: AFF, atMinutes: 500 });
+eq('a full lap closes the pass', summarizeDay('D', reset.D, 1, AFF).sessions[0]!.reps, 1);
+eq('rings are EMPTY right after the lap closes', summarizeDay('D', reset.D, 1, AFF).sessions[0]!.openIds, []);
+reset = withExperience(reset, 'a0', { date: 'D', slot: 0, affCount: AFF, atMinutes: 505 });
+eq('the next experience opens a NEW pass', summarizeDay('D', reset.D, 1, AFF).sessions[0]!.openIds, ['a0']);
+eq('...and re-counts the same id, because it is a new lap',
+  Math.round(summarizeDay('D', reset.D, 1, AFF).sessions[0]!.pct * 100), 133);
+eq('close time was stamped from the clock passed in', reset.D![0]![0]!.closedAt, 500);
 
 // ── streak ───────────────────────────────────────────────────────────────
-const full = (n: number) => Object.fromEntries(Array.from({length: n}, (_, i) => [i, ['a','b','c','d']]));
+const full = (n: number) => Object.fromEntries(Array.from({ length: n }, (_, i) => [i, [donePass(4)]]));
 const mk = (dates: string[], perDay = 2): DayLog =>
   Object.fromEntries(dates.map(d => [d, full(perDay)]));
 
@@ -67,17 +110,14 @@ eq('no history -> 0', streakOf({}), 0);
 
 /*
   The bug Trevor reported on Sept 22: the streak "not reading accurately".
-
-  The four cases above all use days where EVERY session is complete, so they
-  passed happily under the old `dayPct >= 0.5` rule and never exercised the
-  real failure. These are the shapes an actual user produces — one session out
-  of a five-session day, or a partial pass — which the old rule scored at 0.20
-  and 0.05 and therefore refused to count at all.
+  These are the shapes an actual user produces — one session out of a
+  five-session day, or a partial pass — which the old `dayPct >= 0.5` rule
+  scored at 0.20 and 0.05 and therefore refused to count at all.
 */
-const oneFullSession = (dates: string[]): DayLog =>
-  Object.fromEntries(dates.map(d => [d, { 0: ['a', 'b', 'c', 'd'] }]));
-const onePartialSession = (dates: string[]): DayLog =>
-  Object.fromEntries(dates.map(d => [d, { 0: ['a'] }]));
+const oneFullSession = (ds: string[]): DayLog =>
+  Object.fromEntries(ds.map(d => [d, { 0: [donePass(4)] }]));
+const onePartialSession = (ds: string[]): DayLog =>
+  Object.fromEntries(ds.map(d => [d, { 0: [partPass(1)] }]));
 const streak5 = (log: DayLog) => summarizeTracking({ log, perDay: 5, affCount: 4 }).streakDays;
 
 eq('ONE full session on a 5-session day counts', streak5(oneFullSession(dates.slice(1))), 4);
@@ -92,17 +132,25 @@ eq('week ends on today', t.week[6]!.date, today);
 eq('4 full days of 7 -> 57%', t.weekPct, 57);
 eq('month experiences counted', t.monthExperiences > 0, true);
 
+// ── migration from the pre-Sept-22 shape ─────────────────────────────────
+const legacy = { '2026-09-20': { 0: ['a0', 'a1'], 1: ['a0', 'a1', 'a2'] } };
+const migrated = migrateLog(legacy);
+eq('legacy slot becomes one pass', migrated['2026-09-20']![1], [{ ids: ['a0', 'a1', 'a2'] }]);
+eq('migrated history still summarises', summarizeDay('2026-09-20', migrated['2026-09-20'], 2, 3).ringsClosed, 1);
+eq('already-migrated logs pass through unchanged', migrateLog(reset).D![0]!.length, 2);
+eq('garbage in -> empty, never a crash', migrateLog('nonsense'), {});
+
 // ── pruning ──────────────────────────────────────────────────────────────
-const old: DayLog = { '2020-01-01': { 0: ['a'] }, [today]: { 0: ['a'] } };
+const old: DayLog = { '2020-01-01': { 0: [partPass(1)] }, [today]: { 0: [partPass(1)] } };
 eq('prunes ancient days', Object.keys(pruneLog(old)), [today]);
 
-// ── withExperience is immutable + idempotent ─────────────────────────────
+// ── withExperience is immutable + idempotent WITHIN a pass ───────────────
 const base: DayLog = {};
-const once = withExperience(base, 'a1', { date: today, slot: 2 });
-const twice = withExperience(once, 'a1', { date: today, slot: 2 });
+const once = withExperience(base, 'a1', { date: today, slot: 2, affCount: 8 });
+const twice = withExperience(once, 'a1', { date: today, slot: 2, affCount: 8 });
 eq('input not mutated', Object.keys(base).length, 0);
-eq('same id twice is a no-op', twice, once);
-eq('lands in the right slot', once[today]![2], ['a1']);
+eq('same id twice in one pass is a no-op', twice, once);
+eq('lands in the right slot', once[today]![2], [{ ids: ['a1'] }]);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
