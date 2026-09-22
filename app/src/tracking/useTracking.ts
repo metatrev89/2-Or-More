@@ -15,7 +15,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { affSet, useStore } from '../store';
 import {
-  dayKey, minutesOfDay, slotIndexFor, slotTimes, summarizeTracking,
+  dayKey, minutesOfDay, slotIndexFor, slotTimes, summarizeTracking, trackForNewSession,
   type DayLog, type TrackingSummary,
 } from './sessions';
 
@@ -33,8 +33,10 @@ export interface Tracking extends TrackingSummary {
   perDay: number;
   /** Start time of each session, minutes since local midnight. */
   slots: number[];
-  /** Which session is live right now. */
+  /** Which TRACK a session logged right now belongs to. */
   currentSlot: number;
+  /** The track the wall clock is in, before visit-claiming is applied. */
+  clockSlot: number;
   /**
    * Affirmation ids in the OPEN pass of the current session — so this goes
    * back to empty the moment a pass closes, which is what makes the rings
@@ -67,6 +69,8 @@ export function useTracking(): Tracking {
   const freq = useStore(s => s.freq);
   const awStart = useStore(s => s.awStart);
   const awEnd = useStore(s => s.awEnd);
+  const visitSeq = useStore(s => s.visitSeq);
+  const slotClaim = useStore(s => s.slotClaim);
 
   return useMemo(() => {
     const affs = affSet(affirmations);
@@ -75,9 +79,27 @@ export function useTracking(): Tracking {
     const slots = slotTimes(perDay, awStart, awEnd);
 
     const d = new Date(now);
-    const currentSlot = slotIndexFor(minutesOfDay(d), slots);
+    const clockSlot = slotIndexFor(minutesOfDay(d), slots);
 
     const summary = summarizeTracking({ log: dayLog as DayLog, perDay, affCount, now: d });
+
+    /*
+      Which track does a session started RIGHT NOW belong to?
+
+      A claim from this visit wins, so repeats in one sitting stack on one
+      track (4 laps = ×4). The claim dies when the visit changes (app
+      relaunched or foregrounded), when the day rolls over, or when the clock
+      crosses into a different slot — any of which means "this is a new
+      sitting" and earns a fresh track.
+    */
+    const today = dayKey(d);
+    const claim = slotClaim
+      && slotClaim.date === today
+      && slotClaim.visitSeq === visitSeq
+      && slotClaim.clockSlot === clockSlot
+      ? slotClaim.slot
+      : null;
+    const currentSlot = claim ?? trackForNewSession(summary.today, clockSlot);
 
     // Read the OPEN pass, not the whole slot. `openIds` is empty whenever the
     // last pass finished, so the rings clear themselves between laps.
@@ -97,12 +119,13 @@ export function useTracking(): Tracking {
       perDay,
       slots,
       currentSlot,
+      clockSlot,
       currentDoneIds,
       currentDoneIdx,
       sessionFrac: Math.min(1, currentDoneIdx.length / affCount),
       currentReps: here?.reps ?? 0,
     };
-  }, [now, dayLog, affirmations, schedPlan, freq, awStart, awEnd]);
+  }, [now, dayLog, affirmations, schedPlan, freq, awStart, awEnd, visitSeq, slotClaim]);
 }
 
 /**

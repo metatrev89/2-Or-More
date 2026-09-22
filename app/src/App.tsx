@@ -6,7 +6,7 @@ import {
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { ScrollView, Text, View } from 'react-native';
+import { AppState, ScrollView, Text, View } from 'react-native';
 import {
   useFonts,
   InstrumentSans_400Regular,
@@ -150,6 +150,25 @@ function Root() {
   useEffect(() => { hydrate(); }, [hydrate]);
 
   /**
+   * A VISIT is one sitting with the app (Trevor, Sept 22: "whenever the user
+   * closes the app and reopens it to do a new session it will count as a new
+   * track"). Launch is a visit; so is every return from the background, which
+   * is the path a push notification takes.
+   *
+   * This is what lets the clock stop being the only answer to "which track?".
+   * Four sessions back-to-back at 9am is one visit and stacks as ×4; leaving
+   * and coming back at 9:20 is a second visit and earns its own track, even
+   * though the clock reads the same slot both times.
+   */
+  useEffect(() => {
+    useStore.getState().beginVisit();
+    const sub = AppState.addEventListener('change', s => {
+      if (s === 'active') useStore.getState().beginVisit();
+    });
+    return () => sub.remove();
+  }, []);
+
+  /**
    * The end of a session, as one movement (Trevor, Sept 22).
    *
    * Finish the last affirmation in the play-all Player → the big celebration
@@ -163,16 +182,20 @@ function Root() {
    * Home's own stage-two effect is already gated on `bigCeleb` clearing, so the
    * hand-off needs no coordination beyond this — see HomeScreen.
    */
+  // Read through a ref: this runs ~4s after the celebration appeared, and the
+  // answer to "is playback still running" is only valid at the moment it fires.
+  const sessionRef = React.useRef(session);
+  sessionRef.current = session;
   const endSessionCeleb = React.useCallback(() => {
     // Only show the Player out if playback has actually finished. On loop or a
-    // sleep timer the next lap is already running, and ejecting the user to
+    // sleep timer the next session is already running, and ejecting the user to
     // Home mid-track would be the opposite of what they asked for (Sept 22).
-    const ending = !session.playing;
+    const ending = !sessionRef.current.playing;
     if (ending && navRef.isReady() && navRef.getCurrentRoute()?.name === 'Player') {
       navRef.navigate('Main', { screen: 'Home' });
     }
-    session.dismissBigCeleb();
-  }, [session]);
+    sessionRef.current.dismissBigCeleb();
+  }, []);
 
   // Proceed on font error too — system fonts beat a stuck splash.
   if ((!fontsLoaded && !fontError) || authState === 'checking') {

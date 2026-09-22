@@ -60,6 +60,19 @@ interface State {
    * `12` that nothing ever wrote.
    */
   dayLog: DayLog;
+  /**
+   * Which VISIT to the app we're on. Bumped on launch and every time the app
+   * returns to the foreground. Deliberately NOT persisted — a cold start is a
+   * new visit by definition, so there's nothing to restore.
+   */
+  visitSeq: number;
+  /**
+   * The track this visit is filing sessions into. Held so repeated sessions in
+   * ONE sitting stay on one track (4 laps = ×4), while a new visit gets a
+   * fresh track. Invalidated when the visit changes, the day rolls over, or
+   * the clock moves into a different slot.
+   */
+  slotClaim: { date: string; visitSeq: number; clockSlot: number; slot: number } | null;
   movieWatched: number[];
   audioSpeed: number;
   /** Ring-completion chimes (and their haptics) silenced by the user. */
@@ -72,8 +85,15 @@ interface State {
   setProfilePhoto: (uri: string | null) => void;
   setVoiceRecording: (affirmationId: string, uri: string | null) => void;
   addMsg: (m: Msg) => void;
-  /** Log one experience into the current day + session slot, and persist it. */
-  logExperience: (affirmationId: string, slot: number, affCount: number) => void;
+  /** Log one experience into the current day + track, and persist it. */
+  logExperience: (
+    affirmationId: string,
+    slot: number,
+    affCount: number,
+    claim?: { clockSlot: number },
+  ) => void;
+  /** App launched or came back to the foreground — the next session is a new track. */
+  beginVisit: () => void;
   /** Replace the log after merging server history in. */
   setDayLog: (log: DayLog) => void;
   setSpeed: (v: number) => Promise<void>;
@@ -106,6 +126,8 @@ export const useStore = create<State>((set, get) => ({
   userName: 'Trevor',
   welcome: false,
   dayLog: {},
+  visitSeq: 0,
+  slotClaim: null,
   movieWatched: [],
   audioSpeed: 1,
   chimesMuted: false,
@@ -150,13 +172,23 @@ export const useStore = create<State>((set, get) => ({
    * `affCount` has to come from the caller: the model needs to know how long a
    * full pass is before it can tell whether this experience closed one.
    */
-  logExperience: (affirmationId, slot, affCount) => {
-    const next = pruneLog(withExperience(get().dayLog, affirmationId, {
-      date: dayKey(), slot, affCount,
-    }));
-    set({ dayLog: next });
+  logExperience: (affirmationId, slot, affCount, claim) => {
+    const date = dayKey();
+    const next = pruneLog(withExperience(get().dayLog, affirmationId, { date, slot, affCount }));
+    // Pin this visit to the track it just started, so every repeat in the same
+    // sitting lands on it rather than spilling into the next one.
+    const patch = claim
+      ? { slotClaim: { date, visitSeq: get().visitSeq, clockSlot: claim.clockSlot, slot } }
+      : {};
+    set({ dayLog: next, ...patch });
     AsyncStorage.setItem('twoplus_day_log', JSON.stringify(next)).catch(() => {});
   },
+
+  /**
+   * A new visit releases the claimed track, so the next session picks a fresh
+   * one. The log is untouched — this only affects where the NEXT session goes.
+   */
+  beginVisit: () => set({ visitSeq: get().visitSeq + 1, slotClaim: null }),
 
   setDayLog: (log) => {
     const next = pruneLog(log);

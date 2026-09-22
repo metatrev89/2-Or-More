@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { colors, fonts } from '../theme';
 import { StarBurst } from './brandIcons';
@@ -21,10 +21,25 @@ export default function SessionCeleb({ onDone }: { onDone: () => void }) {
   // 7, or 8 when the intake's catch-all was answered — never hardcode the count.
   const affCount = useStore(s => s.affirmations.length) || MOCK_AFFS.length;
 
+  /**
+   * `onDone` is called through a ref, NOT captured in the timeout (Trevor,
+   * Sept 22: the Player's auto-close didn't fire).
+   *
+   * `setTimeout(onDone, 4000)` froze the very first `onDone` closure. That
+   * closure was created in the same commit the celebration appeared in — which
+   * is the commit where `advance()` had only just called `pause()`, so
+   * expo-audio's status still read `playing: true`. Four seconds later the
+   * stale closure asked "is the session still running?", got the answer from a
+   * moment that had long passed, and declined to close the Player.
+   *
+   * Same family as the chime bug: a decision made at mount and acted on much
+   * later has to re-read the world, not remember it.
+   */
+  const onDoneRef = useRef(onDone);
+  onDoneRef.current = onDone;
   useEffect(() => {
-    const t = setTimeout(onDone, 4000);
+    const t = setTimeout(() => onDoneRef.current(), 4000);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

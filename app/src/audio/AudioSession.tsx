@@ -113,7 +113,12 @@ export function AudioSessionProvider({ children }: { children: React.ReactNode }
     // counts again instead of being swallowed as a repeat (Sept 22).
     const wasDone = track.currentDoneIds.includes(id);
     if (!wasDone) {
-      useStore.getState().logExperience(id, track.currentSlot, list.length);
+      // The claim pins this visit to the track it just started, so every
+      // repeat in the same sitting stacks there (×4) instead of spilling into
+      // the next track — see `trackForNewSession`.
+      useStore.getState().logExperience(id, track.currentSlot, list.length, {
+        clockSlot: track.clockSlot,
+      });
       void recordExperience(id, kind);
     }
 

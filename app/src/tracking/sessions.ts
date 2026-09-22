@@ -348,6 +348,35 @@ export function summarizeTracking(opts: {
 }
 
 /**
+ * Which TRACK a fresh session should be filed under (Trevor, Sept 22:
+ * "whenever the user closes the app and reopens it to do a new session it
+ * will count as a new track").
+ *
+ * The clock alone cannot answer this. Practising four times back-to-back at
+ * 9am is ONE track repeated four times, while practising at 9am, closing the
+ * app, and returning at 9:20 from a push notification is TWO tracks — and the
+ * clock reads the same slot in both cases. What separates them is the VISIT,
+ * which is why `useTracking` claims a track once per visit and only calls this
+ * when a new visit needs one.
+ *
+ * Given that, the rule is simple: the clock's track if it's untouched,
+ * otherwise the next untouched one. It scans BACKWARD as a last resort, so
+ * someone who does all five sessions in the evening fills five tracks instead
+ * of stacking them on the final slot — the row shows the real completion time
+ * either way, so nothing is misrepresented. Once every track is spoken for,
+ * further sessions pile onto the clock's track as repetitions.
+ */
+export function trackForNewSession(day: DaySummary, clockSlot: number): number {
+  const n = day.sessions.length;
+  const free = (i: number) => (day.sessions[i]?.reps ?? 0) === 0;
+  const start = Math.min(Math.max(clockSlot, 0), Math.max(0, n - 1));
+  if (free(start)) return start;
+  for (let i = start + 1; i < n; i++) if (free(i)) return i;
+  for (let i = start - 1; i >= 0; i--) if (free(i)) return i;
+  return start;
+}
+
+/**
  * Add one experience to the log, without mutating the input.
  *
  * THIS IS WHERE THE RINGS RESET. The experience joins the slot's last pass if

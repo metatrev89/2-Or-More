@@ -18,7 +18,7 @@
  */
 import {
   dayKey, slotTimes, slotIndexFor, summarizeDay, summarizeTracking,
-  withExperience, pruneLog, recentDates, migrateLog,
+  withExperience, pruneLog, recentDates, migrateLog, trackForNewSession,
   type DayLog, type SessionPass,
 } from './sessions';
 
@@ -93,6 +93,34 @@ eq('the next experience opens a NEW pass', summarizeDay('D', reset.D, 1, AFF).se
 eq('...and re-counts the same id, because it is a new lap',
   Math.round(summarizeDay('D', reset.D, 1, AFF).sessions[0]!.pct * 100), 133);
 eq('close time was stamped from the clock passed in', reset.D![0]![0]!.closedAt, 500);
+
+// ── which TRACK a new session claims (Trevor, Sept 22) ──────────────────
+/*
+  Glossary, Trevor's: affirmation = one statement, SESSION = one full pass
+  over the set, TRACK = one of the day's scheduled slots. The code calls a
+  session a "pass" and a track a "slot".
+
+  The visit-claim itself lives in useTracking (it needs the store); what's
+  pure and testable here is the choice of track once a new one is needed.
+*/
+const dayWith = (reps: number[], perDay = 5) => summarizeDay('x', Object.fromEntries(
+  reps.map((n, i) => [i, Array.from({ length: n }, () => donePass(4))]).filter(([, v]) => (v as SessionPass[]).length),
+), perDay, 4);
+
+eq('an untouched track at the clock is used as-is', trackForNewSession(dayWith([0, 0, 0, 0, 0]), 0), 0);
+eq('clock track already done -> next one', trackForNewSession(dayWith([1, 0, 0, 0, 0]), 0), 1);
+eq('repeats on a track do not change that', trackForNewSession(dayWith([4, 0, 0, 0, 0]), 0), 1);
+eq('skips over tracks already done', trackForNewSession(dayWith([1, 1, 1, 0, 0]), 0), 3);
+/*
+  Backfill walks BACKWARDS from now, so it claims the nearest missed track
+  rather than the earliest. Practising at 8pm is closer to the 6pm track than
+  to the 7am one, and the row carries the real completion time regardless — so
+  five evening sessions fill tracks 4,3,2,1,0 and the day still reads 100%.
+*/
+eq('evening practice backfills the NEAREST missed track', trackForNewSession(dayWith([0, 0, 0, 0, 1]), 4), 3);
+eq('...and keeps walking back as those fill', trackForNewSession(dayWith([0, 0, 0, 1, 1]), 4), 2);
+eq('all tracks done -> repeats pile on the clock track', trackForNewSession(dayWith([1, 1, 1, 1, 1]), 2), 2);
+eq('a clock slot past the end is clamped', trackForNewSession(dayWith([0, 0, 0, 0, 0]), 99), 4);
 
 // ── streak ───────────────────────────────────────────────────────────────
 const full = (n: number) => Object.fromEntries(Array.from({ length: n }, (_, i) => [i, [donePass(4)]]));
