@@ -32,12 +32,22 @@ import { playCelebrationLarge, playCelebrationSmall } from '../audio/sfx';
 const AI_SPARK_PATH = 'M7 1v12M1 7h12M2.8 2.8l8.4 8.4M11.2 2.8l-8.4 8.4';
 
 /**
- * Gap between the two stat cards celebrating (Trevor, Sept 20: "left to right,
- * not firing both at the same time"). Long enough that the two chimes read as
- * a one-two rather than a chord, short enough to still feel like one moment.
+ * Both stat cards celebrate TOGETHER (Trevor, Sept 22 — supersedes the Sept 20
+ * left-then-right stagger). One moment, one chime: two identical chimes fired
+ * at the same instant aren't a chord, they're one louder chime plus a doubled
+ * haptic, so the second is dropped rather than layered.
  */
-const STAT_CELEB_STAGGER_MS = 560;
 const STAT_CELEB_HOLD_MS = 1150;
+
+/**
+ * Beat between the Player dismissing itself and the stat cards popping.
+ *
+ * The stack transition off the Player runs ~400ms (`animationDuration` in
+ * App.tsx). Without this the celebration fires while Home is still sliding in,
+ * so the user arrives to cards that have already finished animating. Matched to
+ * the transition rather than guessed.
+ */
+const STAT_CELEB_ENTER_DELAY_MS = 420;
 
 /**
  * A stat card that reacts when its number changes.
@@ -306,11 +316,15 @@ export default function HomeScreen() {
    *
    * Two stages so it can't collide with the full-screen `SessionCeleb`, which
    * owns the screen for ~4s: stage one only marks that a celebration is OWED,
-   * stage two runs it once the overlay is gone. Coming back from the Player,
-   * that means it plays as you arrive on Home — which is exactly when you'd be
-   * looking at the stats anyway.
+   * stage two runs it once the overlay is gone.
+   *
+   * That gating is also the whole hand-off for the Player's auto-close (Trevor,
+   * Sept 22). The Player shows itself out when `SessionCeleb` finishes, and the
+   * same dismissal clears `bigCeleb` — so stage two fires exactly as Home comes
+   * into view, without either side knowing about the other. `App.tsx` does the
+   * navigating; nothing here needs to care which screen the session ended on.
    */
-  const [statCeleb, setStatCeleb] = useState(-1);
+  const [statCeleb, setStatCeleb] = useState(false);
   const [statCelebOwed, setStatCelebOwed] = useState(false);
   const prevRings = useRef<number | null>(null);
 
@@ -327,13 +341,11 @@ export default function HomeScreen() {
     if (!statCelebOwed || queue.bigCeleb) return;
     setStatCelebOwed(false);
 
-    // Left card, then right — one chime each, never together. The chime
-    // carries the haptic with it (sfx.playSfx), so both cards buzz.
-    setStatCeleb(0);
-    playCelebrationSmall();
-    const t1 = setTimeout(() => { setStatCeleb(1); playCelebrationSmall(); }, STAT_CELEB_STAGGER_MS);
-    const t2 = setTimeout(() => setStatCeleb(-1), STAT_CELEB_STAGGER_MS + STAT_CELEB_HOLD_MS);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
+    // Both cards at once, one chime for the pair. The chime carries the haptic
+    // with it (sfx.playSfx), so the buzz lands once too.
+    const t0 = setTimeout(() => { setStatCeleb(true); playCelebrationSmall(); }, STAT_CELEB_ENTER_DELAY_MS);
+    const t1 = setTimeout(() => setStatCeleb(false), STAT_CELEB_ENTER_DELAY_MS + STAT_CELEB_HOLD_MS);
+    return () => { clearTimeout(t0); clearTimeout(t1); };
   }, [statCelebOwed, queue.bigCeleb]);
 
   const dateLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
@@ -405,7 +417,7 @@ export default function HomeScreen() {
       <ScrollView contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 108 }}>
         {/* stat cards — first scrolling element */}
         <View style={{ flexDirection: 'row', gap: 14, marginTop: 12 }}>
-          <StatCard celebrating={statCeleb === 0}>
+          <StatCard celebrating={statCeleb}>
             <Text style={{ fontFamily: fonts.monoMedium, fontSize: 24, color: colors.ink }}>{ringsDone}/{dailyRings}</Text>
             <Text style={{ fontFamily: fonts.sans, fontSize: 14, color: colors.warmGray, marginTop: 3 }}>Session rings today</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 3, marginTop: 14 }}>
@@ -416,7 +428,7 @@ export default function HomeScreen() {
               ))}
             </View>
           </StatCard>
-          <StatCard celebrating={statCeleb === 1}>
+          <StatCard celebrating={statCeleb}>
             <Text style={{ fontFamily: fonts.monoMedium, fontSize: 24, color: colors.ink }}>
               {track.weekPct}<Text style={{ fontSize: 16 }}>%</Text>
             </Text>

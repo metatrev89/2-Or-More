@@ -1,5 +1,8 @@
 import React, { useEffect } from 'react';
-import { NavigationContainer, DefaultTheme, createNavigationContainerRef } from '@react-navigation/native';
+import {
+  NavigationContainer, DefaultTheme, createNavigationContainerRef,
+  type NavigatorScreenParams,
+} from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -27,7 +30,7 @@ import ReviewScreen from './screens/onboarding/ReviewScreen';
 import ScheduleScreen from './screens/onboarding/ScheduleScreen';
 import PaywallScreen from './screens/onboarding/PaywallScreen';
 import CreationScreen from './screens/onboarding/CreationScreen';
-import MainTabs from './screens/MainTabs';
+import MainTabs, { type TabsParamList } from './screens/MainTabs';
 import PlayerScreen from './screens/PlayerScreen';
 import FriendsScreen from './screens/social/FriendsScreen';
 import DiscoverScreen from './screens/social/DiscoverScreen';
@@ -48,7 +51,11 @@ export type RootStackParamList = {
   Review: undefined;
   Schedule: undefined;
   Paywall: undefined;
-  Main: undefined;
+  /**
+   * Nested so a caller can name the tab to land on — the session-end hand-off
+   * needs Home specifically, not "whichever tab was last open".
+   */
+  Main: NavigatorScreenParams<TabsParamList> | undefined;
   /** Audio-only for v1; the movie mode param returns with the media layer. */
   Player: undefined;
   Creation: { step?: 'photo' } | undefined;
@@ -142,6 +149,27 @@ function Root() {
 
   useEffect(() => { hydrate(); }, [hydrate]);
 
+  /**
+   * The end of a session, as one movement (Trevor, Sept 22).
+   *
+   * Finish the last affirmation in the play-all Player → the big celebration
+   * owns the screen → when it's done the Player shows itself out and drops the
+   * user on Home, where the two stat cards land their own celebration as they
+   * update. The user never has to dismiss anything.
+   *
+   * Navigating to Main with `screen: 'Home'` rather than `goBack()` on purpose:
+   * goBack returns to whichever tab was last active, so opening the Player from
+   * Progress would strand the celebration on a screen with no stat cards on it.
+   * Home's own stage-two effect is already gated on `bigCeleb` clearing, so the
+   * hand-off needs no coordination beyond this — see HomeScreen.
+   */
+  const endSessionCeleb = React.useCallback(() => {
+    if (navRef.isReady() && navRef.getCurrentRoute()?.name === 'Player') {
+      navRef.navigate('Main', { screen: 'Home' });
+    }
+    session.dismissBigCeleb();
+  }, [session]);
+
   // Proceed on font error too — system fonts beat a stuck splash.
   if ((!fontsLoaded && !fontError) || authState === 'checking') {
     return <View style={{ flex: 1, backgroundColor: colors.cream }} />;
@@ -190,7 +218,7 @@ function Root() {
 
       {/* Session-complete celebration renders over WHATEVER screen is showing,
           then closes the mini player when dismissed. */}
-      {session.bigCeleb && <SessionCeleb onDone={session.dismissBigCeleb} />}
+      {session.bigCeleb && <SessionCeleb onDone={endSessionCeleb} />}
       </View>
     </NavigationContainer>
   );

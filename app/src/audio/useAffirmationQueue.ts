@@ -24,6 +24,26 @@ export type LoopMode = 'off' | 'once' | 'infinite';
  */
 const SWAP_GUARD_MS = 350;
 
+/**
+ * How much of a track must actually have played before we believe it is really
+ * this track playing. See `armedRef` — this is the "positive evidence" bar.
+ */
+const ARM_MIN_SEC = 0.15;
+
+/**
+ * How close to the end a STOPPED player has to have got for that stop to mean
+ * "finished" rather than "the user paused". Generous, because a track's real
+ * audio often runs a little short of its reported duration.
+ */
+const END_EPSILON_SEC = 0.35;
+
+/**
+ * How close the playhead has to get to the duration to count as finished while
+ * the player still claims to be playing. Tight, because this one fires mid-
+ * playback and must not clip the end of a statement.
+ */
+const END_TOUCH_SEC = 0.06;
+
 export interface QueueItem { id: string }
 
 export function useAffirmationQueue(opts: {
@@ -66,7 +86,39 @@ export function useAffirmationQueue(opts: {
   const srcRef = useRef<(string | null)[]>([]); srcRef.current = sources;
   const passRef = useRef(0);            // completed passes through the queue
   const timerDoneRef = useRef(false);   // stop at the next track boundary
-  const finishedAtRef = useRef(-1);     // de-dupe didJustFinish
+  /**
+   * THE FINISH LATCH (Trevor, Sept 22 — fourth report of chimes misfiring).
+   *
+   * A track can only "finish" once it has been ARMED, and it is armed only by
+   * positive evidence that it is genuinely playing its own audio: loaded,
+   * playing, past ARM_MIN_SEC, and `didJustFinish` currently false. Arming
+   * consumes nothing and can be retried on every status tick, so nothing is
+   * lost if the evidence arrives late.
+   *
+   * This replaces the hand-rolled rising-edge detection that shipped on Sept
+   * 20, which had a hole big enough to explain the remaining misfires. It read:
+   *
+   *     sawFinishRef.current = finished;           // consume the edge
+   *     if (Date.now() - swapAtRef.current < SWAP_GUARD_MS) return;   // discard it
+   *
+   * The edge was marked as seen BEFORE the swap-window guard threw it away. A
+   * stale `didJustFinish` from the OUTGOING track — the exact event that guard
+   * exists for — therefore burned the latch: `sawFinishRef` was left true, so
+   * when the incoming track genuinely ended there was no transition left to
+   * detect, and that ring never closed and never chimed. Whether it happened
+   * depended on whether the stale event landed inside the 350ms window, which
+   * is why the failures looked random rather than systematic.
+   *
+   * Simply not consuming the edge is NOT a fix: `replace()` does not reliably
+   * clear `didJustFinish`, so a latched `true` would then fire the instant the
+   * swap window expired and skip the new track outright — the Sept 14 bug
+   * again. The flag is unreliable in BOTH directions, so no amount of edge
+   * detection on it is safe. Arming keys off playback progress instead, which
+   * is a value the player cannot lie about.
+   */
+  const armedRef = useRef(false);
+  /** Furthest the playhead has reached since arming — see the finish effect. */
+  const maxPosRef = useRef(0);
   /**
    * Source we've asked the player to load but haven't confirmed playing yet.
    *
@@ -122,6 +174,8 @@ export function useAffirmationQueue(opts: {
       try { player.clearLockScreenControls(); } catch { /* not claimed */ }
     }
     pendingSrcRef.current = null;
+    armedRef.current = false;
+    maxPosRef.current = 0;
     setIndex(-1);
     idxRef.current = -1;
   }, [player]);
@@ -151,11 +205,10 @@ export function useAffirmationQueue(opts: {
       player.replace(src);
       pendingSrcRef.current = src;
       swapAtRef.current = Date.now();
-      finishedAtRef.current = -1;
-      // A new track has, by definition, not finished. Clearing the edge marker
-      // means the NEXT rising edge is detectable even if the player never
-      // reported `didJustFinish` going false across the swap.
-      sawFinishRef.current = false;
+      // A new track has, by definition, not finished. It must earn the right to
+      // finish again by actually playing — see armedRef.
+      armedRef.current = false;
+      maxPosRef.current = 0;
       setIndex(target);
       idxRef.current = target;
       // Optimistic start: instant when the source happens to be ready already.
@@ -204,36 +257,62 @@ export function useAffirmationQueue(opts: {
   }, [nextPlayable, playAt, stop, onFinished, onQueueEnd, timerMin]);
 
   /**
-   * Track finished → close its ring and move on.
+   * Arm, then finish. One ring and one chime per track, every track.
    *
-   * THE RISING EDGE IS DETECTED BY HAND, and the effect depends on the whole
-   * `status` object rather than on `status.didJustFinish` (Trevor, Sept 20 —
-   * third report of chimes not firing; the first two fixes were both about
-   * stale finishes, and this is the opposite failure).
+   * The effect depends on the whole `status` object so it re-runs on every
+   * player tick — which is also what keeps `advance` as the current closure
+   * rather than one captured whenever some boolean last flipped.
    *
-   * Keying the effect on the boolean meant React only ran it when the value
-   * CHANGED. `replace()` does not reliably clear `didJustFinish`, so after
-   * track 1 the flag could sit at `true` forever: no transition, no effect, no
-   * `onFinished`, and therefore no ring and no chime for tracks 2..N. Exactly
-   * one chime per session, on the first track.
+   * NOTHING HERE TRIGGERS ON `didJustFinish`, and that is the actual fix.
    *
-   * Depending on `status` re-runs this on every player tick, which also means
-   * `advance` is always the current closure instead of one captured whenever
-   * the boolean last flipped.
+   * Three rounds of bugs all came from treating that flag as an event. It fires
+   * late (Sept 14: stale finishes from the outgoing track skipped the incoming
+   * one), it fails to clear (Sept 20: latched `true` meant tracks 2..N never
+   * chimed), and — as a simulation of this very fix showed — it can stay
+   * latched for the whole of the NEXT track, which defeats any scheme that
+   * requires it to be false. A signal that is unreliable in both directions
+   * cannot be made reliable by edge detection. So it is out.
+   *
+   * Position and `playing` are ground truth; the player cannot misreport where
+   * the playhead is. ARM waits for the track to show real progress. FINISH then
+   * accepts either of two end-states, split so each can be tuned for what it
+   * actually is:
+   *
+   *   - stopped near the end → finished (generous window; real audio often runs
+   *     shorter than the reported duration, and a `didJustFinish` alongside the
+   *     stop is accepted outright for the same reason)
+   *   - still playing but the playhead has reached the duration → finished
+   *     (tight window, because this one fires mid-playback and must not clip
+   *     the last word of a statement)
+   *
+   * `maxPosRef` carries the furthest point reached, so a player that zeroes
+   * `currentTime` on ending is still recognised as having got there.
    */
-  const sawFinishRef = useRef(false);
   useEffect(() => {
-    const finished = !!status.didJustFinish;
-    const rising = finished && !sawFinishRef.current;
-    sawFinishRef.current = finished;
-    if (!rising) return;
+    if (idxRef.current < 0) return;
 
-    // Inside the swap window this finish belongs to the OUTGOING track; acting
-    // on it would advance twice and skip the track we just queued. Bounded by
-    // time so it can never swallow a real one — see swapAtRef.
-    if (Date.now() - swapAtRef.current < SWAP_GUARD_MS) return;
-    if (finishedAtRef.current === idxRef.current) return;
-    finishedAtRef.current = idxRef.current;
+    const playing = !!status.playing;
+    const pos = status.currentTime ?? 0;
+    const dur = status.duration ?? 0;
+
+    if (!armedRef.current) {
+      if (status.isLoaded && playing && pos > ARM_MIN_SEC) {
+        armedRef.current = true;
+        maxPosRef.current = pos;
+      }
+      return;
+    }
+    if (pos > maxPosRef.current) maxPosRef.current = pos;
+
+    const stoppedAtEnd = !playing
+      && (!!status.didJustFinish || (dur > 0 && maxPosRef.current >= dur - END_EPSILON_SEC));
+    const playedOut = dur > 0 && pos >= dur - END_TOUCH_SEC;
+    if (!stoppedAtEnd && !playedOut) return;
+
+    // Disarm BEFORE advancing: advance() re-enters playAt synchronously, and a
+    // second finish for this same track must find nothing to act on.
+    armedRef.current = false;
+    maxPosRef.current = 0;
     advance();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
