@@ -299,11 +299,16 @@ export default function HomeScreen() {
   const ringFill = (i: number) => (i < ringsDone ? 'rgba(21,122,110,0.25)' : 'none');
 
   /**
-   * Week sparkline, oldest → newest. Bars are scaled to the tallest day so a
-   * quiet week still reads as a shape rather than a flat line; a day with
-   * nothing keeps a 4pt stub so the column is visibly empty, not missing.
+   * Week sparkline, NEWEST → OLDEST: today is the leftmost bar (Trevor, Sept
+   * 22). `track.week` stays chronological because `weekPct` and the paused-day
+   * scan depend on that order — the flip is display-only, and ProgressScreen's
+   * chart does the same thing. Keep the two in step.
+   *
+   * Bars are scaled to the tallest day so a quiet week still reads as a shape
+   * rather than a flat line; a day with nothing keeps a 4pt stub so the column
+   * is visibly empty, not missing.
    */
-  const weekPcts = track.week.map(d => d.dayPct);
+  const weekPcts = track.week.map(d => d.dayPct).reverse();
   const peak = Math.max(...weekPcts, 0.01);
   const weekHeights = weekPcts.map(p => (p <= 0 ? 4 : Math.max(6, Math.round((p / peak) * 26))));
 

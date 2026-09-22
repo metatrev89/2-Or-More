@@ -9,15 +9,20 @@ import { useStore } from '../store';
 import { useTracking } from '../tracking/useTracking';
 
 /**
- * Weekday initials for the week chart, rotated so the last column is TODAY
- * rather than assuming the week starts on Monday — the bars are the last seven
- * days, so the labels have to follow the same window.
+ * Weekday initials for the week chart, NEWEST FIRST — today is the leftmost
+ * column and the week reads backwards from there (Trevor, Sept 22).
+ *
+ * Still a rolling seven days rather than a calendar week, so the labels are
+ * derived from the actual dates rather than assuming a week starts anywhere.
+ * `summarizeTracking` keeps its `week` array oldest → newest because `weekPct`
+ * and the paused-day scan depend on chronological order; the flip happens at
+ * render, in both this screen and Home. Keep the two in step.
  */
 const DAY_INITIALS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const weekDayLabels = (end: Date): string[] =>
   Array.from({ length: 7 }, (_, i) => {
     const d = new Date(end);
-    d.setDate(d.getDate() - (6 - i));
+    d.setDate(d.getDate() - i);
     return DAY_INITIALS[d.getDay()]!;
   });
 
@@ -111,7 +116,18 @@ export default function ProgressScreen() {
   // Falls back to 7 before onboarding has populated the set.
   const affCount = affirmations.length || 7;
   const readCount = track.currentDoneIdx.length;
-  const frac = track.sessionFrac;
+  /**
+   * The hero ring is the DAY, not the session in progress (Trevor, Sept 22).
+   *
+   * It used to read `readCount/affCount` — "8/8" — which was the current
+   * session's affirmations, so it hit 100% the moment one pass finished and
+   * said nothing about the other four sessions the schedule asked for. A
+   * fraction can't express the day anyway, because a day of 5 sessions at 5/8
+   * each has no honest numerator. `dayPct` is the mean completion across every
+   * scheduled slot, so a partial session contributes its real share.
+   */
+  const dayPct = track.today.dayPct;
+  const frac = dayPct;
   const remaining = Math.max(0, affCount - readCount);
   const r = 52, circ = 2 * Math.PI * r;
 
@@ -123,7 +139,8 @@ export default function ProgressScreen() {
   }));
   const sessionsComplete = track.today.ringsClosed;
   const weekLabels = weekDayLabels(new Date());
-  const weekPcts = track.week.map(d => d.dayPct);
+  // Reversed for display only — today first. See weekDayLabels above.
+  const weekPcts = track.week.map(d => d.dayPct).reverse();
   const weekPeak = Math.max(...weekPcts, 0.01);
   const monthLabel = `${new Date().toLocaleDateString('en-US', { month: 'long' }).toUpperCase()} SO FAR`;
   const monthRings = track.monthRings;
@@ -157,7 +174,9 @@ export default function ProgressScreen() {
               />
             </Svg>
             <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontFamily: fonts.monoMedium, fontSize: 23, color: colors.ink }}>{readCount}/{affCount}</Text>
+              <Text style={{ fontFamily: fonts.monoMedium, fontSize: 23, color: colors.ink }}>
+                {Math.round(dayPct * 100)}<Text style={{ fontSize: 15 }}>%</Text>
+              </Text>
               <Text style={{ fontFamily: fonts.sans, fontSize: 11, color: colors.warmGray }}>today</Text>
             </View>
           </View>
@@ -169,9 +188,11 @@ export default function ProgressScreen() {
             </View>
             <Text style={{ fontFamily: fonts.sans, fontSize: 14, color: colors.warmGray, marginTop: 2 }}>day streak</Text>
             <Text style={{ fontFamily: fonts.sans, fontSize: 13.5, color: colors.warmGray, lineHeight: 20, marginTop: 10 }}>
+              {/* Says SESSION now that the ring above is the whole day — the two
+                  would otherwise contradict each other at 100% of one session. */}
               {remaining > 0
-                ? `${numWord(remaining)} more experience${remaining === 1 ? '' : 's'} close${remaining === 1 ? 's' : ''} today's ring.`
-                : "Today's ring is closed."}
+                ? `${numWord(remaining)} more experience${remaining === 1 ? '' : 's'} close${remaining === 1 ? 's' : ''} this session's ring.`
+                : `${sessionsComplete} of ${track.today.target} session${track.today.target === 1 ? '' : 's'} closed today.`}
             </Text>
           </View>
         </View>
@@ -285,7 +306,8 @@ export default function ProgressScreen() {
                   height: p <= 0 ? 5 : Math.max(10, Math.round((p / weekPeak) * 52)),
                   backgroundColor: p > 0 ? colors.gold : colors.border,
                 }} />
-                <Mono size={10.5} color={i === weekPcts.length - 1 ? colors.ink : colors.inactive}>{weekLabels[i]}</Mono>
+                {/* Today is column 0 now, so it's index 0 that gets the ink. */}
+                <Mono size={10.5} color={i === 0 ? colors.ink : colors.inactive}>{weekLabels[i]}</Mono>
               </View>
             ))}
           </View>

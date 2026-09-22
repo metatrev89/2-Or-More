@@ -42,8 +42,33 @@ export interface DaySummary {
   dayPct: number;
 }
 
-/** A day counts toward the streak at half its sessions or better. */
-export const STREAK_THRESHOLD = 0.5;
+/**
+ * A day counts toward the streak if the user PRACTISED AT ALL that day.
+ *
+ * FIXED Sept 22, 2026 — Trevor: "the day streak counter is not reading
+ * accurately." It wasn't a rendering bug; the bar was simply set impossibly
+ * high. The old rule was `dayPct >= 0.5`, and `dayPct` is the MEAN completion
+ * across every scheduled slot — so on the prime protocol's 5-sessions-a-day
+ * opener, finishing one whole session scored 1/5 = 0.20 and the day did not
+ * count. You needed two and a half complete passes over the set before the
+ * streak would acknowledge you'd shown up, which is why it kept reading 0 or
+ * refusing to increment during testing.
+ *
+ * That also contradicted the model this file is built on: partial sessions are
+ * NORMAL (5/8 is a legitimate session), and the brand rule is that feedback is
+ * encouraging, never condemning. A streak answers one question — did you show
+ * up today — so any practice keeps it alive. Completion quality is already
+ * reported honestly elsewhere: per-session percentages, `dayPct` on the week
+ * bars, and `ringsClosed` for sessions actually finished.
+ */
+export const dayCountsForStreak = (d: DaySummary): boolean => d.dayPct > 0;
+
+/**
+ * Bar for the "streak paused" note — a day that fell notably short between two
+ * active days. Deliberately NOT the streak rule: a quiet day is worth a gentle
+ * mention without also cancelling the streak.
+ */
+export const PAUSE_THRESHOLD = 0.5;
 
 /** Matches what `pruneLog` keeps — a streak can't outrun its own history. */
 const MAX_STREAK_LOOKBACK = 400;
@@ -152,7 +177,8 @@ export function streakFrom(summaries: DaySummary[], today: string): number {
   const cursor = new Date(`${today}T12:00:00`);
   for (let i = 0; i < MAX_STREAK_LOOKBACK; i++) {
     const key = dayKey(cursor);
-    const met = (byDate.get(key)?.dayPct ?? 0) >= STREAK_THRESHOLD;
+    const day = byDate.get(key);
+    const met = !!day && dayCountsForStreak(day);
     if (met) streak += 1;
     else if (key !== today) break; // today is still in progress; it can't break anything
     cursor.setDate(cursor.getDate() - 1);
@@ -209,7 +235,7 @@ export function summarizeTracking(opts: {
   const firstActive = pastWeek.findIndex(d => d.dayPct > 0);
   const pausedDate = firstActive === -1
     ? null
-    : [...pastWeek.slice(firstActive)].reverse().find(d => d.dayPct < STREAK_THRESHOLD)?.date ?? null;
+    : [...pastWeek.slice(firstActive)].reverse().find(d => d.dayPct < PAUSE_THRESHOLD)?.date ?? null;
 
   return {
     today: todaySummary,

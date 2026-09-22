@@ -65,6 +65,26 @@ eq('empty today does NOT break the streak', streakOf(mk(dates.slice(1, 4))), 3);
 eq('a gap breaks it', streakOf(mk([dates[0]!, dates[3]!, dates[4]!])), 2);
 eq('no history -> 0', streakOf({}), 0);
 
+/*
+  The bug Trevor reported on Sept 22: the streak "not reading accurately".
+
+  The four cases above all use days where EVERY session is complete, so they
+  passed happily under the old `dayPct >= 0.5` rule and never exercised the
+  real failure. These are the shapes an actual user produces — one session out
+  of a five-session day, or a partial pass — which the old rule scored at 0.20
+  and 0.05 and therefore refused to count at all.
+*/
+const oneFullSession = (dates: string[]): DayLog =>
+  Object.fromEntries(dates.map(d => [d, { 0: ['a', 'b', 'c', 'd'] }]));
+const onePartialSession = (dates: string[]): DayLog =>
+  Object.fromEntries(dates.map(d => [d, { 0: ['a'] }]));
+const streak5 = (log: DayLog) => summarizeTracking({ log, perDay: 5, affCount: 4 }).streakDays;
+
+eq('ONE full session on a 5-session day counts', streak5(oneFullSession(dates.slice(1))), 4);
+eq('a partial session (1 of 4) still counts', streak5(onePartialSession(dates.slice(1))), 4);
+eq('partial days still break on a real gap', streak5(onePartialSession([dates[0]!, dates[3]!, dates[4]!])), 2);
+eq('a day with zero practice does not count', streak5(onePartialSession(dates.slice(3))), 2);
+
 // ── week + month ─────────────────────────────────────────────────────────
 const t = summarizeTracking({ log: mk(dates.slice(1)), perDay: 2, affCount: 4 });
 eq('week always has 7 entries', t.week.length, 7);
