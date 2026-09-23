@@ -137,15 +137,29 @@ export default function PlayerScreen({ navigation }: NativeStackScreenProps<Root
   // Autoplay on entry — the notification landing behavior. Waits for sources to
   // resolve, does nothing when nothing is recorded, and never restarts a
   // session that's already running (e.g. re-opened from the mini player).
+  /*
+    The flag is claimed INSIDE the timeout, not before it (Trevor, Sept 22:
+    "the play all player not automatically playing").
+
+    It used to set `autoStarted = true` up front and then schedule the start
+    400ms later. Any re-render that re-ran this effect in that window cleared
+    the pending timer via the cleanup — while the flag stayed set, so nothing
+    ever rescheduled it. Autoplay was silently lost, and because the queue had
+    never started, `index` stayed -1 and the screen just sat there.
+
+    Claiming it at fire time means a cancelled attempt is genuinely retried.
+  */
   const autoStarted = useRef(false);
   useEffect(() => {
-    if (autoStarted.current || !hasAudio) return;
-    autoStarted.current = true;
-    if (queue.active) return;
-    const t = setTimeout(() => queue.start(0), 400);
+    if (autoStarted.current || !hasAudio || queue.active) return;
+    const t = setTimeout(() => {
+      if (autoStarted.current) return;
+      autoStarted.current = true;
+      queue.start(0);
+    }, 400);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasAudio]);
+  }, [hasAudio, queue.active]);
 
   // The session chip is the day's progress report once the set closes out.
   useEffect(() => {

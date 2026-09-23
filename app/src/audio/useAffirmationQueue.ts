@@ -44,6 +44,13 @@ const END_EPSILON_SEC = 0.35;
  */
 const END_TOUCH_SEC = 0.06;
 
+/**
+ * How often the reconciler may re-issue `play()` on a track that should be
+ * running but isn't. Slow enough not to hammer the player, fast enough that a
+ * stalled start recovers before the user notices.
+ */
+const PLAY_RETRY_MS = 400;
+
 export interface QueueItem { id: string }
 
 export function useAffirmationQueue(opts: {
@@ -120,16 +127,17 @@ export function useAffirmationQueue(opts: {
   /** Furthest the playhead has reached since arming — see the finish effect. */
   const maxPosRef = useRef(0);
   /**
-   * Source we've asked the player to load but haven't confirmed playing yet.
+   * What we INTEND — are we supposed to be playing right now?
    *
-   * `player.replace()` loads asynchronously — the same lesson as `seekTo()`
-   * (Sept 9). Calling `play()` on the very next line often did nothing because
-   * nothing was loaded, which is why track 2 sat there paused. Worse, while the
-   * swap was in flight the status still belonged to track 1, so a lingering
-   * `didJustFinish` could fire advance() AGAIN — closing track 2's ring and
-   * jumping to track 3 without ever playing it (Trevor, Sept 14).
+   * `player.replace()` loads asynchronously (the same lesson as `seekTo()`,
+   * Sept 9), so the `play()` immediately after it is frequently a no-op. Rather
+   * than track "a load is pending" with a flag that can get stuck, we record
+   * the intent and let the reconciler below keep reality matching it. A user
+   * pause clears the intent, so this never fights them.
    */
-  const pendingSrcRef = useRef<string | null>(null);
+  const wantPlayingRef = useRef(false);
+  /** Last time the reconciler poked `play()`, so it can't spam on every tick. */
+  const retryAtRef = useRef(0);
   /**
    * When the current swap started. The finish guard is keyed off THIS, not off
    * `pendingSrcRef` alone (Sept 15).
@@ -173,7 +181,7 @@ export function useAffirmationQueue(opts: {
       lockHeldRef.current = false;
       try { player.clearLockScreenControls(); } catch { /* not claimed */ }
     }
-    pendingSrcRef.current = null;
+    wantPlayingRef.current = false;
     armedRef.current = false;
     maxPosRef.current = 0;
     setIndex(-1);
@@ -203,7 +211,7 @@ export function useAffirmationQueue(opts: {
     if (!src) { stop(); return; }
     try {
       player.replace(src);
-      pendingSrcRef.current = src;
+      wantPlayingRef.current = true;
       swapAtRef.current = Date.now();
       // A new track has, by definition, not finished. It must earn the right to
       // finish again by actually playing — see armedRef.
@@ -219,19 +227,42 @@ export function useAffirmationQueue(opts: {
     } catch { stop(); }
   }, [player, speed, nextPlayable, stop, publishLockScreen]);
 
-  // The track we swapped to has finished loading — make sure it's actually
-  // running. Without this, a slow load left the optimistic play() above with
-  // nothing to play and the queue simply stalled between tracks.
+  /**
+   * KEEP-PLAYING RECONCILER — the fix for "it didn't autoplay and then the play
+   * button did nothing" (Trevor, Sept 22).
+   *
+   * This replaces a load-confirmed effect keyed on `[status.isLoaded,
+   * status.duration]` that guarded itself with a `pendingSrcRef` flag. That is
+   * the SAME unbounded-flag shape as the Sept 15 finish bug, and it failed the
+   * same way: `replace()` is async, so the optimistic `play()` in `playAt` is a
+   * no-op while the source loads, and the effect was supposed to start it for
+   * real when the load landed. But if `isLoaded` was ALREADY true from the
+   * previous track and `duration` happened not to change, neither dep changed,
+   * the effect never ran, and `pendingSrcRef` stayed set forever. The player
+   * sat silent holding an unstarted source — and because `toggle` only called
+   * `player.play()` on that same dead source, the play button did nothing
+   * either. Permanently stuck, which is exactly the report.
+   *
+   * So: no flag, no dep-diffing. Declare the INTENT (`wantPlayingRef`) and
+   * reconcile it against reality on every status tick. If we want to be playing
+   * and we aren't, try again — throttled, and never during a swap, where "not
+   * playing yet" is normal rather than a fault.
+   */
   useEffect(() => {
-    if (!pendingSrcRef.current) return;
+    if (idxRef.current < 0 || !wantPlayingRef.current) return;
+    if (status.playing) { retryAtRef.current = 0; return; }
+    // Mid-swap silence is expected, not a stall.
+    if (Date.now() - swapAtRef.current < SWAP_GUARD_MS) return;
     if (!status.isLoaded) return;
-    pendingSrcRef.current = null;
+    const now = Date.now();
+    if (now - retryAtRef.current < PLAY_RETRY_MS) return;
+    retryAtRef.current = now;
     try {
       player.setPlaybackRate(speed || 1, 'high'); // replace() resets the rate
-      if (!status.playing) player.play();
+      player.play();
     } catch { /* swapped again already */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status.isLoaded, status.duration]);
+  }, [status]);
 
   /** Advance past a finished track, honouring loop mode and the sleep timer. */
   const advance = useCallback(() => {
@@ -339,11 +370,26 @@ export function useAffirmationQueue(opts: {
   }, [timerMin]);
 
   const start = useCallback((from = 0) => { passRef.current = 0; playAt(from); }, [playAt]);
+  /**
+   * The play button must always be able to recover.
+   *
+   * It used to call a bare `player.play()`, which does nothing at all if the
+   * current source never finished loading — so a stalled track left the button
+   * visually fine and functionally dead (Trevor, Sept 22). If the player isn't
+   * loaded, we re-issue the whole `playAt` (a fresh `replace()` + play) rather
+   * than poking a source that isn't there.
+   */
   const toggle = useCallback(() => {
-    if (status.playing) { player.pause(); return; }
+    if (status.playing) {
+      wantPlayingRef.current = false;
+      player.pause();
+      return;
+    }
+    wantPlayingRef.current = true;
     if (index < 0) { start(0); return; }
-    player.play();
-  }, [status.playing, player, index, start]);
+    if (!status.isLoaded) { playAt(index); return; }
+    try { player.play(); } catch { playAt(index); }
+  }, [status.playing, status.isLoaded, player, index, start, playAt]);
 
   const skip = useCallback((forward: boolean) => {
     const cur = idxRef.current < 0 ? 0 : idxRef.current;

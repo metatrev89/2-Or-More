@@ -49,6 +49,52 @@ const STAT_CELEB_HOLD_MS = 1150;
  */
 const STAT_CELEB_ENTER_DELAY_MS = 420;
 
+/** How long a stat takes to count up to its new value. */
+const STAT_ROLL_MS = 620;
+const ROLL_TICK_MS = 40;
+
+/**
+ * `live` — mirror the real value (normal browsing).
+ * `frozen` — keep showing the pre-session value, even though the real one has
+ *   already moved. This is what makes a rollover possible at all: by the time
+ *   Home is on screen the numbers have long since updated, so without holding
+ *   them there is nothing left to animate.
+ * `rolling` — count up from the held value to the real one.
+ */
+type RollPhase = 'live' | 'frozen' | 'rolling';
+
+/**
+ * Roll progress, 0 (holding the old values) → 1 (showing the new ones).
+ *
+ * Lifted to the screen rather than kept inside a number component so the ring
+ * DOTS advance in step with the digits — two separate animations of the same
+ * count drifting apart is worse than no animation at all.
+ *
+ * Driven by an interval over JS state rather than Reanimated, because what's
+ * being animated is TEXT CONTENT that has to be re-rendered at each step, not
+ * a style property; worklets can't rewrite children. 25fps is ample for a
+ * two-digit counter.
+ */
+function useRollProgress(phase: RollPhase): number {
+  const [t, setT] = useState(1);
+
+  useEffect(() => {
+    if (phase === 'live') { setT(1); return; }
+    if (phase === 'frozen') { setT(0); return; }
+    const startedAt = Date.now();
+    const id = setInterval(() => {
+      const p = Math.min(1, (Date.now() - startedAt) / STAT_ROLL_MS);
+      setT(p);
+      if (p >= 1) clearInterval(id);
+    }, ROLL_TICK_MS);
+    return () => clearInterval(id);
+  }, [phase]);
+
+  // Ease-out cubic: quick off the mark, settling onto the final number rather
+  // than arriving at full speed.
+  return 1 - Math.pow(1 - t, 3);
+}
+
 /**
  * A stat card that reacts when its number changes.
  *
@@ -296,11 +342,7 @@ export default function HomeScreen() {
   // always rendered "4/5" no matter what the user had done.
   const dailyRings = track.perDay;
   const ringsDone = track.today.ringsClosed;
-  // Every closed ring reads the same (Trevor, Sept 11). The 2nd ring used to
-  // render terracotta to mean "done, but out of alignment" — alignment is out
-  // of v1, and a done session is a done session.
-  const ringStroke = (i: number) => (i < ringsDone ? colors.teal : colors.border);
-  const ringFill = (i: number) => (i < ringsDone ? 'rgba(21,122,110,0.25)' : 'none');
+  // (The ring-dot helpers live further down, with the roll they read from.)
 
   /**
    * Week sparkline, NEWEST → OLDEST: today is the leftmost bar (Trevor, Sept
@@ -336,26 +378,65 @@ export default function HomeScreen() {
   const [statCeleb, setStatCeleb] = useState(false);
   const [statCelebOwed, setStatCelebOwed] = useState(false);
   const prevRings = useRef<number | null>(null);
+  const prevWeek = useRef(track.weekPct);
+  /**
+   * The values as they were BEFORE this session closed — what the cards keep
+   * showing until the roll (Trevor, Sept 22: "I visibly see the stats rolling
+   * over to the updated stats").
+   *
+   * Captured here rather than inside the card, because by the time any render
+   * could notice, `track` already holds the new numbers. This effect is the one
+   * place that still has the old ones: `prevRings`/`prevWeek` hold the previous
+   * run's values, and the increase is exactly what triggers it.
+   */
+  const [rollFrom, setRollFrom] = useState<{ rings: number; week: number } | null>(null);
 
   useEffect(() => {
     const rings = track.today.ringsClosed;
     // First render establishes the baseline — opening the app on a day with
     // sessions already banked must not throw a celebration for old work.
-    if (prevRings.current === null) { prevRings.current = rings; return; }
-    if (rings > prevRings.current) setStatCelebOwed(true);
+    if (prevRings.current === null) {
+      prevRings.current = rings;
+      prevWeek.current = track.weekPct;
+      return;
+    }
+    if (rings > prevRings.current) {
+      setRollFrom({ rings: prevRings.current, week: prevWeek.current });
+      setStatCelebOwed(true);
+    }
     prevRings.current = rings;
-  }, [track.today.ringsClosed]);
+    prevWeek.current = track.weekPct;
+  }, [track.today.ringsClosed, track.weekPct]);
 
   useEffect(() => {
     if (!statCelebOwed || queue.bigCeleb) return;
     setStatCelebOwed(false);
 
     // Both cards at once, one chime for the pair. The chime carries the haptic
-    // with it (sfx.playSfx), so the buzz lands once too.
+    // with it (sfx.playSfx), so the buzz lands once too. The chime fires on the
+    // same tick the numbers start moving, so the sound IS the rollover.
     const t0 = setTimeout(() => { setStatCeleb(true); playCelebrationSmall(); }, STAT_CELEB_ENTER_DELAY_MS);
     const t1 = setTimeout(() => setStatCeleb(false), STAT_CELEB_ENTER_DELAY_MS + STAT_CELEB_HOLD_MS);
-    return () => { clearTimeout(t0); clearTimeout(t1); };
+    // Release the held values only after the roll has landed, so the cards
+    // never snap to the new number before the animation gets to it.
+    const t2 = setTimeout(() => setRollFrom(null), STAT_CELEB_ENTER_DELAY_MS + STAT_ROLL_MS + 80);
+    return () => { clearTimeout(t0); clearTimeout(t1); clearTimeout(t2); };
   }, [statCelebOwed, queue.bigCeleb]);
+
+  /** live → frozen at the old number → rolling up to the new one. */
+  const rollPhase: RollPhase = statCeleb ? 'rolling' : rollFrom ? 'frozen' : 'live';
+  const rollT = useRollProgress(rollPhase);
+  const rolled = (from: number, to: number) => Math.round(from + (to - from) * rollT);
+  // What the cards actually render. Identical to the real values except during
+  // the hold-and-roll, so nothing else on the screen has to know about this.
+  const ringsShown = rolled(rollFrom?.rings ?? ringsDone, ringsDone);
+  const weekShown = rolled(rollFrom?.week ?? track.weekPct, track.weekPct);
+
+  // Dots read the ROLLED count so they fill in step with the digits. Every
+  // closed ring reads the same (Trevor, Sept 11) — the 2nd used to render
+  // terracotta for "done but out of alignment", and alignment is out of v1.
+  const ringStroke = (i: number) => (i < ringsShown ? colors.teal : colors.border);
+  const ringFill = (i: number) => (i < ringsShown ? 'rgba(21,122,110,0.25)' : 'none');
 
   const dateLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
@@ -427,7 +508,7 @@ export default function HomeScreen() {
         {/* stat cards — first scrolling element */}
         <View style={{ flexDirection: 'row', gap: 14, marginTop: 12 }}>
           <StatCard celebrating={statCeleb}>
-            <Text style={{ fontFamily: fonts.monoMedium, fontSize: 24, color: colors.ink }}>{ringsDone}/{dailyRings}</Text>
+            <Text style={{ fontFamily: fonts.monoMedium, fontSize: 24, color: colors.ink }}>{ringsShown}/{dailyRings}</Text>
             <Text style={{ fontFamily: fonts.sans, fontSize: 14, color: colors.warmGray, marginTop: 3 }}>Session rings today</Text>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 3, marginTop: 14 }}>
               {Array.from({ length: dailyRings }, (_, i) => (
@@ -439,7 +520,7 @@ export default function HomeScreen() {
           </StatCard>
           <StatCard celebrating={statCeleb}>
             <Text style={{ fontFamily: fonts.monoMedium, fontSize: 24, color: colors.ink }}>
-              {track.weekPct}<Text style={{ fontSize: 16 }}>%</Text>
+              {weekShown}<Text style={{ fontSize: 16 }}>%</Text>
             </Text>
             <Text style={{ fontFamily: fonts.sans, fontSize: 14, color: colors.warmGray, marginTop: 3 }}>This week</Text>
             <View style={{ flexDirection: 'row', gap: 5, alignItems: 'flex-end', height: 26, marginTop: 10 }}>
