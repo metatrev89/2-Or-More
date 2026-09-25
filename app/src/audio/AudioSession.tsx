@@ -13,9 +13,10 @@
  * closes its ring no matter where playback was started from or which screen the
  * user happens to be looking at.
  */
-import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useAffirmationQueue, type LoopMode } from './useAffirmationQueue';
 import { playCelebrationLarge, playCelebrationSmall } from './sfx';
+import { pauseBed, playBed, stopBed } from './ambientBed';
 import { affSet, affText, useStore } from '../store';
 import { recordExperience } from '../api/sessionsRepo';
 import { useTracking } from '../tracking/useTracking';
@@ -52,6 +53,13 @@ interface AudioSessionValue {
   /** X on the mini bar — stop and end the session. */
   close: () => void;
 }
+
+/**
+ * How long playback must stay stopped before the ambient bed ducks out. Must
+ * exceed the queue's `SWAP_GUARD_MS` (350ms), because a track swap reports
+ * `playing: false` in the gap and that is not a pause.
+ */
+const BED_PAUSE_GRACE_MS = 700;
 
 const Ctx = createContext<AudioSessionValue | null>(null);
 
@@ -171,9 +179,42 @@ export function AudioSessionProvider({ children }: { children: React.ReactNode }
     },
   });
 
+  /**
+   * CHAKRA AMBIENT BED (Trevor, Sept 21 — Solfeggio crystal-bowl beds, one per
+   * area, 396 root → 963 crown plus a blended bed for the catch-all).
+   *
+   * Driven from here rather than from PlayerScreen for the same reason the
+   * queue is: a session survives screen changes, and the bed has to survive
+   * with it. Minimising the player or wandering to Progress must not cut the
+   * sound — only stopping the session does.
+   *
+   * It follows the CURRENT affirmation's area, so the bed crossfades as the
+   * queue moves between areas; `playBed` no-ops when the area is unchanged, so
+   * re-running this on every index/playing change is safe.
+   */
+  useEffect(() => {
+    if (!active || queue.index < 0) { stopBed(); return; }
+    if (queue.playing) { playBed(affs[queue.index]?.area); return; }
+
+    /*
+      A pause is only real if it LASTS. `playing` drops to false for a moment
+      during every track swap, and pausing the bed on that would duck it down
+      and back up between each affirmation — an audible pump on exactly the
+      seams the bed exists to smooth over. Longer than the swap guard, short
+      enough that tapping pause still feels immediate.
+    */
+    const t = setTimeout(() => pauseBed(), BED_PAUSE_GRACE_MS);
+    return () => clearTimeout(t);
+  }, [active, queue.index, queue.playing, affs]);
+
+  // Releasing on unmount matters: these are eight looping players holding
+  // decoded audio, and the provider outlives every screen.
+  useEffect(() => () => { stopBed(); }, []);
+
   const close = useCallback(() => {
     queue.stop();
     queue.setTimerMin(null);
+    stopBed();
     setActive(false);
   }, [queue]);
 
