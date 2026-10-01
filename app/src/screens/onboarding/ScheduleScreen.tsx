@@ -40,9 +40,13 @@ function Stepper({ value, onDown, onUp, small = false }: { value: string; onDown
  * so the row was restating the window the user had just set, in reverse. The
  * store fields stay accurate because notification scheduling and the Progress
  * screen read them.
+ *
+ * Every write goes through `setSchedule` (Oct 1). Plain `set` kept the choice
+ * in memory only, so a Custom cadence picked here reverted to Prime 5× on the
+ * next launch — and Home/Progress kept showing five sessions.
  */
 export default function ScheduleScreen({ navigation }: NativeStackScreenProps<RootStackParamList, 'Schedule'>) {
-  const { schedPlan, freq, awStart, awEnd, set } = useStore();
+  const { schedPlan, freq, awStart, awEnd, setSchedule } = useStore();
   const prime = schedPlan === 'prime';
 
   const row = { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const };
@@ -58,12 +62,12 @@ export default function ScheduleScreen({ navigation }: NativeStackScreenProps<Ro
       <Text style={rowLabel}>Active window</Text>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
         <Stepper small value={fmtHour(awStart)}
-          onDown={() => { const v = Math.max(0, awStart - 1); set({ awStart: v, qEnd: v }); }}
-          onUp={() => { const v = Math.min(awEnd - 1, awStart + 1); set({ awStart: v, qEnd: v }); }} />
+          onDown={() => setSchedule({ awStart: Math.max(0, awStart - 1) })}
+          onUp={() => setSchedule({ awStart: Math.min(awEnd - 1, awStart + 1) })} />
         <Text style={{ color: colors.inactive }}>–</Text>
         <Stepper small value={fmtHour(awEnd)}
-          onDown={() => { const v = Math.max(awStart + 1, awEnd - 1); set({ awEnd: v, qStart: v }); }}
-          onUp={() => { const v = Math.min(23, awEnd + 1); set({ awEnd: v, qStart: v }); }} />
+          onDown={() => setSchedule({ awEnd: Math.max(awStart + 1, awEnd - 1) })}
+          onUp={() => setSchedule({ awEnd: Math.min(23, awEnd + 1) })} />
       </View>
     </View>
   );
@@ -81,7 +85,7 @@ export default function ScheduleScreen({ navigation }: NativeStackScreenProps<Ro
           Repetition is how identity settles in. Small minutes, staggered right, compound.
         </Text>
 
-        <Pressable onPress={() => set({ schedPlan: 'prime' })} style={{
+        <Pressable onPress={() => setSchedule({ schedPlan: 'prime' })} style={{
           marginTop: 24, backgroundColor: colors.white, borderRadius: 22, padding: 22,
           borderWidth: prime ? 2 : 1, borderColor: prime ? colors.ink : colors.border,
         }}>
@@ -122,7 +126,7 @@ export default function ScheduleScreen({ navigation }: NativeStackScreenProps<Ro
           </View>
         </Pressable>
 
-        <Pressable onPress={() => set({ schedPlan: 'custom' })} style={{
+        <Pressable onPress={() => setSchedule({ schedPlan: 'custom' })} style={{
           marginTop: 14, backgroundColor: colors.white, borderRadius: 22, padding: 22,
           borderWidth: !prime ? 2 : 1, borderColor: !prime ? colors.ink : colors.border,
         }}>
@@ -137,8 +141,8 @@ export default function ScheduleScreen({ navigation }: NativeStackScreenProps<Ro
               <View style={row}>
                 <Text style={rowLabel}>Times per day</Text>
                 <Stepper value={`${freq}×`}
-                  onDown={() => set({ freq: Math.max(1, freq - 1) })}
-                  onUp={() => set({ freq: Math.min(12, freq + 1) })} />
+                  onDown={() => setSchedule({ freq: Math.max(1, freq - 1) })}
+                  onUp={() => setSchedule({ freq: Math.min(12, freq + 1) })} />
               </View>
               {activeWindowRow}
             </View>

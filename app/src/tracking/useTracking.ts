@@ -15,12 +15,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { affSet, useStore } from '../store';
 import {
-  dayKey, minutesOfDay, slotIndexFor, slotTimes, summarizeTracking, trackForNewSession,
+  dayKey, minutesOfDay, perDayFor, slotIndexFor, slotTimes, summarizeTracking, trackForNewSession,
   type DayLog, type TrackingSummary,
 } from './sessions';
-
-/** Prime's opening cadence — MUST match `primeProtocolPerDay` in the backend. */
-const PRIME_OPENING_PER_DAY = 5;
 
 /**
  * Re-evaluated once a minute. Slot boundaries and midnight are the only things
@@ -75,7 +72,7 @@ export function useTracking(): Tracking {
   return useMemo(() => {
     const affs = affSet(affirmations);
     const affCount = affs.length || 1;
-    const perDay = schedPlan === 'custom' ? Math.max(1, freq) : PRIME_OPENING_PER_DAY;
+    const perDay = perDayFor(schedPlan, freq);
     const slots = slotTimes(perDay, awStart, awEnd);
 
     const d = new Date(now);

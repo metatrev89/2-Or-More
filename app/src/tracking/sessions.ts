@@ -432,3 +432,60 @@ export function pruneLog(log: DayLog, keep = 400, now: Date = new Date()): DayLo
   for (const [d, slots] of Object.entries(log)) if (d >= min) out[d] = slots;
   return out;
 }
+
+/** Prime's opening cadence — MUST match `primeProtocolPerDay` in the backend. */
+export const PRIME_OPENING_PER_DAY = 5;
+
+/**
+ * Sessions per day for a plan. The ONE place this is decided — it used to be
+ * inlined in useTracking and HomeScreen, and Prime ignoring `freq` is exactly
+ * why Progress's "Times per day" stepper looked dead (Oct 1): on Prime the
+ * stepper wrote a number nothing read. Editing the count now moves the user
+ * onto Custom, so this rule stays true.
+ */
+export function perDayFor(plan: 'prime' | 'custom', freq: number): number {
+  return plan === 'custom' ? Math.max(1, Math.round(freq)) : PRIME_OPENING_PER_DAY;
+}
+
+/**
+ * Re-file ONE day's passes onto a new session count (Oct 1).
+ *
+ * The log is keyed by slot INDEX, and `summarizeDay` only reads indexes below
+ * `perDay` — so dropping from 5× to 3× after doing sessions 4 and 5 would make
+ * that practice silently vanish from today's rings and from the streak. This
+ * keeps every pass: non-empty slots are packed into the lowest indexes in
+ * their original order, and anything that no longer fits joins the LAST slot,
+ * where it counts as repetitions (full day credit, same as any other lap).
+ * Closed passes are ordered ahead of open ones so the "last pass is the live
+ * one" rule in `withExperience` still holds after a merge.
+ *
+ * Growing the count needs no re-filing — new slots are simply empty.
+ */
+export function refileDay(day: SlotLog, perDay: number, affCount: number): SlotLog {
+  const n = Math.max(1, perDay);
+  const used = Object.keys(day)
+    .map(Number)
+    .filter(i => (day[i] ?? []).some(p => p.ids.length > 0))
+    .sort((a, b) => a - b);
+  if (used.length === 0 || used[used.length - 1]! < n) return day;
+  const out: SlotLog = {};
+  used.forEach((src, k) => {
+    const dst = Math.min(k, n - 1);
+    out[dst] = [...(out[dst] ?? []), ...(day[src] ?? []).filter(p => p.ids.length > 0)];
+  });
+  // Only the final packed slot can receive merged passes.
+  const tail = Math.min(used.length, n) - 1;
+  const last = out[tail]!;
+  out[tail] = [
+    ...last.filter(p => isPassClosed(p, affCount)),
+    ...last.filter(p => !isPassClosed(p, affCount)),
+  ];
+  return out;
+}
+
+/** `refileDay` across the whole log — history is summarised at today's count too. */
+export function refileLog(log: DayLog, perDay: number, affCount: number): DayLog {
+  const out: DayLog = {};
+  for (const [d, day] of Object.entries(log)) out[d] = refileDay(day, perDay, affCount);
+  return out;
+}
