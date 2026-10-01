@@ -19,6 +19,7 @@
 import {
   dayKey, slotTimes, slotIndexFor, summarizeDay, summarizeTracking,
   withExperience, pruneLog, recentDates, migrateLog, trackForNewSession,
+  perDayFor, refileDay, refileLog, PRIME_OPENING_PER_DAY,
   type DayLog, type SessionPass,
 } from './sessions';
 
@@ -179,6 +180,30 @@ const twice = withExperience(once, 'a1', { date: today, slot: 2, affCount: 8 });
 eq('input not mutated', Object.keys(base).length, 0);
 eq('same id twice in one pass is a no-op', twice, once);
 eq('lands in the right slot', once[today]![2], [{ ids: ['a1'] }]);
+
+// ── schedule edits (Oct 1) ───────────────────────────────────────────────
+eq('prime ignores freq', perDayFor('prime', 9), PRIME_OPENING_PER_DAY);
+eq('custom reads freq', perDayFor('custom', 3), 3);
+eq('custom never drops below one', perDayFor('custom', 0), 1);
+
+const P = (n: number, closedAt?: number): SessionPass =>
+  ({ ids: Array.from({ length: n }, (_, i) => `a${i}`), ...(closedAt !== undefined ? { closedAt } : {}) });
+// Sessions 1, 4 and 5 done on a 5× day, then the user switches to 3×.
+const fiveDay = { 0: [P(4, 420)], 3: [P(4, 900)], 4: [P(2)] };
+const threeDay = refileDay(fiveDay, 3, 4);
+eq('5→3 keeps every pass', Object.values(threeDay).flat().length, 3);
+eq('5→3 packs into the lowest slots', Object.keys(threeDay), ['0', '1', '2']);
+eq('5→3 day credit unchanged', summarizeDay(today, threeDay, 3, 4).dayPct, (1 + 1 + 0.5) / 3);
+eq('5→3 still closes two rings', summarizeDay(today, threeDay, 3, 4).ringsClosed, 2);
+// Overflow: three busy slots squeezed into one — they become reps, open pass last.
+const oneDay = refileDay({ 0: [P(4, 420)], 2: [P(1)], 4: [P(4, 900)] }, 1, 4);
+eq('overflow joins the last slot', Object.keys(oneDay), ['0']);
+eq('overflow becomes reps', summarizeDay(today, oneDay, 1, 4).sessions[0]!.reps, 2);
+eq('open pass stays last so the next experience continues it',
+  oneDay[0]![oneDay[0]!.length - 1], P(1));
+eq('growing needs no refile', refileDay(fiveDay, 8, 4), fiveDay);
+eq('refileLog touches every day',
+  Object.keys(refileLog({ [today]: fiveDay, '2026-09-01': { 4: [P(4, 1)] } }, 3, 4)['2026-09-01']!), ['0']);
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

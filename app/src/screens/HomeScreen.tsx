@@ -18,6 +18,7 @@ import {
 import { DancingBars } from '../components/AnimatedBars';
 import { TAB_BAR_TOTAL_H } from '../components/GlassTabBar';
 import { makeSlotResolver, useTracking } from '../tracking/useTracking';
+import { perDayFor } from '../tracking/sessions';
 import { loadExperienceLog, mergeLogs } from '../api/sessionsRepo';
 import { CelebStar, Confetti } from '../components/Celebration';
 import { affSet, affText, useStore } from '../store';
@@ -247,7 +248,7 @@ export default function HomeScreen() {
     let alive = true;
     (async () => {
       const s = useStore.getState();
-      const perDay = s.schedPlan === 'custom' ? Math.max(1, s.freq) : 5;
+      const perDay = perDayFor(s.schedPlan, s.freq);
       const remote = await loadExperienceLog(
         400,
         makeSlotResolver(perDay, s.awStart, s.awEnd),

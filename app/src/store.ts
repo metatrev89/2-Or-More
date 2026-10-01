@@ -8,13 +8,17 @@ import type { AffirmationDTO } from './api/client';
 import { MOCK_AFFS } from './api/mockData';
 import { photoExists, photoNameFrom, resolvePhotoName } from './media/profilePhoto';
 import { setChimesMuted } from './audio/sfx';
-import { dayKey, migrateLog, pruneLog, withExperience, type DayLog } from './tracking/sessions';
+import { dayKey, migrateLog, perDayFor, pruneLog, refileLog, withExperience, type DayLog } from './tracking/sessions';
 
 export type OnboardingScreen =
   | 'intro' | 'signup' | 'email' | 'intake' | 'build'
   | 'review' | 'schedule' | 'paywall' | 'creation';
 
 interface Msg { isAi: boolean; text: string; photoUri?: string }
+
+type ScheduleFields = Partial<Pick<State, 'schedPlan' | 'freq' | 'awStart' | 'awEnd'>>;
+
+const SCHEDULE_KEY = 'twoplus_schedule';
 
 interface State {
   // onboarding
@@ -98,6 +102,12 @@ interface State {
   setDayLog: (log: DayLog) => void;
   setSpeed: (v: number) => Promise<void>;
   setChimesMuted: (v: boolean) => void;
+  /**
+   * The ONLY way screens should change the schedule (Oct 1). Persists it, and
+   * when the session count changes, re-files the log onto the new slots so no
+   * practice already done today drops out of the rings.
+   */
+  setSchedule: (patch: ScheduleFields) => void;
   hydrate: () => Promise<void>;
 }
 
@@ -209,7 +219,52 @@ export const useStore = create<State>((set, get) => ({
     AsyncStorage.setItem('twoplus_chimes_muted', v ? '1' : '0').catch(() => {});
   },
 
+  setSchedule: (patch) => {
+    const s = get();
+    const next = {
+      schedPlan: patch.schedPlan ?? s.schedPlan,
+      freq: Math.min(12, Math.max(1, Math.round(patch.freq ?? s.freq))),
+      awStart: patch.awStart ?? s.awStart,
+      awEnd: patch.awEnd ?? s.awEnd,
+    };
+    if (next.awEnd <= next.awStart) return;
+    // Quiet hours ride along as the window's complement (Sept 14).
+    const update: Partial<State> = { ...next, qStart: next.awEnd, qEnd: next.awStart };
+    const before = perDayFor(s.schedPlan, s.freq);
+    const after = perDayFor(next.schedPlan, next.freq);
+    if (after !== before) {
+      // Slot indexes now mean something different, so the visit's claimed
+      // track is meaningless — let the next session pick afresh.
+      update.slotClaim = null;
+      if (after < before) {
+        const dayLog = refileLog(s.dayLog, after, affSet(s.affirmations).length || 1);
+        update.dayLog = dayLog;
+        AsyncStorage.setItem('twoplus_day_log', JSON.stringify(dayLog)).catch(() => {});
+      }
+    }
+    set(update);
+    AsyncStorage.setItem(SCHEDULE_KEY, JSON.stringify(next)).catch(() => {});
+  },
+
   hydrate: async () => {
+    // Before this (Oct 1) the schedule lived in memory only, so a Custom
+    // cadence chosen in onboarding reverted to Prime 5× on the next launch.
+    const sched = await AsyncStorage.getItem(SCHEDULE_KEY);
+    if (sched) {
+      try {
+        const v = JSON.parse(sched) as Record<string, unknown>;
+        const num = (x: unknown, lo: number, hi: number) =>
+          typeof x === 'number' && x >= lo && x <= hi ? Math.round(x) : undefined;
+        const awStart = num(v.awStart, 0, 23), awEnd = num(v.awEnd, 0, 23), freq = num(v.freq, 1, 12);
+        const patch: Partial<State> = {};
+        if (v.schedPlan === 'prime' || v.schedPlan === 'custom') patch.schedPlan = v.schedPlan;
+        if (freq !== undefined) patch.freq = freq;
+        if (awStart !== undefined && awEnd !== undefined && awEnd > awStart) {
+          Object.assign(patch, { awStart, awEnd, qStart: awEnd, qEnd: awStart });
+        }
+        set(patch);
+      } catch { /* corrupt: keep defaults */ }
+    }
     const sp = await AsyncStorage.getItem('twoplus_audio_speed');
     if (sp) {
       const v = parseFloat(sp);

@@ -106,7 +106,8 @@ function Stepper({ value, width, small, onDown, onUp }: { value: string; width: 
 
 /** Progress (design section 11): daily ring hero, sessions, week, medals, month. */
 export default function ProgressScreen() {
-  const { freq, awStart, awEnd, qStart, qEnd, affirmations, set } = useStore();
+  const { schedPlan, awStart, awEnd, qStart, qEnd, affirmations, setSchedule } = useStore();
+  const prime = schedPlan === 'prime';
   const [editing, setEditing] = useState(false);
   // Everything on this screen is real as of Sept 17 — the session list was a
   // hardcoded table of [full, full, full, full, 3, 0, 0] that never moved.
@@ -283,22 +284,40 @@ export default function ProgressScreen() {
             </View>
           ) : (
             <Animated.View entering={FadeIn.duration(350)} style={{ marginTop: 16 }}>
+              {/*
+                Wired Oct 1 — these steppers used to write `freq` on Prime,
+                where nothing reads it, so the panel changed nothing. The
+                stepper now starts from the count actually in force, and
+                stepping it moves the user onto Custom at that count.
+              */}
               <View style={rowBetween}>
                 <Text style={{ fontFamily: fonts.sans, fontSize: 14.5, color: colors.warmGray }}>Times per day</Text>
-                <Stepper value={`${freq}×`} width={36}
-                  onDown={() => set({ freq: Math.max(1, freq - 1) })}
-                  onUp={() => set({ freq: Math.min(12, freq + 1) })} />
+                <Stepper value={`${track.perDay}×`} width={36}
+                  onDown={() => setSchedule({ schedPlan: 'custom', freq: Math.max(1, track.perDay - 1) })}
+                  onUp={() => setSchedule({ schedPlan: 'custom', freq: Math.min(12, track.perDay + 1) })} />
+              </View>
+              <View style={[rowBetween, { marginTop: 8 }]}>
+                <Text style={{ fontFamily: fonts.sans, fontSize: 12.5, color: colors.inactive }}>
+                  {prime ? 'Prime protocol' : 'Custom cadence'}
+                </Text>
+                {!prime && (
+                  <Pressable onPress={() => setSchedule({ schedPlan: 'prime' })} hitSlop={8}>
+                    <Text style={{ fontFamily: fonts.sansMedium, fontSize: 12.5, color: colors.ink, textDecorationLine: 'underline' }}>
+                      Use Prime protocol
+                    </Text>
+                  </Pressable>
+                )}
               </View>
               <View style={[rowBetween, { marginTop: 16 }]}>
                 <Text style={{ fontFamily: fonts.sans, fontSize: 14.5, color: colors.warmGray }}>Active window</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <Stepper small value={fmtHour(awStart)} width={46}
-                    onDown={() => { const v = Math.max(0, awStart - 1); set({ awStart: v, qEnd: v }); }}
-                    onUp={() => { const v = Math.min(awEnd - 1, awStart + 1); set({ awStart: v, qEnd: v }); }} />
+                    onDown={() => setSchedule({ awStart: Math.max(0, awStart - 1) })}
+                    onUp={() => setSchedule({ awStart: Math.min(awEnd - 1, awStart + 1) })} />
                   <Text style={{ fontSize: 13, color: colors.inactive }}>–</Text>
                   <Stepper small value={fmtHour(awEnd)} width={46}
-                    onDown={() => { const v = Math.max(awStart + 1, awEnd - 1); set({ awEnd: v, qStart: v }); }}
-                    onUp={() => { const v = Math.min(23, awEnd + 1); set({ awEnd: v, qStart: v }); }} />
+                    onDown={() => setSchedule({ awEnd: Math.max(awStart + 1, awEnd - 1) })}
+                    onUp={() => setSchedule({ awEnd: Math.min(23, awEnd + 1) })} />
                 </View>
               </View>
               <View style={[rowBetween, { marginTop: 14 }]}>
@@ -309,10 +328,18 @@ export default function ProgressScreen() {
                   <Mono size={14} color={colors.ink} style={{ width: 46, textAlign: 'center' }}>{fmtHour(qEnd)}</Mono>
                 </View>
               </View>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 14 }}>
+                {daySessions.map(d => (
+                  <View key={d.key} style={{ paddingHorizontal: 9, paddingVertical: 4, borderRadius: 10, backgroundColor: colors.cream, borderWidth: 1, borderColor: colors.border }}>
+                    <Mono size={11.5} color={colors.ink}>{d.scheduled}</Mono>
+                  </View>
+                ))}
+              </View>
               <View style={{ marginTop: 16, paddingTop: 13, borderTopWidth: 1, borderTopColor: colors.border, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.gold }} />
                 <Text style={{ fontFamily: fonts.sans, fontSize: 13, color: colors.warmGray, lineHeight: 19 }}>
-                  Staggered wake to wind-down · takes effect tomorrow
+                  {/* Applies immediately — the session rows re-slot as you step. */}
+                  Staggered across your window · applies from today
                 </Text>
               </View>
               <Pressable onPress={() => setEditing(false)} style={{
