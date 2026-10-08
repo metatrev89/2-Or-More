@@ -14,6 +14,7 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import { signedVoiceUrl } from '../api/voiceUpload';
 import { isLiveMode, supabase } from '../api/supabase';
+import { resolveVoiceUri } from './voiceRecordings';
 
 /** Signed URLs are short-lived; cache per session so playback doesn't re-sign. */
 const urlCache = new Map<string, { url: string; at: number }>();
@@ -37,7 +38,10 @@ export async function resolveAudioSource(
   affirmationId: string,
   localUri: string | undefined,
 ): Promise<string | null> {
-  if (localUri && await localExists(localUri)) return localUri;
+  if (localUri) {
+    const local = resolveVoiceUri(localUri);
+    if (await localExists(local)) return local;
+  }
 
   const cached = urlCache.get(affirmationId);
   if (cached && Date.now() - cached.at < URL_TTL_MS) return cached.url;

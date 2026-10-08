@@ -9,7 +9,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
-import { resolveAudioSources } from './affirmationAudio';
+import { invalidateAudioUrl, resolveAudioSources } from './affirmationAudio';
 import { configureForPlayback, ensureMediaNotificationPermission } from './audioMode';
 
 export type LoopMode = 'off' | 'once' | 'infinite';
@@ -51,6 +51,33 @@ const END_TOUCH_SEC = 0.06;
  */
 const PLAY_RETRY_MS = 400;
 
+/**
+ * How often the watchdog looks at the player (Oct 8). It runs on a TIMER, not
+ * on status events — see the watchdog effect for why that is the whole point.
+ */
+const WATCHDOG_MS = 500;
+
+/**
+ * A track that hasn't loaded in this long isn't loading. Generous, because a
+ * signed URL on a slow connection legitimately takes a few seconds.
+ */
+const LOAD_TIMEOUT_MS = 8000;
+
+/**
+ * How long we keep retrying `play()` against a session that won't activate
+ * (a phone call, Siri, another app holding exclusive audio) before letting go
+ * of the intent. Long enough to ride out a notification sound; short enough
+ * that we never fight a real phone call.
+ */
+const GIVE_UP_MS = 10_000;
+
+/**
+ * Resolved sources older than this are re-resolved before a session starts.
+ * Signed Storage URLs live one hour and `affirmationAudio` caches them for 45
+ * minutes, so anything resolved this long ago may already be dead.
+ */
+const SOURCE_MAX_AGE_MS = 30 * 60 * 1000;
+
 export interface QueueItem { id: string }
 
 export function useAffirmationQueue(opts: {
@@ -77,6 +104,7 @@ export function useAffirmationQueue(opts: {
   }, []);
 
   const metaRef = useRef(lockScreenMeta); metaRef.current = lockScreenMeta;
+  const speedRef = useRef(speed); speedRef.current = speed;
   /** True once this player owns the lock screen, so we only claim/clear once. */
   const lockHeldRef = useRef(false);
 
@@ -150,19 +178,97 @@ export function useAffirmationQueue(opts: {
    * ends within it, so nothing genuine is ever discarded.
    */
   const swapAtRef = useRef(0);
+  /** Bumped by every start/stop, so a start awaiting fresh sources can tell it was superseded. */
+  const startSeqRef = useRef(0);
+  /** When `play()` first started failing for the current intent; 0 = not failing. */
+  const failingSinceRef = useRef(0);
+  /** Index whose load failure we've already retried once with fresh sources. */
+  const retriedIdxRef = useRef(-1);
+  /** When the current track's source was handed to the player. */
+  const loadStartRef = useRef(0);
+  /** When the player last REPORTED an error. Compared to loadStartRef so a
+   *  stale error from the previous source can't condemn the new one. */
+  const errorAtRef = useRef(0);
+  /** Last recovery attempt — one per LOAD_TIMEOUT_MS window, not one per tick. */
+  const recoverAtRef = useRef(0);
+
+  /**
+   * Ask the player to play WITHOUT treating failure as fatal (Oct 8).
+   *
+   * Native `play()` begins with `AVAudioSession.setActive(true)`, which throws
+   * whenever iOS won't hand us the audio session — a call, Siri, an app holding
+   * exclusive audio, a brief window around backgrounding. `playAt` used to wrap
+   * this in `catch { stop(); }`, so ONE refused activation wiped the queue to
+   * index -1: no autoplay, and the play button went back through the same
+   * throw into the same `stop()`. Now a failure just leaves the intent standing
+   * and the watchdog tries again.
+   */
+  const tryPlay = useCallback((): boolean => {
+    try {
+      player.setPlaybackRate(speedRef.current || 1, 'high'); // replace() resets the rate
+      player.play();
+      failingSinceRef.current = 0;
+      return true;
+    } catch {
+      if (!failingSinceRef.current) failingSinceRef.current = Date.now();
+      return false;
+    }
+  }, [player]);
 
   const ids = useMemo(() => items.map(i => i.id).join('|'), [items]);
 
-  // Resolve every affirmation to a local file or a signed Storage URL.
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      const next = await resolveAudioSources(items, recordings);
-      if (alive) setSources(next);
-    })();
-    return () => { alive = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ids, recordings]);
+  /** Latest player status, for code that runs off a timer rather than a render. */
+  const statusRef = useRef(status); statusRef.current = status;
+  useEffect(() => { if (status.error) errorAtRef.current = Date.now(); }, [status]);
+  /** Latest inputs, so an async resolve can tell whether it is still current. */
+  const inputsRef = useRef({ items, recordings, ids }); inputsRef.current = { items, recordings, ids };
+  /** What `sources` was resolved FOR, and when. */
+  const resolvedRef = useRef<{ ids: string; recordings: Record<string, string> | null; at: number }>(
+    { ids: '', recordings: null, at: 0 },
+  );
+  const inflightRef = useRef<{ ids: string; recordings: Record<string, string>; p: Promise<void> } | null>(null);
+
+  /**
+   * Resolve every affirmation to a local file or a signed Storage URL — and
+   * know when that answer has gone stale (Oct 8).
+   *
+   * This used to run once per change of ids/recordings and then be trusted
+   * forever. But this hook lives in the app-level provider, so "forever" is the
+   * life of the app process — hours, across background/foreground. Signed URLs
+   * die after one hour, so a Play All tapped later replaced the player onto a
+   * dead URL. The item failed to load, `isLoaded` never went true, the old
+   * reconciler bailed on `!isLoaded`, and the play button re-replaced the SAME
+   * dead URL. Silent, unclickable, and cured only by killing the app — which
+   * is exactly why it looked intermittent.
+   *
+   * `force` drops cached signed URLs too, for when one has actually failed.
+   */
+  const resolveNow = useCallback((force = false): Promise<void> => {
+    const { items: its, recordings: recs, ids: key } = inputsRef.current;
+    const r = resolvedRef.current;
+    const aged = Date.now() - r.at >= SOURCE_MAX_AGE_MS;
+    const current = r.ids === key && r.recordings === recs;
+    if (!force && current && !aged) return Promise.resolve();
+    const inflight = inflightRef.current;
+    if (!force && inflight && inflight.ids === key && inflight.recordings === recs) return inflight.p;
+    // An aged answer may be holding URLs the cache would hand straight back.
+    if (force || aged) its.forEach(i => invalidateAudioUrl(i.id));
+    const p = resolveAudioSources(its, recs).then(next => {
+      if (inflightRef.current?.p === p) inflightRef.current = null;
+      const now = inputsRef.current;
+      // Inputs moved on while we were resolving — a newer resolve owns this.
+      if (now.ids !== key || now.recordings !== recs) return;
+      srcRef.current = next;
+      resolvedRef.current = { ids: key, recordings: recs, at: Date.now() };
+      setSources(next);
+    }).catch(() => {
+      if (inflightRef.current?.p === p) inflightRef.current = null;
+    });
+    inflightRef.current = { ids: key, recordings: recs, p };
+    return p;
+  }, []);
+
+  useEffect(() => { void resolveNow(); }, [ids, recordings, resolveNow]);
 
   const playableCount = sources.filter(Boolean).length;
   const hasAudio = playableCount > 0;
@@ -182,6 +288,7 @@ export function useAffirmationQueue(opts: {
       try { player.clearLockScreenControls(); } catch { /* not claimed */ }
     }
     wantPlayingRef.current = false;
+    startSeqRef.current += 1;     // cancels a start still waiting on sources
     armedRef.current = false;
     maxPosRef.current = 0;
     setIndex(-1);
@@ -211,58 +318,96 @@ export function useAffirmationQueue(opts: {
     if (!src) { stop(); return; }
     try {
       player.replace(src);
-      wantPlayingRef.current = true;
-      swapAtRef.current = Date.now();
-      // A new track has, by definition, not finished. It must earn the right to
-      // finish again by actually playing — see armedRef.
-      armedRef.current = false;
-      maxPosRef.current = 0;
-      setIndex(target);
-      idxRef.current = target;
-      // Optimistic start: instant when the source happens to be ready already.
-      // The load-confirmed effect below is what guarantees it either way.
-      player.setPlaybackRate(speed || 1, 'high');
-      player.play();
-      publishLockScreen(target);
-    } catch { stop(); }
-  }, [player, speed, nextPlayable, stop, publishLockScreen]);
+    } catch { stop(); return; }
+    wantPlayingRef.current = true;
+    swapAtRef.current = Date.now();
+    loadStartRef.current = Date.now();
+    if (target !== retriedIdxRef.current) retriedIdxRef.current = -1;
+    // A new track has, by definition, not finished. It must earn the right to
+    // finish again by actually playing — see armedRef.
+    armedRef.current = false;
+    maxPosRef.current = 0;
+    setIndex(target);
+    idxRef.current = target;
+    // Optimistic start: instant when the source happens to be ready already.
+    // If it isn't — or the session refuses — the watchdog finishes the job.
+    tryPlay();
+    publishLockScreen(target);
+  }, [player, nextPlayable, stop, publishLockScreen, tryPlay]);
 
   /**
-   * KEEP-PLAYING RECONCILER — the fix for "it didn't autoplay and then the play
-   * button did nothing" (Trevor, Sept 22).
+   * THE WATCHDOG — keeps reality matching intent (Oct 8; supersedes the Sept 22
+   * status-driven reconciler).
    *
-   * This replaces a load-confirmed effect keyed on `[status.isLoaded,
-   * status.duration]` that guarded itself with a `pendingSrcRef` flag. That is
-   * the SAME unbounded-flag shape as the Sept 15 finish bug, and it failed the
-   * same way: `replace()` is async, so the optimistic `play()` in `playAt` is a
-   * no-op while the source loads, and the effect was supposed to start it for
-   * real when the load landed. But if `isLoaded` was ALREADY true from the
-   * previous track and `duration` happened not to change, neither dep changed,
-   * the effect never ran, and `pendingSrcRef` stayed set forever. The player
-   * sat silent holding an unstarted source — and because `toggle` only called
-   * `player.play()` on that same dead source, the play button did nothing
-   * either. Permanently stuck, which is exactly the report.
+   * The Sept 22 reconciler was the right idea on the wrong clock: it was a
+   * `useEffect` on `status`, so it could only act when the player EMITTED a
+   * status. On iOS the player emits on a handful of events (item ready, seek,
+   * end) and on a periodic tick that only runs WHILE PLAYING. A player that
+   * is loaded but not playing goes completely silent — and the one event it
+   * does send, "ready", usually lands inside the 350ms swap guard, where the
+   * reconciler deliberately ignored it. So if the optimistic `play()` didn't
+   * take, nothing ever tried again. The Player sat there, and nothing moved
+   * until the user found a way to make the player emit.
    *
-   * So: no flag, no dep-diffing. Declare the INTENT (`wantPlayingRef`) and
-   * reconcile it against reality on every status tick. If we want to be playing
-   * and we aren't, try again — throttled, and never during a swap, where "not
-   * playing yet" is normal rather than a fault.
+   * A timer can't be starved. Every WATCHDOG_MS, while we intend to play:
+   *
+   *   - playing            → healthy; clear any failure bookkeeping
+   *   - load failed / timed out → re-resolve sources (a dead signed URL is
+   *     the usual cause) and retry the track ONCE; if it fails again, skip it
+   *     rather than sit on it
+   *   - loaded, not playing → `play()` again, throttled
+   *   - `play()` refused for GIVE_UP_MS → let go of the intent so we never
+   *     fight a phone call; the play button picks it straight back up
    */
+  const recoverTrack = useCallback((i: number) => {
+    if (retriedIdxRef.current !== i) {
+      retriedIdxRef.current = i;
+      const seq = startSeqRef.current;
+      void resolveNow(true).then(() => {
+        if (seq !== startSeqRef.current || idxRef.current !== i || !wantPlayingRef.current) return;
+        playAt(i);
+      });
+      return;
+    }
+    // Already retried with fresh sources and it still won't load: skip it.
+    const next = nextPlayable(i + 1);
+    if (next >= 0 && next !== i) { playAt(next); return; }
+    stop();
+  }, [resolveNow, playAt, nextPlayable, stop]);
+  const recoverRef = useRef(recoverTrack); recoverRef.current = recoverTrack;
+
   useEffect(() => {
-    if (idxRef.current < 0 || !wantPlayingRef.current) return;
-    if (status.playing) { retryAtRef.current = 0; return; }
-    // Mid-swap silence is expected, not a stall.
-    if (Date.now() - swapAtRef.current < SWAP_GUARD_MS) return;
-    if (!status.isLoaded) return;
-    const now = Date.now();
-    if (now - retryAtRef.current < PLAY_RETRY_MS) return;
-    retryAtRef.current = now;
-    try {
-      player.setPlaybackRate(speed || 1, 'high'); // replace() resets the rate
-      player.play();
-    } catch { /* swapped again already */ }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status]);
+    const id = setInterval(() => {
+      const i = idxRef.current;
+      if (i < 0 || !wantPlayingRef.current) return;
+      const st = statusRef.current;
+      if (st.playing) { failingSinceRef.current = 0; return; }
+      const sinceSwap = Date.now() - swapAtRef.current;
+      // Mid-swap silence is expected, not a stall.
+      if (sinceSwap < SWAP_GUARD_MS) return;
+
+      const failed = errorAtRef.current > loadStartRef.current;
+      const timedOut = !st.isLoaded && Date.now() - loadStartRef.current >= LOAD_TIMEOUT_MS;
+      if (failed || timedOut) {
+        if (Date.now() - recoverAtRef.current < LOAD_TIMEOUT_MS) return;
+        recoverAtRef.current = Date.now();
+        recoverRef.current(i);
+        return;
+      }
+      if (!st.isLoaded) return; // still loading — give it time
+
+      if (failingSinceRef.current && Date.now() - failingSinceRef.current >= GIVE_UP_MS) {
+        failingSinceRef.current = 0;
+        wantPlayingRef.current = false; // the session isn't ours; stop asking
+        return;
+      }
+      const now = Date.now();
+      if (now - retryAtRef.current < PLAY_RETRY_MS) return;
+      retryAtRef.current = now;
+      tryPlay();
+    }, WATCHDOG_MS);
+    return () => clearInterval(id);
+  }, [tryPlay]);
 
   /** Advance past a finished track, honouring loop mode and the sleep timer. */
   const advance = useCallback(() => {
@@ -369,7 +514,21 @@ export function useAffirmationQueue(opts: {
     return () => clearInterval(id);
   }, [timerMin]);
 
-  const start = useCallback((from = 0) => { passRef.current = 0; playAt(from); }, [playAt]);
+  /**
+   * Begin a session. If the sources are stale (old signed URLs, or resolved
+   * for a different set) this waits for a fresh resolve first, so a session
+   * never starts on a URL that died an hour ago. A later start or stop wins.
+   */
+  const start = useCallback((from = 0) => {
+    passRef.current = 0;
+    wantPlayingRef.current = true;
+    failingSinceRef.current = 0;
+    const seq = ++startSeqRef.current;
+    void resolveNow().then(() => {
+      if (seq !== startSeqRef.current || !wantPlayingRef.current) return;
+      playAt(from);
+    });
+  }, [resolveNow, playAt]);
   /**
    * The play button must always be able to recover.
    *
@@ -380,16 +539,27 @@ export function useAffirmationQueue(opts: {
    * than poking a source that isn't there.
    */
   const toggle = useCallback(() => {
-    if (status.playing) {
+    // Read the LIVE status: a toggle built from an old render's status could
+    // pause a player that has since stopped, eating the user's tap.
+    const st = statusRef.current;
+    if (st.playing) {
       wantPlayingRef.current = false;
-      player.pause();
+      try { player.pause(); } catch { /* not loaded */ }
       return;
     }
     wantPlayingRef.current = true;
-    if (index < 0) { start(0); return; }
-    if (!status.isLoaded) { playAt(index); return; }
-    try { player.play(); } catch { playAt(index); }
-  }, [status.playing, status.isLoaded, player, index, start, playAt]);
+    failingSinceRef.current = 0;
+    const i = idxRef.current;
+    if (i < 0) { start(0); return; }
+    // A track that failed or never loaded gets a fresh source, not a re-poke.
+    if (errorAtRef.current > loadStartRef.current || !st.isLoaded) {
+      retriedIdxRef.current = -1;
+      recoverAtRef.current = Date.now();
+      recoverTrack(i);
+      return;
+    }
+    tryPlay();
+  }, [player, start, recoverTrack, tryPlay]);
 
   const skip = useCallback((forward: boolean) => {
     const cur = idxRef.current < 0 ? 0 : idxRef.current;
