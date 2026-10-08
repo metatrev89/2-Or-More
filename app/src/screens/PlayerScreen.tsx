@@ -149,9 +149,17 @@ export default function PlayerScreen({ navigation }: NativeStackScreenProps<Root
 
     Claiming it at fire time means a cancelled attempt is genuinely retried.
   */
+  /*
+    Gated on the QUEUE being idle, not on the session flag (Oct 8). `active`
+    could stay true over a queue that had already run out (see onQueueEnd in
+    AudioSession), and this guard then read "a session is running" and never
+    autoplayed. `index >= 0` means a track is genuinely loaded — the only case
+    where reopening the Player must not restart anything.
+  */
   const autoStarted = useRef(false);
+  const running = curIdx >= 0;
   useEffect(() => {
-    if (autoStarted.current || !hasAudio || queue.active) return;
+    if (autoStarted.current || !hasAudio || running) return;
     const t = setTimeout(() => {
       if (autoStarted.current) return;
       autoStarted.current = true;
@@ -159,7 +167,7 @@ export default function PlayerScreen({ navigation }: NativeStackScreenProps<Root
     }, 400);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasAudio, queue.active]);
+  }, [hasAudio, running]);
 
   // The session chip is the day's progress report once the set closes out.
   useEffect(() => {

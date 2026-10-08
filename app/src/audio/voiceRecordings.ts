@@ -71,10 +71,29 @@ export async function saveRecording(tempUri: string, affirmationId: string): Pro
   return dest;
 }
 
+/**
+ * The CURRENT location of a stored recording (Oct 8).
+ *
+ * The store holds the absolute path `saveRecording` returned — and that path
+ * embeds the app container's UUID, which iOS changes when Expo Go (or the app)
+ * updates. The file is still in `voice/`; only the string went stale. That is
+ * the profile-photo bug of Sept 14 again, and here it was worse: a stale path
+ * failed `localExists`, so playback quietly fell back to a one-hour signed URL
+ * that the long-lived audio session then held past its expiry — one cause of
+ * the Play All player sitting dead. Rebuild the directory at read time, as
+ * `profilePhoto.ts` does, so old and new entries both resolve.
+ */
+export function resolveVoiceUri(stored: string): string {
+  const marker = '/voice/';
+  const at = stored.lastIndexOf(marker);
+  if (at < 0) return stored;
+  return `${VOICE_DIR}${stored.slice(at + marker.length)}`;
+}
+
 /** Delete a recording file; missing files are not an error. */
 export async function deleteRecording(uri: string): Promise<void> {
   try {
-    await FileSystem.deleteAsync(uri, { idempotent: true });
+    await FileSystem.deleteAsync(resolveVoiceUri(uri), { idempotent: true });
   } catch { /* already gone */ }
 }
 

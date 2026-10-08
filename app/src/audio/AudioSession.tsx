@@ -86,6 +86,10 @@ export function AudioSessionProvider({ children }: { children: React.ReactNode }
   const [celebIndex, setCelebIndex] = useState(-1);
   const [bigCeleb, setBigCeleb] = useState(false);
   const celebTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Synchronous mirror of bigCeleb — read by onQueueEnd in the same tick it's set. */
+  const bigCelebRef = useRef(false);
+  /** Late-bound so onQueueEnd (passed into the queue) can reach close(). */
+  const closeRef = useRef<() => void>(() => {});
   const affsRef = useRef(affs); affsRef.current = affs;
 
   /**
@@ -150,6 +154,7 @@ export function AudioSessionProvider({ children }: { children: React.ReactNode }
     // this pass, not of all time. `+ 1` because the log write above hasn't
     // re-rendered the hook yet.
     if (track.currentDoneIds.length + 1 >= list.length) {
+      bigCelebRef.current = true;
       setBigCeleb(true);
       playCelebrationLarge();
     } else {
@@ -162,6 +167,15 @@ export function AudioSessionProvider({ children }: { children: React.ReactNode }
     recordings: voiceRecordings,
     speed: audioSpeed,
     onFinished: i => completeAffirmation(i, 'listened'),
+    /*
+      The queue ran out and won't loop. If a celebration is up, its dismissal
+      closes the session (and navigates). If NOT — some affirmations aren't
+      recorded, so the pass never filled; or the last lap was already won — then
+      nothing ever closed the session (Oct 8). `active` stayed true over an idle
+      queue, so the next Play All found "a session already running", skipped
+      its autoplay, and opened onto a player that wasn't playing anything.
+    */
+    onQueueEnd: () => { if (!bigCelebRef.current) closeRef.current(); },
     /**
      * What a locked phone shows. The statement is the title because that IS
      * the content — an affirmation, not a track name. Trimmed because the lock
@@ -217,9 +231,20 @@ export function AudioSessionProvider({ children }: { children: React.ReactNode }
     stopBed();
     setActive(false);
   }, [queue]);
+  closeRef.current = close;
 
   const start = useCallback((from = 0) => { setActive(true); queue.start(from); }, [queue]);
   const playAt = useCallback((i: number) => { setActive(true); queue.playAt(i); }, [queue]);
+  /**
+   * Play/pause for every surface. It was the raw `queue.toggle`, so pressing
+   * play on an idle Player started audio WITHOUT marking the session active —
+   * no mini player, no ambient bed, and a session the rest of the app didn't
+   * know was running (Oct 8). Starting from idle now goes through `start`.
+   */
+  const toggle = useCallback(() => {
+    if (queue.index < 0) { start(0); return; }
+    queue.toggle();
+  }, [queue, start]);
 
   /**
    * Celebration dismissed.
@@ -235,6 +260,7 @@ export function AudioSessionProvider({ children }: { children: React.ReactNode }
   const stillRunningRef = useRef(false);
   stillRunningRef.current = queue.playing;
   const dismissBigCeleb = useCallback(() => {
+    bigCelebRef.current = false;
     setBigCeleb(false);
     if (!stillRunningRef.current) close();
   }, [close]);
@@ -261,10 +287,10 @@ export function AudioSessionProvider({ children }: { children: React.ReactNode }
     start,
     playAt,
     completeAffirmation,
-    toggle: queue.toggle,
+    toggle,
     skip: queue.skip,
     close,
-  }), [affs, queue, active, celebIndex, bigCeleb, dismissBigCeleb, start, playAt, completeAffirmation, close]);
+  }), [affs, queue, active, celebIndex, bigCeleb, dismissBigCeleb, start, playAt, completeAffirmation, close, toggle]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
