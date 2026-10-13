@@ -13,7 +13,8 @@ import { Mono } from '../components/ui';
 import { CameraFrontIcon, LibraryFrameIcon, XIcon } from '../components/brandIcons';
 import { affText, useStore } from '../store';
 import { MOCK_AFFS } from '../api/mockData';
-import { FRIENDS } from '../api/socialMock';
+import { FRIENDS, FRIEND_AVATAR_STYLES } from '../api/socialMock';
+import SocialAvatar from '../components/Avatar';
 
 /**
  * What a friend can see of one affirmation. Video came out with the mind movie
@@ -67,6 +68,14 @@ function ShareCircle({ state }: { state: 'all' | 'some' | 'none' }) {
 
 /** The people an affirmation can be narrowed to — accepted connections only. */
 const CONNECTED = FRIENDS.filter(f => f.status === 'connected').map(f => f.name);
+
+/**
+ * Same colour rotation the Friends tab uses for its Connections list, indexed
+ * the same way — so a friend without a photo wears the same initials disc in
+ * both places instead of a different colour per screen.
+ */
+const avatarStyle = (name: string) =>
+  FRIEND_AVATAR_STYLES[Math.max(0, CONNECTED.indexOf(name)) % FRIEND_AVATAR_STYLES.length]!;
 
 function Chevron({ open, color }: { open: boolean; color: string }) {
   return (
@@ -154,6 +163,8 @@ function AudiencePicker({ picked, onChange, onDone }: {
         {shown.map(name => (
           <Pressable key={name} onPress={() => toggle(name)} style={row}>
             <Check on={sel.has(name)} />
+            {/* Photo when the person has one, initials otherwise (Oct 13). */}
+            <SocialAvatar name={name} size={30} bg={avatarStyle(name).bg} ink={avatarStyle(name).ink} fontSize={12} ringWidth={1} ringColor={colors.border} />
             <Text style={{ flex: 1, fontFamily: fonts.sans, fontSize: 14, color: colors.ink }}>{name}</Text>
           </Pressable>
         ))}
