@@ -84,6 +84,12 @@ interface State {
   // social (design scope — mock-backed until social backend lands)
   feedAffirmed: Record<number, boolean>;
   shareSel: Record<string, boolean>;
+  /**
+   * WHO sees each affirmation, keyed by affirmation ID (Oct 13). Absent = all
+   * friends, the default; an array = only those friends. `shareSel` still says
+   * WHAT is shared. Ids, not indexes — indexes shift when the set changes.
+   */
+  shareAudience: Record<string, string[]>;
   // actions
   set: (partial: Partial<State>) => void;
   setProfilePhoto: (uri: string | null) => void;
@@ -143,6 +149,7 @@ export const useStore = create<State>((set, get) => ({
   chimesMuted: false,
   feedAffirmed: {},
   shareSel: {},
+  shareAudience: {},
 
   set: (partial) => set(partial),
 

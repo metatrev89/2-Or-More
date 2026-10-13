@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable, ScrollView, Image, Alert } from 'react-native';
+import { View, Text, Pressable, ScrollView, Image, Alert, TextInput } from 'react-native';
 import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import { permissionRefused, pickProfilePhoto, type PhotoSource } from '../media/profilePhoto';
@@ -13,6 +13,7 @@ import { Mono } from '../components/ui';
 import { CameraFrontIcon, LibraryFrameIcon, XIcon } from '../components/brandIcons';
 import { affText, useStore } from '../store';
 import { MOCK_AFFS } from '../api/mockData';
+import { FRIENDS } from '../api/socialMock';
 
 /**
  * What a friend can see of one affirmation. Video came out with the mind movie
@@ -64,6 +65,111 @@ function ShareCircle({ state }: { state: 'all' | 'some' | 'none' }) {
   );
 }
 
+/** The people an affirmation can be narrowed to — accepted connections only. */
+const CONNECTED = FRIENDS.filter(f => f.status === 'connected').map(f => f.name);
+
+function Chevron({ open, color }: { open: boolean; color: string }) {
+  return (
+    <Svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"
+      style={{ transform: [{ rotate: open ? '180deg' : '0deg' }] }}>
+      <Path d="M6 9l6 6 6-6" />
+    </Svg>
+  );
+}
+
+/** Square checkbox for the friend list; teal like the share chips beside it. */
+function Check({ on }: { on: boolean }) {
+  return (
+    <View style={{
+      width: 20, height: 20, borderRadius: 6, alignItems: 'center', justifyContent: 'center',
+      backgroundColor: on ? colors.teal : colors.white, borderWidth: 1.5, borderColor: on ? colors.teal : colors.sand,
+    }}>
+      {on && (
+        <Svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke={colors.white} strokeWidth={3.2} strokeLinecap="round" strokeLinejoin="round">
+          <Path d="M4.5 12.5l5 5 10-11" />
+        </Svg>
+      )}
+    </View>
+  );
+}
+
+/** "All Friends", one name, or "3 friends" — what the dropdown trigger reads. */
+function audienceLabel(picked: string[] | undefined): string {
+  if (!picked || picked.length === 0) return 'All Friends';
+  if (picked.length === 1) return picked[0]!;
+  return `${picked.length} friends`;
+}
+
+/**
+ * Narrow one affirmation to particular friends (Trevor, Oct 13).
+ *
+ * Inline under the chips rather than a floating menu: each card sits in a
+ * ScrollView next to its siblings, and an absolutely positioned dropdown would
+ * be clipped by — or painted under — the card below it. Expanding in place
+ * also keeps the choice visibly attached to the affirmation it governs.
+ *
+ * "All Friends" is the default and the escape hatch: picking it clears the
+ * list, and unticking the last friend falls back to it, so there is never a
+ * state where something is "shared" with nobody.
+ */
+function AudiencePicker({ picked, onChange, onDone }: {
+  picked: string[] | undefined;
+  onChange: (next: string[]) => void;
+  onDone: () => void;
+}) {
+  const [q, setQ] = useState('');
+  const sel = new Set(picked ?? []);
+  const all = sel.size === 0;
+  const shown = q.trim()
+    ? CONNECTED.filter(n => n.toLowerCase().includes(q.trim().toLowerCase()))
+    : CONNECTED;
+  const toggle = (name: string) => {
+    const next = new Set(sel);
+    if (next.has(name)) next.delete(name); else next.add(name);
+    onChange(CONNECTED.filter(n => next.has(n))); // keep list order stable
+  };
+  const row = { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 11, paddingVertical: 9 };
+  return (
+    <Animated.View entering={FadeIn.duration(220)} style={{
+      marginTop: 10, borderWidth: 1, borderColor: colors.border, borderRadius: 14, backgroundColor: colors.cream, padding: 12,
+    }}>
+      <Pressable onPress={() => onChange([])} style={row}>
+        <Check on={all} />
+        <Text style={{ flex: 1, fontFamily: fonts.sansMedium, fontSize: 14, color: colors.ink }}>All Friends</Text>
+        <Mono size={11.5} color={colors.inactive}>{CONNECTED.length}</Mono>
+      </Pressable>
+      <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 4 }} />
+      <TextInput
+        value={q}
+        onChangeText={setQ}
+        placeholder="Search friends"
+        placeholderTextColor={colors.inactive}
+        autoCorrect={false}
+        style={{
+          height: 36, borderRadius: 10, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.white,
+          paddingHorizontal: 11, fontFamily: fonts.sans, fontSize: 13.5, color: colors.ink, marginTop: 6, marginBottom: 2,
+        }}
+      />
+      <ScrollView style={{ maxHeight: 248 }} nestedScrollEnabled keyboardShouldPersistTaps="handled">
+        {shown.map(name => (
+          <Pressable key={name} onPress={() => toggle(name)} style={row}>
+            <Check on={sel.has(name)} />
+            <Text style={{ flex: 1, fontFamily: fonts.sans, fontSize: 14, color: colors.ink }}>{name}</Text>
+          </Pressable>
+        ))}
+        {shown.length === 0 && (
+          <Text style={{ fontFamily: fonts.sans, fontSize: 13, color: colors.warmGray, paddingVertical: 10 }}>
+            No friends match “{q.trim()}”.
+          </Text>
+        )}
+      </ScrollView>
+      <Pressable onPress={onDone} hitSlop={6} style={{ alignSelf: 'flex-end', marginTop: 6, paddingVertical: 4 }}>
+        <Text style={{ fontFamily: fonts.sansSemi, fontSize: 13.5, color: colors.ink }}>Done</Text>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
 /**
  * Profile (design section 13) — your affirmation feed with per-affirmation,
  * per-format sharing controls. Everything is private by default.
@@ -71,7 +177,14 @@ function ShareCircle({ state }: { state: 'all' | 'some' | 'none' }) {
 export default function ProfileScreen() {
   const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const store = useStore();
-  const { profilePhotoUri, userName, shareSel, set, setProfilePhoto } = store;
+  const { profilePhotoUri, userName, shareSel, shareAudience, set, setProfilePhoto } = store;
+  /** Affirmation id whose friend picker is open — one at a time. */
+  const [audienceOpen, setAudienceOpen] = useState<string | null>(null);
+  const setAudience = (id: string, names: string[]) => {
+    const next = { ...shareAudience };
+    if (names.length) next[id] = names; else delete next[id];
+    set({ shareAudience: next });
+  };
   const affs = store.affirmations.length ? store.affirmations : MOCK_AFFS;
   const [privacyMode, setPrivacyMode] = useState(false);
   const [photoSheet, setPhotoSheet] = useState(false);
@@ -213,13 +326,29 @@ export default function ProfileScreen() {
                   </Text>
                   {privacyMode && (
                     <View style={{ borderTopWidth: 1, borderTopColor: colors.borderSoft, marginTop: 12, paddingTop: 11 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' }}>
-                        <Text style={{ fontFamily: fonts.sansSemi, fontSize: 11, letterSpacing: 1.4, color: colors.warmGray, textTransform: 'uppercase' }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, justifyContent: 'space-between' }}>
+                        <Text style={{ fontFamily: fonts.sansSemi, fontSize: 11, letterSpacing: 1.4, color: colors.warmGray, textTransform: 'uppercase', marginTop: 1 }}>
                           Shared with friends
                         </Text>
-                        <Text style={{ fontFamily: fonts.sans, fontSize: 12, color: colors.inactive }}>
-                          {n === 0 ? 'Private' : n === SHARE_OPTS.length ? 'Everything' : `${n} of ${SHARE_OPTS.length}`}
-                        </Text>
+                        <View style={{ alignItems: 'flex-end' }}>
+                          <Text style={{ fontFamily: fonts.sans, fontSize: 12, color: colors.inactive }}>
+                            {n === 0 ? 'Private' : n === SHARE_OPTS.length ? 'Everything' : `${n} of ${SHARE_OPTS.length}`}
+                          </Text>
+                          {/* Only when something is shared — "private, but to
+                              these three people" would contradict itself. */}
+                          {n > 0 && (
+                            <Pressable
+                              onPress={() => setAudienceOpen(audienceOpen === a.id ? null : a.id)}
+                              hitSlop={8}
+                              style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4, maxWidth: 150 }}
+                            >
+                              <Text numberOfLines={1} style={{ fontFamily: fonts.sansMedium, fontSize: 12.5, color: colors.ink, flexShrink: 1 }}>
+                                {audienceLabel(shareAudience[a.id])}
+                              </Text>
+                              <Chevron open={audienceOpen === a.id} color={colors.ink} />
+                            </Pressable>
+                          )}
+                        </View>
                       </View>
                       {/* No wrap — three chips fit one row, and that's the
                           point: the card used to run two rows deep. */}
@@ -241,6 +370,13 @@ export default function ProfileScreen() {
                           );
                         })}
                       </View>
+                      {n > 0 && audienceOpen === a.id && (
+                        <AudiencePicker
+                          picked={shareAudience[a.id]}
+                          onChange={names => setAudience(a.id, names)}
+                          onDone={() => setAudienceOpen(null)}
+                        />
+                      )}
                     </View>
                   )}
                 </View>
