@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2+ · Option B animated — crown rise</title>
+<style>
+  :root{
+    --cream:#FAF4E8; --behind:#ECE3D0; --ink:#26201A; --gold:#E9B84C;
+    --goldSoft:#F5E7C4; --warm:#8A7A66; --border:#E8DEC9; --borderSoft:#F0E8D8;
+    --white:#fff;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    --serif:Georgia,"Iowan Old Style","Times New Roman",serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --loop:4200ms;   /* matches timing.bigCelebMs */
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--behind);font-family:var(--sans);color:var(--ink);
+       -webkit-font-smoothing:antialiased;padding:26px 20px 56px}
+  .wrap{max-width:1120px;margin:0 auto}
+  h1{font-size:21px;letter-spacing:-.4px;margin:0 0 6px;font-weight:600}
+  .sub{color:var(--warm);font-size:13.5px;line-height:1.55;margin:0 0 16px;max-width:800px}
+
+  .panel{background:var(--cream);border:1px solid var(--border);border-radius:14px;
+         padding:14px 16px;margin:0 0 14px;max-width:800px}
+  .panel h2{font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+            color:var(--warm);margin:0 0 11px;font-family:var(--mono);font-weight:400}
+  .row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:11px}
+  .row:last-child{margin-bottom:0}
+  .row > label{font-size:12.5px;font-weight:600;min-width:150px}
+  .seg{display:inline-flex;border:1px solid var(--border);border-radius:999px;overflow:hidden}
+  .seg button{font-family:var(--mono);font-size:12px;border:none;background:var(--white);
+              color:var(--warm);padding:6px 13px;cursor:pointer;border-right:1px solid var(--border)}
+  .seg button:last-child{border-right:none}
+  .seg button[aria-pressed="true"]{background:var(--gold);color:var(--ink);font-weight:600}
+  .hint{font-size:11.5px;color:var(--warm);line-height:1.55}
+
+  .copybox{background:var(--cream);border:1px solid var(--border);border-radius:14px;
+           padding:14px 16px;margin:0 0 14px;max-width:800px}
+  .copybox p{margin:0 0 7px;font-size:12.5px;line-height:1.6}
+  .copybox p:last-child{margin-bottom:0}
+  .copybox b{font-weight:600}
+  .copybox s{color:var(--warm)}
+  .pick{font-size:14.5px;font-weight:600}
+
+  .bar{display:flex;gap:10px;align-items:center;margin:0 0 20px}
+  .bar button{font-family:var(--sans);font-size:12.5px;font-weight:600;color:var(--ink);
+              background:var(--gold);border:none;border-radius:999px;padding:9px 18px;cursor:pointer}
+  .bar button.ghost{background:transparent;border:1px solid var(--border);color:var(--warm)}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:18px}
+  .opt{background:var(--cream);border:1px solid var(--border);border-radius:18px;overflow:hidden}
+  .opt > header{padding:13px 16px 11px;border-bottom:1px solid var(--borderSoft);
+                display:flex;align-items:baseline;gap:9px}
+  .tag{font-family:var(--mono);font-size:10.5px;color:var(--warm);letter-spacing:.06em}
+  .name{font-size:14px;font-weight:600;letter-spacing:-.2px}
+  .stage{position:relative;height:306px;display:grid;place-items:center;
+         background:var(--cream);overflow:hidden}
+  .stage::before{content:"";position:absolute;inset:0;
+    background:
+      linear-gradient(var(--borderSoft) 0 0) no-repeat 22px 26px/150px 11px,
+      linear-gradient(var(--border) 0 0) no-repeat 22px 50px/104px 9px,
+      linear-gradient(var(--white) 0 0) no-repeat 22px 76px/128px 74px,
+      linear-gradient(var(--white) 0 0) no-repeat 166px 76px/128px 74px,
+      linear-gradient(var(--white) 0 0) no-repeat 22px 166px/272px 96px;
+    opacity:.75;filter:blur(.4px)}
+  .scrim{position:absolute;inset:0;background:rgba(38,32,26,.07)}
+  .note{padding:12px 16px 15px;border-top:1px solid var(--borderSoft);
+        font-size:11.8px;line-height:1.6;color:var(--warm)}
+  .note b{color:var(--ink);font-weight:600}
+
+  /* ───────── the element ───────── */
+  .card{position:relative;z-index:2;background:var(--white);border:1px solid var(--border);
+        border-radius:22px;padding:22px 26px 20px;width:292px;text-align:center;
+        box-shadow:0 14px 34px rgba(38,32,26,.13)}
+  .bars{display:flex;align-items:flex-end;justify-content:center;gap:7px;
+        height:56px;margin-bottom:17px}
+  .bars i{display:block;width:12px;border-radius:6px;height:0;transform-origin:bottom center}
+  .headline{font-size:17px;font-weight:600;letter-spacing:-.3px;line-height:1.3}
+  .said{font-family:var(--serif);font-style:italic;font-size:13.5px;
+        line-height:1.45;color:var(--warm);margin-top:9px}
+  .count{font-family:var(--mono);font-size:11.5px;color:var(--warm);margin-top:12px}
+  .star{filter:drop-shadow(0 2px 5px rgba(233,184,76,.5))}
+  /* Star ABOVE the headline, not beside it. Beside a two-line headline it
+     centres against both lines and drifts off the card's axis, reading as a
+     misalignment rather than a flourish. Stacked, the element has one spine. */
+  .crest{display:flex;flex-direction:column;align-items:center;gap:9px}
+
+  @keyframes rise{
+      0%  {height:0;       opacity:0}
+     10%  {height:var(--h); opacity:1}
+     86%  {height:var(--h); opacity:1}
+    100%  {height:0;       opacity:0}
+  }
+  @keyframes pop{
+      0%,9%{opacity:0;transform:scale(.86)}
+     17%   {opacity:1;transform:scale(1.05)}
+     23%   {opacity:1;transform:scale(1)}
+     86%   {opacity:1;transform:scale(1)}
+    100%   {opacity:0;transform:scale(1)}
+  }
+  @keyframes fade{
+      0%,13%{opacity:0;transform:translateY(5px)}
+     22%,86%{opacity:1;transform:translateY(0)}
+    100%    {opacity:0;transform:translateY(0)}
+  }
+  .run .bars i{animation:rise var(--loop) cubic-bezier(.22,1.3,.42,1) both infinite;
+               animation-delay:calc(var(--i) * var(--stagger))}
+  .run .crest{animation:pop var(--loop) cubic-bezier(.34,1.56,.64,1) both infinite;
+              animation-delay:calc(var(--n) * var(--stagger))}
+  .run .said,.run .count{animation:fade var(--loop) ease-out both infinite;
+                         animation-delay:calc(var(--n) * var(--stagger) + 90ms)}
+  .bars i,.crest,.said,.count{opacity:0}
+
+  /* ───────── kept from the current celebration ─────────
+     Falling gold/teal/sand stars (Celebration.tsx CONF_COLORS, 26 pieces) and
+     the expanding burst rings. Deliberately NOT recoloured to the seven
+     accents: the bars are what carry "which areas", and spreading the spectrum
+     into the confetti too would turn the accents back into decoration — the
+     one thing the brand rule forbids. Gold + teal keep the confetti reading as
+     celebration. */
+  .conf{position:absolute;inset:0;overflow:hidden;z-index:1;pointer-events:none}
+  .conf b{position:absolute;top:-20px;display:block;
+          clip-path:polygon(50% 0,61% 39%,100% 50%,61% 61%,50% 100%,39% 61%,0 50%,39% 39%);
+          animation:fall var(--d) linear var(--delay) infinite}
+  @keyframes fall{
+    0%  {transform:translateY(0) rotate(0);opacity:0}
+    8%  {opacity:1}
+    75% {opacity:1}
+    100%{transform:translateY(330px) rotate(260deg);opacity:0}
+  }
+  .burst{position:absolute;left:50%;top:50%;border-radius:50%;z-index:1;pointer-events:none;
+         animation:ring var(--rd) cubic-bezier(.22,.8,.3,1) var(--rdelay) infinite}
+  @keyframes ring{
+    0%  {transform:translate(-50%,-50%) scale(.2);opacity:.9}
+    70% {opacity:0}
+    100%{transform:translate(-50%,-50%) scale(1);opacity:0}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Option B — crown rise, animated</h1>
+  <p class="sub">Bars rise left to right, root → crown, the same direction the intake walks. Three stagger
+     speeds; everything else is identical. Each loop runs 4.2s, matching
+     <span style="font-family:var(--mono);font-size:12px">timing.bigCelebMs</span>, so this is the real
+     on-screen duration.</p>
+
+  <div class="panel">
+    <h2>Try the real variables</h2>
+    <div class="row">
+      <label>Catch-all (8th)</label>
+      <div class="seg" id="affSeg"></div>
+    </div>
+    <div class="row">
+      <label>Skipped in intake</label>
+      <div class="seg" id="skipSeg"></div>
+      <span class="hint">“Not this season” — the hue goes missing, the rest keep their own</span>
+    </div>
+    <div class="row">
+      <label>Sessions per day</label>
+      <div class="seg" id="daySeg"></div>
+      <span class="hint">prime ladder 5 → 4 → 3, or custom</span>
+    </div>
+    <div class="row">
+      <label>Sessions closed today</label>
+      <div class="seg" id="closedSeg"></div>
+      <span class="hint">including the one that just finished</span>
+    </div>
+    <p class="hint" style="margin:12px 0 0"><b style="color:var(--ink)">Each bar is coloured by its own area,
+       not by its position in the row.</b> That only matters when an area is skipped — colouring by position
+       would shuffle every later hue up a slot and show a green bar to someone who skipped Relationships.
+       Keyed to the real area, the green is simply absent. Hover a bar to see which area it is.</p>
+  </div>
+
+  <div class="copybox">
+    <p class="pick">“Congratulations — that's your whole vision!”</p>
+    <p><b>What changed from your draft</b> — <s>“Congratulations, That's your whole vision!”</s>
+       <b>that's</b> lowercased (mid-sentence, not a new one), and the comma became an em dash —
+       “Congratulations” is an interjection, so a comma hooking it to a full clause is a splice.</p>
+  </div>
+
+  <div class="bar">
+    <button id="replay">Replay all</button>
+    <button class="ghost" id="toggle">Pause</button>
+  </div>
+
+  <div class="grid" id="grid"></div>
+</div>
+
+<script>
+(function () {
+  var ACCENTS = ['#B33A2B','#C2681C','#9C8418','#3C8F4E','#2E6F9E','#4A4A96','#8A56A3'];
+  var CATCH_ALL = '#8A7A66';           // warm gray — open_capture is not a chakra
+  var WORDS = ['zero','one','two','three','four','five','six','seven','eight'];
+  var VARIANTS = [
+    {tag:'B1', name:'Brisk · 45ms',     stagger:45,
+     note:'<b>Snappiest.</b> Reads as one gesture rather than seven events. Best if this fires five times a day.'},
+    {tag:'B2', name:'Measured · 75ms',  stagger:75,
+     note:'<b>My pick.</b> You can still count the bars, so the colour keeps saying <i>which areas</i> — but the wave is done in about half a second.'},
+    {tag:'B3', name:'Flowing · 110ms',  stagger:110,
+     note:'<b>Most ceremonial</b> — closest to a bowl struck once per area. Lovely once; likeliest to feel slow by the fourth session of the day.'}
+  ];
+
+  var AREA_NAMES = ['Health & Body','Emotions','Career','Relationships','Communication','Mindset','Spirit'];
+
+  var state = { catchAll: true, skips: [], perDay: 5, closed: 3 };
+
+  function numWord(n){ return WORDS[n] || String(n); }
+
+  /**
+   * THE BARS ARE THE USER'S ACTUAL AFFIRMATIONS, IN AREA ORDER.
+   *
+   * Each bar takes its colour from the area that affirmation belongs to —
+   * `areaAccent(aff.area)` in the app — NOT from its position in the row. That
+   * distinction only shows up when someone skips an area in intake: colouring
+   * by position would shuffle every later hue up a slot, so a user who skipped
+   * Heart would still be shown a green bar. Keyed to the real area, the green
+   * is simply absent, which is the truth.
+   */
+  function barsFor(s){
+    var out = [];
+    for (var a = 0; a < 7; a++){
+      if (s.skips.indexOf(a) !== -1) continue;
+      out.push({ color: ACCENTS[a], area: AREA_NAMES[a] });
+    }
+    // open_capture is NOT a chakra, so it never takes a spectrum hue — warm
+    // gray, exactly as it is in the intake bar and every area label.
+    if (s.catchAll) out.push({ color: CATCH_ALL, area: 'Anything else' });
+    return out;
+  }
+
+  /** Heights ramp low→high across however many bars this user actually has. */
+  function barHeights(n){
+    var lo = 20, hi = 56, out = [];
+    for (var i = 0; i < n; i++) out.push(n === 1 ? hi : Math.round(lo + (hi - lo) * (i / (n - 1))));
+    return out;
+  }
+
+  /** The serif line. Counts AFFIRMATIONS, because that is what the user has. */
+  function saidText(n){
+    if (n <= 1) return 'Your affirmation, spoken and in agreement.';
+    return 'All ' + numWord(n) + ' affirmations, in agreement.';
+  }
+  /** The mono line: statements completed, then where this sits in the day. */
+  function countText(s){
+    return s.affs + ' of ' + s.affs + '  ·  Daily session ' + Math.min(s.closed, s.perDay) + ' of ' + s.perDay;
+  }
+
+  /* Confetti + burst rings carried over unchanged from the current
+     celebration — same colours, same 26 pieces, same gold/teal/gold rings.
+     The arithmetic mirrors Celebration.tsx so the spread looks the same. */
+  var CONF_COLORS = ['#E9B84C','#157A6E','#D9CBB0','#E9B84C','#0E5A50','#E9B84C'];
+  function confetti(){
+    var out = '<div class="conf">';
+    for (var i = 0; i < 26; i++){
+      var size  = 10 + (i * 11) % 14;
+      out += '<b style="left:' + (3 + (i * 37) % 94) + '%;width:' + size + 'px;height:' + size + 'px;' +
+             'background:' + CONF_COLORS[i % CONF_COLORS.length] + ';' +
+             '--d:' + ((1.6 + ((i * 13) % 10) / 8) * 1000) + 'ms;' +
+             '--delay:' + ((((i * 17) % 12) / 14) * 1000) + 'ms"></b>';
+    }
+    return out + '</div>';
+  }
+  function bursts(){
+    return '' +
+      '<div class="burst" style="width:230px;height:230px;border:4px solid rgba(233,184,76,.55);--rd:1100ms;--rdelay:0ms"></div>' +
+      '<div class="burst" style="width:280px;height:280px;border:3px solid rgba(21,122,110,.5);--rd:1300ms;--rdelay:200ms"></div>' +
+      '<div class="burst" style="width:330px;height:330px;border:2px solid rgba(233,184,76,.45);--rd:1500ms;--rdelay:400ms"></div>';
+  }
+
+  function buildCard(v, s){
+    var list = barsFor(s), n = list.length, hs = barHeights(n), bars = '';
+    for (var i = 0; i < n; i++){
+      bars += '<i title="' + list[i].area + '" style="--h:' + hs[i] + 'px;--i:' + i +
+              ';background:' + list[i].color + '"></i>';
+    }
+    s = Object.assign({}, s, { affs: n });
+    return '' +
+      '<section class="opt">' +
+        '<header><span class="tag">' + v.tag + '</span><span class="name">' + v.name + '</span></header>' +
+        '<div class="stage"><div class="scrim"></div>' + confetti() + bursts() +
+          '<div class="card run" style="--stagger:' + v.stagger + 'ms;--n:' + s.affs + '">' +
+            '<div class="bars">' + bars + '</div>' +
+            '<div class="crest">' +
+              '<svg class="star" width="26" height="26" viewBox="0 0 24 24" fill="#E9B84C">' +
+                '<path d="M12 1.6l2.4 6.2 6.2 2.4-6.2 2.4L12 18.8l-2.4-6.2L3.4 10.2l6.2-2.4z"/></svg>' +
+              '<div class="headline">Congratulations&nbsp;— that\'s your whole vision!</div>' +
+            '</div>' +
+            '<div class="said">' + saidText(s.affs) + '</div>' +
+            '<div class="count">' + countText(s) + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<p class="note">' + v.note + '</p>' +
+      '</section>';
+  }
+
+  function seg(host, opts, onPick, isOn){
+    host.innerHTML = opts.map(function (o){
+      return '<button type="button" data-v="' + o.v + '" aria-pressed="' + isOn(o.v) + '">' + o.label + '</button>';
+    }).join('');
+    host.onclick = function (e){
+      var b = e.target.closest('button'); if (!b) return;
+      onPick(b.dataset.v);
+      if (state.closed > state.perDay) state.closed = state.perDay;   // keep the day coherent
+      renderAll();
+    };
+  }
+
+  function renderAll(){
+    document.getElementById('grid').innerHTML =
+      VARIANTS.map(function (v){ return buildCard(v, state); }).join('');
+
+    seg(document.getElementById('affSeg'),
+        [{v:'1',label:'8 · catch-all answered'},{v:'0',label:'7 · catch-all declined'}],
+        function (v){ state.catchAll = v === '1'; },
+        function (v){ return state.catchAll === (v === '1'); });
+
+    seg(document.getElementById('skipSeg'),
+        [{v:'none',label:'none'},{v:'3',label:'skipped Relationships'},{v:'2,5',label:'skipped two'}],
+        function (v){ state.skips = v === 'none' ? [] : v.split(',').map(Number); },
+        function (v){ return (state.skips.join(',') || 'none') === v; });
+
+    seg(document.getElementById('daySeg'),
+        [3,4,5,6,8].map(function(n){return {v:n,label:n};}),
+        function (v){ state.perDay = Number(v); },
+        function (v){ return state.perDay === Number(v); });
+
+    seg(document.getElementById('closedSeg'),
+        [1,2,3,4,5,6,8].filter(function(n){return n <= state.perDay;}).map(function(n){return {v:n,label:n};}),
+        function (v){ state.closed = Number(v); },
+        function (v){ return state.closed === Number(v); });
+
+    paused = false;
+    document.getElementById('toggle').textContent = 'Pause';
+  }
+
+  var paused = false;
+  document.getElementById('replay').addEventListener('click', renderAll);
+  document.getElementById('toggle').addEventListener('click', function (){
+    paused = !paused;
+    document.querySelectorAll('.card .bars i, .card .crest, .card .said, .card .count, .conf b, .burst')
+      .forEach(function (el){ el.style.animationPlayState = paused ? 'paused' : 'running'; });
+    this.textContent = paused ? 'Play' : 'Pause';
+  });
+
+  renderAll();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2+ · Session-complete element — options</title>
+<style>
+  :root{
+    --cream:#FAF4E8; --behind:#ECE3D0; --ink:#26201A; --gold:#E9B84C;
+    --goldSoft:#F5E7C4; --teal:#157A6E; --tealDeep:#0E5A50; --aiTint:#DFF0ED;
+    --warm:#8A7A66; --border:#E8DEC9; --borderSoft:#F0E8D8; --sand:#D9CBB0;
+    --inactive:#B5A88F; --white:#fff;
+    --a1:#B33A2B; --a2:#C2681C; --a3:#9C8418; --a4:#3C8F4E;
+    --a5:#2E6F9E; --a6:#4A4A96; --a7:#8A56A3;
+    --t1:#F6E0DB; --t2:#F8E6D6; --t3:#F2EED6; --t4:#DEEFE1;
+    --t5:#DCEAF4; --t6:#E0E0F0; --t7:#EDE0F2;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    --serif:Georgia,"Iowan Old Style","Times New Roman",serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--behind);font-family:var(--sans);color:var(--ink);
+       -webkit-font-smoothing:antialiased;padding:28px 20px 60px}
+  .wrap{max-width:1120px;margin:0 auto}
+  h1{font-size:21px;letter-spacing:-.4px;margin:0 0 6px;font-weight:600}
+  .sub{color:var(--warm);font-size:13.5px;line-height:1.55;margin:0 0 18px;max-width:760px}
+  .rule{background:var(--cream);border:1px solid var(--border);border-radius:14px;
+        padding:14px 16px;margin:0 0 26px;max-width:760px}
+  .rule b{font-weight:600}
+  .rule p{margin:0;font-size:12.5px;line-height:1.6;color:var(--ink)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:18px}
+
+  /* each option sits on a mock app surface so contrast is judged honestly */
+  .opt{background:var(--cream);border:1px solid var(--border);border-radius:18px;overflow:hidden}
+  .opt > header{padding:13px 16px 11px;border-bottom:1px solid var(--borderSoft);
+                display:flex;align-items:baseline;gap:9px}
+  .tag{font-family:var(--mono);font-size:10.5px;color:var(--warm);letter-spacing:.06em}
+  .name{font-size:14px;font-weight:600;letter-spacing:-.2px}
+  .stage{position:relative;height:286px;display:grid;place-items:center;
+         background:var(--cream);overflow:hidden}
+  /* faint Home-screen content behind, so each element is read as an overlay */
+  .stage::before{content:"";position:absolute;inset:0;
+    background:
+      linear-gradient(var(--borderSoft) 0 0) no-repeat 22px 26px/150px 11px,
+      linear-gradient(var(--border) 0 0) no-repeat 22px 50px/104px 9px,
+      linear-gradient(var(--white) 0 0) no-repeat 22px 76px/128px 74px,
+      linear-gradient(var(--white) 0 0) no-repeat 166px 76px/128px 74px,
+      linear-gradient(var(--white) 0 0) no-repeat 22px 166px/272px 96px;
+    opacity:.75;filter:blur(.4px)}
+  .scrim{position:absolute;inset:0;background:rgba(38,32,26,.07)}
+  .note{padding:12px 16px 15px;border-top:1px solid var(--borderSoft);
+        font-size:11.8px;line-height:1.6;color:var(--warm)}
+  .note b{color:var(--ink);font-weight:600}
+
+  .el{position:relative;z-index:2;text-align:center}
+
+  /* ─────────── shared bits ─────────── */
+  .eyebrow{font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;
+           text-transform:uppercase;color:var(--warm)}
+  .headline{font-size:17.5px;font-weight:600;letter-spacing:-.3px;line-height:1.25}
+  .said{font-family:var(--serif);font-style:italic;font-size:14px;line-height:1.45;color:var(--warm)}
+  .count{font-family:var(--mono);font-size:11.5px;color:var(--warm)}
+  .goldstar{filter:drop-shadow(0 2px 5px rgba(233,184,76,.5))}
+  @keyframes glow{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:.85;transform:scale(1.045)}}
+  .halo{animation:glow 3.4s ease-in-out infinite}
+
+  /* ─────────── A: seven arcs close ─────────── */
+  .cardA{background:var(--white);border:1px solid var(--goldSoft);border-radius:24px;
+         padding:22px 26px 20px;box-shadow:0 14px 34px rgba(38,32,26,.12);width:272px}
+  .ringwrap{position:relative;width:128px;height:128px;margin:0 auto 14px}
+  .ringwrap .mid{position:absolute;inset:0;display:grid;place-items:center}
+
+  /* ─────────── B: crown rise ─────────── */
+  .cardB{background:var(--white);border:1px solid var(--border);border-radius:22px;
+         padding:20px 24px;box-shadow:0 14px 34px rgba(38,32,26,.12);width:286px}
+  .bars{display:flex;align-items:flex-end;justify-content:center;gap:7px;height:56px;margin-bottom:16px}
+  .bars i{display:block;width:12px;border-radius:6px}
+
+  /* ─────────── C: spectrum on ink ─────────── */
+  .cardC{background:var(--ink);border-radius:26px;padding:20px 24px 18px;width:282px;
+         box-shadow:0 18px 40px rgba(38,32,26,.4)}
+  .cardC .headline{color:var(--cream)}
+  .cardC .said{color:rgba(250,244,232,.62)}
+  .cardC .eyebrow,.cardC .count{color:rgba(250,244,232,.55)}
+  .spectrum{display:flex;gap:4px;justify-content:center;margin-bottom:15px}
+  .spectrum i{width:20px;height:5px;border-radius:3px}
+
+  /* ─────────── D: dawn wash ─────────── */
+  .cardD{position:relative;background:var(--cream);border:1px solid var(--border);
+         border-radius:26px;padding:0;width:290px;overflow:hidden;
+         box-shadow:0 16px 38px rgba(38,32,26,.14)}
+  .dawn{height:86px;position:relative;
+        background:linear-gradient(100deg,var(--a1),var(--a2),var(--a3),var(--a4),var(--a5),var(--a6),var(--a7));
+        opacity:.9}
+  .dawn::after{content:"";position:absolute;inset:0;
+    background:linear-gradient(to bottom,rgba(250,244,232,0) 36%,var(--cream) 100%)}
+  .dawnStar{position:absolute;left:50%;top:52px;transform:translateX(-50%);z-index:3}
+  .cardD .body{padding:16px 24px 20px;text-align:center}
+
+  /* ─────────── E: current, for reference ─────────── */
+  .cardE{background:var(--ink);border-radius:26px;padding:16px 26px;display:flex;
+         align-items:center;gap:12px;max-width:272px;
+         box-shadow:0 10px 30px rgba(0,0,0,.35)}
+  .cardE span{font-size:15px;color:var(--cream);font-weight:500;text-align:left;line-height:1.3}
+  .burst{position:absolute;border-radius:50%;z-index:1}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Session-complete element — four directions</h1>
+  <p class="sub">Each shown over a faint Home screen, at roughly real size, so contrast and weight read honestly.
+     The current element is included last for comparison.</p>
+
+  <div class="rule">
+    <p><b>The rule these have to clear.</b> The brand doc says an area accent answers exactly one question —
+       <i>which area</i> — and never marks progress, completion or achievement; that is what keeps
+       gold-means-achievement intact. So none of these uses a single accent to mean "done".
+       All seven appear together, in root→crown order, standing for <b>the seven areas you just practised</b>.
+       Gold still carries the achievement. <b>No red:</b> Root reads as terracotta, which is the palette's
+       existing earthy stand-in.</p>
+  </div>
+
+  <div class="grid">
+
+    <!-- ══════════ A ══════════ -->
+    <section class="opt">
+      <header><span class="tag">A</span><span class="name">Seven arcs close</span></header>
+      <div class="stage">
+        <div class="scrim"></div>
+        <div class="el">
+          <div class="cardA">
+            <div class="ringwrap">
+              <svg width="128" height="128" viewBox="0 0 128 128">
+                <circle cx="64" cy="64" r="54" fill="none" stroke="#F0E8D8" stroke-width="9"/>
+                <g transform="rotate(-90 64 64)" stroke-width="9" fill="none" stroke-linecap="round">
+                  <circle cx="64" cy="64" r="54" stroke="#B33A2B" stroke-dasharray="43.5 295.8" stroke-dashoffset="0"/>
+                  <circle cx="64" cy="64" r="54" stroke="#C2681C" stroke-dasharray="43.5 295.8" stroke-dashoffset="-48.5"/>
+                  <circle cx="64" cy="64" r="54" stroke="#9C8418" stroke-dasharray="43.5 295.8" stroke-dashoffset="-96.9"/>
+                  <circle cx="64" cy="64" r="54" stroke="#3C8F4E" stroke-dasharray="43.5 295.8" stroke-dashoffset="-145.4"/>
+                  <circle cx="64" cy="64" r="54" stroke="#2E6F9E" stroke-dasharray="43.5 295.8" stroke-dashoffset="-193.9"/>
+                  <circle cx="64" cy="64" r="54" stroke="#4A4A96" stroke-dasharray="43.5 295.8" stroke-dashoffset="-242.4"/>
+                  <circle cx="64" cy="64" r="54" stroke="#8A56A3" stroke-dasharray="43.5 295.8" stroke-dashoffset="-290.8"/>
+                </g>
+              </svg>
+              <div class="mid">
+                <svg class="goldstar" width="40" height="40" viewBox="0 0 24 24" fill="#E9B84C">
+                  <path d="M12 1.6l2.4 6.2 6.2 2.4-6.2 2.4L12 18.8l-2.4-6.2L3.4 10.2l6.2-2.4z"/>
+                </svg>
+              </div>
+            </div>
+            <div class="headline">Session complete</div>
+            <div class="said" style="margin-top:7px">All seven areas, in agreement.</div>
+            <div class="count" style="margin-top:11px">8 of 8 · ring 3 of 5</div>
+          </div>
+        </div>
+      </div>
+      <p class="note"><b>The ring is the idea.</b> Seven arcs closing into one circle is literally what a session
+         is, and it reuses the ring language already everywhere else in the app. Calmest of the four, and the
+         one that would survive being seen five times a day.</p>
+    </section>
+
+    <!-- ══════════ B ══════════ -->
+    <section class="opt">
+      <header><span class="tag">B</span><span class="name">Crown rise</span></header>
+      <div class="stage">
+        <div class="scrim"></div>
+        <div class="el">
+          <div class="cardB">
+            <div class="bars">
+              <i style="height:20px;background:#B33A2B"></i>
+              <i style="height:26px;background:#C2681C"></i>
+              <i style="height:33px;background:#9C8418"></i>
+              <i style="height:40px;background:#3C8F4E"></i>
+              <i style="height:46px;background:#2E6F9E"></i>
+              <i style="height:52px;background:#4A4A96"></i>
+              <i style="height:56px;background:#8A56A3"></i>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;justify-content:center">
+              <svg class="goldstar" width="22" height="22" viewBox="0 0 24 24" fill="#E9B84C">
+                <path d="M12 1.6l2.4 6.2 6.2 2.4-6.2 2.4L12 18.8l-2.4-6.2L3.4 10.2l6.2-2.4z"/>
+              </svg>
+              <div class="headline">Root to crown, complete</div>
+            </div>
+            <div class="said" style="margin-top:9px">You showed up for all of it.</div>
+            <div class="count" style="margin-top:12px">8 of 8</div>
+          </div>
+        </div>
+      </div>
+      <p class="note"><b>Reads as the journey, not a scoreboard.</b> The rising bars echo the root→crown arc the
+         intake walks, so the colour is carrying narrative rather than decoration. Most distinctive of the four —
+         it looks like nothing else in the category.</p>
+    </section>
+
+    <!-- ══════════ C ══════════ -->
+    <section class="opt">
+      <header><span class="tag">C</span><span class="name">Spectrum on ink</span></header>
+      <div class="stage">
+        <div class="scrim"></div>
+        <div class="el" style="position:relative">
+          <div class="burst halo" style="width:250px;height:250px;left:50%;top:50%;
+               transform:translate(-50%,-50%);border:3px solid rgba(233,184,76,.5)"></div>
+          <div class="burst halo" style="width:300px;height:300px;left:50%;top:50%;
+               transform:translate(-50%,-50%);border:2px solid rgba(138,86,163,.35);animation-delay:.6s"></div>
+          <div class="cardC">
+            <div class="spectrum">
+              <i style="background:#B33A2B"></i><i style="background:#C2681C"></i>
+              <i style="background:#9C8418"></i><i style="background:#3C8F4E"></i>
+              <i style="background:#2E6F9E"></i><i style="background:#4A4A96"></i>
+              <i style="background:#8A56A3"></i>
+            </div>
+            <div style="display:flex;align-items:center;gap:11px;justify-content:center">
+              <svg class="goldstar" width="24" height="24" viewBox="0 0 24 24" fill="#E9B84C">
+                <path d="M12 1.6l2.4 6.2 6.2 2.4-6.2 2.4L12 18.8l-2.4-6.2L3.4 10.2l6.2-2.4z"/>
+              </svg>
+              <div class="headline">Session complete</div>
+            </div>
+            <div class="said" style="margin-top:8px">Eight statements, all seven areas.</div>
+            <div class="count" style="margin-top:11px">8 of 8</div>
+          </div>
+        </div>
+      </div>
+      <p class="note"><b>Keeps the dark chip, fixes the flatness.</b> Here to answer the real question —
+         is the problem the darkness, or the absence of colour? The ink card has the most presence over a cream
+         screen; the seven-stripe header and coloured halo do the lifting.</p>
+    </section>
+
+    <!-- ══════════ D ══════════ -->
+    <section class="opt">
+      <header><span class="tag">D</span><span class="name">Dawn wash</span></header>
+      <div class="stage">
+        <div class="scrim"></div>
+        <div class="el">
+          <div class="cardD">
+            <div class="dawn"></div>
+            <svg class="dawnStar goldstar" width="46" height="46" viewBox="0 0 24 24" fill="#E9B84C">
+              <path d="M12 1.6l2.4 6.2 6.2 2.4-6.2 2.4L12 18.8l-2.4-6.2L3.4 10.2l6.2-2.4z"/>
+            </svg>
+            <div class="body">
+              <div class="eyebrow">Session complete</div>
+              <div class="headline" style="margin-top:8px">That's your whole vision,<br>spoken back to you.</div>
+              <div class="count" style="margin-top:12px">8 of 8 · 3rd today</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="note"><b>Most celebratory, highest risk.</b> The seven hues blend into one sunrise rather than
+         reading as seven areas, which weakens the justification above — and a gradient this warm is the first
+         thing that would date. Included because you asked for "more exciting", and this is that end of the dial.</p>
+    </section>
+
+    <!-- ══════════ E ══════════ -->
+    <section class="opt">
+      <header><span class="tag">NOW</span><span class="name">Current element</span></header>
+      <div class="stage">
+        <div class="scrim"></div>
+        <div class="el" style="position:relative">
+          <div class="burst" style="width:230px;height:230px;left:50%;top:50%;
+               transform:translate(-50%,-50%);border:4px solid rgba(233,184,76,.45)"></div>
+          <div class="burst" style="width:280px;height:280px;left:50%;top:50%;
+               transform:translate(-50%,-50%);border:3px solid rgba(21,122,110,.4)"></div>
+          <div class="cardE">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="#E9B84C" style="flex:none">
+              <path d="M12 1.6l2.4 6.2 6.2 2.4-6.2 2.4L12 18.8l-2.4-6.2L3.4 10.2l6.2-2.4z"/>
+            </svg>
+            <span>Congratulations! All 8 affirmations complete!</span>
+          </div>
+        </div>
+      </div>
+      <p class="note">One ink pill, one gold star, gold + teal burst rings. <b>Two things make it feel flat:</b>
+         the only colour is on a 22px star, and the copy is generic — "Congratulations!" could be any app.
+         The options above all give the element something to <i>say</i> as well as more colour.</p>
+    </section>
+
+  </div>
+</div>
+</body>
+</html>
