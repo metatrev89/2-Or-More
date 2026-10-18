@@ -97,18 +97,34 @@ export async function updateAffirmationText(id: string, statement: string): Prom
 
 /**
  * Load the signed-in user's set, newest-first by creation, joined to goals for
- * the area chip and "You said" line. Returns [] when signed out or empty —
- * callers decide whether to fall back to mock data.
+ * the area chip and "You said" line.
+ *
+ * Returns [] when signed out or genuinely empty, and **null when the load
+ * FAILED** (Oct 18). Those used to be the same `[]`, and Home read both as
+ * "this account has nothing" — so one rejected request swapped the user's
+ * real set for the design mock, which has no recordings, and the Player had
+ * nothing to play. Callers must not fall back to mock data on null.
+ *
+ * A 401 gets one retry after an explicit token refresh. Trevor's logs showed
+ * the exact race: on relaunch `/auth/v1/token` refreshed (200) and the
+ * affirmations GET half a second later still went out with the expired JWT
+ * (401).
  */
-export async function loadAffirmations(): Promise<AffirmationDTO[]> {
+export async function loadAffirmations(): Promise<AffirmationDTO[] | null> {
   const userId = await currentUserId();
   if (!userId) return [];
+  const query = () => supabase()
+    .from('affirmations')
+    .select('id, goal_id, statement, is_identity, created_at, goals(area, raw_text, sort_order)')
+    .order('created_at', { ascending: true });
   try {
-    const { data, error } = await supabase()
-      .from('affirmations')
-      .select('id, goal_id, statement, is_identity, created_at, goals(area, raw_text, sort_order)')
-      .order('created_at', { ascending: true });
-    if (error || !data) return [];
+    let res = await query();
+    if (res.error && isAuthRejection(res.status, res.error)) {
+      await supabase().auth.refreshSession();
+      res = await query();
+    }
+    const { data, error } = res;
+    if (error || !data) return null;
 
     return (data as unknown as DbAffirmationRow[]).map(row => {
       const goal = Array.isArray(row.goals) ? row.goals[0] : row.goals;
@@ -124,8 +140,13 @@ export async function loadAffirmations(): Promise<AffirmationDTO[]> {
       } satisfies AffirmationDTO;
     });
   } catch {
-    return [];
+    return null;
   }
+}
+
+/** An expired or rejected JWT — worth one refresh-and-retry. */
+function isAuthRejection(status: number, error: { code?: string; message?: string }): boolean {
+  return status === 401 || error.code === 'PGRST301' || /jwt/i.test(error.message ?? '');
 }
 
 interface DbAffirmationRow {

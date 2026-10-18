@@ -187,6 +187,9 @@ const greeting = () => {
   return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
 };
 
+/** Backoff for a failed affirmations load; a new visit starts the ladder again. */
+const LOAD_RETRY_MS = [1500, 4000, 10000];
+
 /**
  * Home (design section 9). Affirmation rows are tracked sessions: audio or an
  * explicit ring-tap completes a card; the full set triggers the big celebration
@@ -225,17 +228,40 @@ export default function HomeScreen() {
   // Real set first: signed-in users load their persisted affirmations. Only
   // fall back to the design mock when there's genuinely nothing to show (mock
   // mode, signed out, or an account that hasn't finished onboarding).
+  /*
+    A FAILED load must never become the mock set (Oct 18). This used to write
+    MOCK_AFFS on any empty result, then never look again because the store
+    was "full" — so one 401 during a token refresh left Trevor on the design
+    placeholders (ids a1..a8, no recordings) for the rest of the app session,
+    and the Player had nothing to play: "No recordings yet", dead play button.
+
+    Now: on failure keep trying (RETRY_MS), and re-check on every visit — app
+    launch or return to foreground — while the store is empty or still holds
+    the mock in live mode. The mock is only stored when the account is
+    genuinely empty or signed out, as before.
+  */
+  const visitSeq = useStore(s => s.visitSeq);
   useEffect(() => {
-    if (affirmations.length) return;
+    const cur = useStore.getState().affirmations;
+    const needsReal = cur.length === 0 || (isLiveMode && cur === MOCK_AFFS);
+    if (!needsReal) return;
+    if (!isLiveMode) { set({ affirmations: MOCK_AFFS }); return; }
     let alive = true;
-    (async () => {
-      const saved = isLiveMode ? await loadAffirmations() : [];
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const attempt = async (n: number) => {
+      const saved = await loadAffirmations();
       if (!alive) return;
-      set({ affirmations: saved.length ? saved : MOCK_AFFS });
-    })();
-    return () => { alive = false; };
+      if (saved === null) {
+        if (n < LOAD_RETRY_MS.length) timer = setTimeout(() => void attempt(n + 1), LOAD_RETRY_MS[n]);
+        return;
+      }
+      if (saved.length) set({ affirmations: saved });
+      else if (useStore.getState().affirmations.length === 0) set({ affirmations: MOCK_AFFS });
+    };
+    void attempt(0);
+    return () => { alive = false; if (timer) clearTimeout(timer); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [visitSeq]);
 
   /**
    * Pull experience history down once per launch and merge it into the local
