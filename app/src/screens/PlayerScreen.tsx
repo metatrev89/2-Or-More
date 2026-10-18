@@ -6,7 +6,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../App';
 import { areaAccent, areaTint, colors, fonts } from '../theme';
 import { Mono, Serif } from '../components/ui';
-import { ChevronDownIcon, DoneMark, PauseFill, PlayFill } from '../components/brandIcons';
+import { ChevronDownIcon, DoneMark, MicIcon, PauseFill, PlayFill } from '../components/brandIcons';
 import { CelebStar } from '../components/Celebration';
 import { affSet, affText, useStore } from '../store';
 import { useAudioSession } from '../audio/AudioSession';
@@ -127,7 +127,21 @@ export default function PlayerScreen({ navigation }: NativeStackScreenProps<Root
   // the user minimizes this screen and walks around the app.
   const queue = useAudioSession();
   const { index: curIdx, playing, position: pos, duration, hasAudio, playableCount, celebIndex } = queue;
-  const togglePlay = queue.toggle;
+  /*
+    NEVER A DEAD BUTTON (Oct 18). With no recordings the play button used to
+    do nothing at all — the queue had no playable track, so `start` quietly
+    stopped — which reads exactly like the stalled-player bug even when the
+    cause is "nothing recorded" (or, on Oct 18, the mock set standing in for
+    a failed load). When the set is resolved and has nothing playable, the
+    button becomes a mic and goes to the recorder.
+
+    `sources` is [] until the first resolve lands, so an empty array means
+    "still looking", not "nothing recorded" — don't show the mic for that.
+  */
+  const sourcesResolved = queue.sources.length > 0;
+  const nothingToPlay = sourcesResolved && !hasAudio;
+  const goRecord = () => navigation.navigate('VoiceRecorder');
+  const togglePlay = nothingToPlay ? goRecord : queue.toggle;
   const skip = (fwd: boolean) => queue.skip(fwd);
   // Current SESSION's completions, not "everything since launch" (Sept 17).
   const track = useTracking();
@@ -259,7 +273,9 @@ export default function PlayerScreen({ navigation }: NativeStackScreenProps<Root
             <Text style={{ fontFamily: fonts.sans, fontSize: 13.5, color: colors.warmGray, textAlign: 'center', marginTop: 18 }}>
               {hasAudio
                 ? `Voice: your own · ${playableCount} of ${affs.length} recorded`
-                : 'No recordings yet — record these in your own voice to listen.'}
+                : nothingToPlay
+                  ? 'No recordings yet — tap the mic to record these in your own voice.'
+                  : 'Finding your recordings…'}
             </Text>
           </ScrollView>
 
@@ -286,7 +302,9 @@ export default function PlayerScreen({ navigation }: NativeStackScreenProps<Root
               </Pressable>
               <Pressable onPress={() => skip(false)} hitSlop={6}><SkipIcon /></Pressable>
               <Pressable onPress={togglePlay} style={{ width: 68, height: 68, borderRadius: 34, backgroundColor: colors.teal, alignItems: 'center', justifyContent: 'center' }}>
-                {playing ? <PauseFill size={22} /> : <View style={{ marginLeft: 3 }}><PlayFill size={24} /></View>}
+                {nothingToPlay
+                  ? <MicIcon size={26} color={colors.white} />
+                  : playing ? <PauseFill size={22} /> : <View style={{ marginLeft: 3 }}><PlayFill size={24} /></View>}
               </Pressable>
               <Pressable onPress={() => skip(true)} hitSlop={6}><SkipIcon forward /></Pressable>
               {/* Loop: off → once → infinite. Teal = on (an active playback mode). */}
