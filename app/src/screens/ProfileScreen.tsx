@@ -15,6 +15,7 @@ import { affText, useStore } from '../store';
 import { MOCK_AFFS } from '../api/mockData';
 import { FRIENDS, FRIEND_AVATAR_STYLES } from '../api/socialMock';
 import SocialAvatar from '../components/Avatar';
+import { joinedLabel, useAccount } from '../api/account';
 
 /**
  * What a friend can see of one affirmation. Video came out with the mind movie
@@ -191,6 +192,7 @@ export default function ProfileScreen() {
   const { profilePhotoUri, userName, shareSel, shareAudience, set, setProfilePhoto } = store;
   /** Affirmation id whose friend picker is open — one at a time. */
   const [audienceOpen, setAudienceOpen] = useState<string | null>(null);
+  const account = useAccount();
   const setAudience = (id: string, names: string[]) => {
     const next = { ...shareAudience };
     if (names.length) next[id] = names; else delete next[id];
@@ -261,7 +263,9 @@ export default function ProfileScreen() {
           <View style={{ flex: 1 }}>
             <Text style={{ fontFamily: fonts.sansSemi, fontSize: 23, color: colors.ink }}>{userName}</Text>
             <Text style={{ fontFamily: fonts.sans, fontSize: 13.5, color: colors.warmGray, marginTop: 2 }}>
-              Practicing since July 2026
+              {/* Real join month from the account (Oct 20); the design's
+                  "July 2026" stays only where there's no account to read. */}
+              Practicing since {joinedLabel(account?.joinedAt ?? null) ?? 'July 2026'}
             </Text>
           </View>
           <Pressable onPress={() => nav.navigate('Settings')} style={{

@@ -11,6 +11,7 @@ import { signOutUser } from '../api/auth';
 import { isLiveMode } from '../api/supabase';
 import { apiLive } from '../api/client';
 import { useStore } from '../store';
+import { clearAccountCache, membershipLabel, useAccount } from '../api/account';
 
 function ChevronRight() {
   return (
@@ -64,6 +65,19 @@ function Row({ label, value, valueColor, chevron, last, onPress }: {
 export default function SettingsScreen() {
   const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const userName = useStore(s => s.userName);
+  /*
+    Real account rows (Oct 20). These were hardcoded — every account read
+    "trevor@twoplus.app" and "2+ Annual". Live mode reads Supabase; mock mode
+    keeps the design placeholders, since there is no account to show. While
+    the first load is in flight the email shows an ellipsis rather than a
+    placeholder that looks real.
+  */
+  const account = useAccount();
+  const name = account?.displayName || userName;
+  const email = isLiveMode ? (account?.email ?? '…') : 'trevor@twoplus.app';
+  const membership = isLiveMode
+    ? (account ? membershipLabel(account.membership) : { text: '…', current: false })
+    : { text: '2+ Annual', current: true };
 
   return (
     <Animated.View entering={FadeIn.duration(400)} style={{ flex: 1, backgroundColor: colors.cream }}>
@@ -74,9 +88,9 @@ export default function SettingsScreen() {
       <ScrollView contentContainerStyle={{ paddingTop: 8, paddingHorizontal: 22, paddingBottom: 34 }}>
         <SectionLabel>ACCOUNT</SectionLabel>
         <Card>
-          <Row label="Name" value={userName} />
-          <Row label="Email" value="trevor@twoplus.app" />
-          <Row label="Membership" value="2+ Annual" valueColor={colors.teal} last />
+          <Row label="Name" value={name} />
+          <Row label="Email" value={email} />
+          <Row label="Membership" value={membership.text} valueColor={membership.current ? colors.teal : undefined} last />
         </Card>
 
         <SectionLabel>PREFERENCES</SectionLabel>
@@ -91,6 +105,7 @@ export default function SettingsScreen() {
           <Row label="Help & support" chevron />
           <Row label="Sign out" last onPress={async () => {
             await signOutUser(); // clears the persisted Supabase session in live mode
+            clearAccountCache();
             nav.reset({ index: 0, routes: [{ name: 'Intro' }] });
           }} />
         </Card>
