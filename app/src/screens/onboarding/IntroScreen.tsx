@@ -64,7 +64,7 @@ export default function IntroScreen({ navigation }: NativeStackScreenProps<RootS
   const [showPager, setShowPager] = useState(false);
   const [page, setPage] = useState(0);
   const { width } = useWindowDimensions();
-  const pagerRef = useRef<ScrollView>(null);
+  const pagerRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setShowPager(true), timing.introAutoAdvanceMs);

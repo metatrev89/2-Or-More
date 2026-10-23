@@ -19,7 +19,7 @@ export default function EmailScreen({ navigation, route }: NativeStackScreenProp
   const [pass, setPass] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [busy, setBusy] = useState(false);
-  const passRef = useRef<TextInput>(null);
+  const passRef = useRef<React.ComponentRef<typeof TextInput>>(null);
   const insets = useSafeAreaInsets();
 
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);

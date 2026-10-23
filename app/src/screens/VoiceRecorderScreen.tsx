@@ -72,7 +72,7 @@ export default function VoiceRecorderScreen({ route, navigation }: NativeStackSc
   const [doneCeleb, setDoneCeleb] = useState(false);
   const [finished, setFinished] = useState(false);
   const [busy, setBusy] = useState(false);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
 
   const recorder = useAudioRecorder(RECORDING_OPTIONS);
   const recState = useAudioRecorderState(recorder);

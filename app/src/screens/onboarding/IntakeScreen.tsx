@@ -101,8 +101,8 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
   const prevArea = useRef(-1);
   const doneCelebFired = useRef(false);
   const liveStarted = useRef(false);
-  const scrollRef = useRef<ScrollView>(null);
-  const inputRef = useRef<TextInput>(null);
+  const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
+  const inputRef = useRef<React.ComponentRef<typeof TextInput>>(null);
 
   // ── Submit → dismiss keyboard, pin the sent message to the top ──────────
   // Meta's chat does this on every send and it's the single biggest readability

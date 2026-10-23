@@ -28,7 +28,7 @@ export default function ForgotScreen({ navigation }: NativeStackScreenProps<Root
   const [showPass, setShowPass] = useState(false);
   const [sending, setSending] = useState(false);
   const [cooldown, setCooldown] = useState(0);
-  const codeRef = useRef<TextInput>(null);
+  const codeRef = useRef<React.ComponentRef<typeof TextInput>>(null);
 
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const codeOk = /^\d{6}$/.test(code);

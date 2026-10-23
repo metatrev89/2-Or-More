@@ -6,9 +6,6 @@
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "backgroundColor": "#FAF4E8",
-    "splash": {
-      "backgroundColor": "#FAF4E8"
-    },
     "ios": {
       "bundleIdentifier": "com.highnoon.twoplus",
       "supportsTablet": false
@@ -23,6 +20,14 @@
         {
           "microphonePermission": "2+ uses your microphone so you can record your affirmations in your own voice. Recordings are stored and played back to you only — they are never analyzed or used to synthesize speech.",
           "enableBackgroundPlayback": true
+        }
+      ],
+      "expo-status-bar",
+      "expo-asset",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FAF4E8"
         }
       ]
     ],
