@@ -467,18 +467,54 @@ export function useAffirmationQueue(opts: {
   useEffect(() => {
     if (idxRef.current < 0) return;
 
+    /*
+      THE SWAP WINDOW IS BACK, and it belongs here (Trevor, Nov 1: "after the
+      4th affirmation plays it skips the 5th and goes straight to the 6th").
+
+      `replace()` is async, so for a moment after a swap the status updates
+      still describe the OUTGOING track — CLAUDE.md has said so since Sept 14.
+      This effect trusted them. ONE stale update only armed the new index (the
+      arm branch returns); TWO completed the pair, measuring track 4's final
+      position against track 4's duration, concluding "at the end", and
+      advancing again. Affirmation 5 was marked finished — ring closed, chime
+      fired — without ever playing.
+
+      It was intermittent because the number of updates left in flight depends
+      on where a track's end falls relative to the player's periodic tick; it
+      appeared after affirmation 4 was re-recorded because the new take's
+      duration moved that phase. Reproduced in simulation at 2+ stale ticks,
+      clean at 0-1.
+
+      This guard cannot strand anything — unlike the Sept 15 flag it consumes
+      nothing, and the effect re-runs on the next tick regardless.
+    */
+    if (Date.now() - swapAtRef.current < SWAP_GUARD_MS) return;
+
     const playing = !!status.playing;
     const pos = status.currentTime ?? 0;
     const dur = status.duration ?? 0;
 
     if (!armedRef.current) {
-      if (status.isLoaded && playing && pos > ARM_MIN_SEC) {
+      /*
+        A track that is STARTING cannot already be at its end — but a stale
+        update from the track that just finished always is. Requiring early
+        progress rather than any progress kills the stale arm on its own, so
+        this holds even if a late update escapes the window above. Positive
+        evidence, not suppression: the belt to the guard's braces.
+      */
+      const looksFinished = dur > 0 && pos >= dur - END_EPSILON_SEC;
+      if (status.isLoaded && playing && pos > ARM_MIN_SEC && !looksFinished) {
         armedRef.current = true;
         maxPosRef.current = pos;
       }
       return;
     }
-    if (pos > maxPosRef.current) maxPosRef.current = pos;
+    // Never let a position from a DIFFERENT track poison the high-water mark:
+    // a stale `pos` far beyond this track's duration would make `stoppedAtEnd`
+    // true at the next pause. Positions past the end are not this track's.
+    if (pos > maxPosRef.current && (dur <= 0 || pos <= dur + END_EPSILON_SEC)) {
+      maxPosRef.current = pos;
+    }
 
     const stoppedAtEnd = !playing
       && (!!status.didJustFinish || (dur > 0 && maxPosRef.current >= dur - END_EPSILON_SEC));
