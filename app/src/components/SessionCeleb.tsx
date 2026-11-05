@@ -3,7 +3,7 @@ import { View, Text, Pressable } from 'react-native';
 import Animated, {
   Easing, FadeInDown, useAnimatedStyle, useSharedValue, withDelay, withTiming,
 } from 'react-native-reanimated';
-import { areaAccent, colors, fonts } from '../theme';
+import { areaAccent, colors, fonts, BAR_RADIUS } from '../theme';
 import { StarBurst } from './brandIcons';
 import { BurstRing, ChipPop, Confetti } from './Celebration';
 import { affSet, useStore } from '../store';
@@ -84,7 +84,7 @@ export default function SessionCeleb({ onDone }: { onDone: () => void }) {
             the end of the rise has somewhere to go instead of clipping. */}
         <View style={{
           flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center',
-          gap: 7, height: BAR_MAX_H + 5, marginBottom: 16,
+          gap: BAR_GAP, height: BAR_MAX_H + 5, marginBottom: 16,
         }}>
           {affs.map((a, i) => (
             <Bar key={a.id ?? i} index={i} total={n} color={areaAccent(a.area)} />
@@ -128,6 +128,9 @@ const BAR_STAGGER_MS = 75;
 const BAR_RISE_MS = 420;
 const BAR_MIN_H = 20;
 const BAR_MAX_H = 56;
+/** Home's weekly bars run ~14–17pt wide with 5pt gaps; same proportions here (Nov 5). */
+const BAR_W = 15;
+const BAR_GAP = 5;
 
 const NUM_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight'];
 
@@ -146,8 +149,8 @@ function saidLine(n: number): string {
 /**
  * One bar = one affirmation, coloured by ITS OWN area.
  *
- * Height is animated rather than scaleY: scaling would squash the 6pt rounded
- * caps on the way up. Heights ramp low→high across however many bars this user
+ * Height is animated rather than scaleY: scaling would squash the rounded
+ * corners on the way up. Heights ramp low→high across however many bars this user
  * actually has, so 7 and 8 both fill the row evenly instead of leaving a hole.
  */
 function Bar({ index, total, color }: { index: number; total: number; color: string }) {
@@ -165,5 +168,5 @@ function Bar({ index, total, color }: { index: number; total: number; color: str
 
   const style = useAnimatedStyle(() => ({ height: h * t.value, opacity: t.value > 0 ? 1 : 0 }));
 
-  return <Animated.View style={[{ width: 12, borderRadius: 6, backgroundColor: color }, style]} />;
+  return <Animated.View style={[{ width: BAR_W, borderRadius: BAR_RADIUS, backgroundColor: color }, style]} />;
 }

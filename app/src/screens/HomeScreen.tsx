@@ -9,7 +9,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../App';
-import { areaAccent, colors, fonts } from '../theme';
+import { areaAccent, colors, fonts, BAR_RADIUS } from '../theme';
 import { Mono, Serif } from '../components/ui';
 import {
   BellIcon, ChevronDownIcon, DoneMark, FlameIcon,
@@ -555,7 +555,7 @@ export default function HomeScreen() {
                   index-based `i < 6` this replaced always painted "6 of 7". */}
               {weekHeights.map((h, i) => (
                 <View key={i} style={{
-                  flex: 1, height: h, borderRadius: 4,
+                  flex: 1, height: h, borderRadius: BAR_RADIUS,
                   backgroundColor: (weekPcts[i] ?? 0) > 0 ? colors.gold : colors.sand,
                 }} />
               ))}
