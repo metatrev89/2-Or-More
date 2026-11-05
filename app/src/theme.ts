@@ -51,6 +51,15 @@ export const timing = {
 } as const;
 
 /** Chakra-mapped life areas, root→crown — order MUST match backend LIFE_AREAS (areaIndex crosses the API). */
+/**
+ * Bar shape shared by Home's weekly bars and the session-complete celebration
+ * bars (Trevor, Nov 5: they "are different shapes"). The celebration bars were
+ * 12pt wide with a 6pt radius — fully rounded pills — beside Home's flat-topped
+ * rounded rectangles. One radius, and the celebration keeps Home's
+ * width-to-gap proportions, so both read as the same object.
+ */
+export const BAR_RADIUS = 4;
+
 export const AREAS = [
   'Health & Body',
   'Emotions & Creativity',
