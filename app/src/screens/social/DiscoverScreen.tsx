@@ -43,7 +43,7 @@ export default function DiscoverScreen() {
         </View>
         <Pressable onPress={() => setAdded({ ...added, [k]: !isAdded })} style={{
           height: 34, paddingHorizontal: isAdded ? 16 : ctaPad, borderRadius: 17,
-          backgroundColor: isAdded ? '#EFE6D2' : colors.teal,
+          backgroundColor: isAdded ? colors.chip : colors.teal,
           alignItems: 'center', justifyContent: 'center',
         }}>
           <Text style={{
@@ -75,7 +75,7 @@ export default function DiscoverScreen() {
         {/* connect contacts */}
         {connectRow && (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 13, paddingTop: 10, paddingBottom: 16 }}>
-            <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: '#EFE6D2', alignItems: 'center', justifyContent: 'center' }}>
+            <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: colors.chip, alignItems: 'center', justifyContent: 'center' }}>
               <ContactsCardIcon size={22} />
             </View>
             <View style={{ flex: 1, minWidth: 0 }}>

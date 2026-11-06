@@ -123,7 +123,7 @@ export default function FriendsScreen() {
           <View style={{ paddingTop: 14, paddingHorizontal: 22, paddingBottom: 4 }}>
             <View style={{
               flexDirection: 'row', alignItems: 'center', gap: 10, height: 44,
-              backgroundColor: '#EFE6D2', borderRadius: 14, paddingHorizontal: 14,
+              backgroundColor: colors.chip, borderRadius: 14, paddingHorizontal: 14,
             }}>
               <SearchIcon size={17} />
               <TextInput
@@ -184,7 +184,7 @@ export default function FriendsScreen() {
                 {sent.map(({ f, i }) => personRow(f, i, (
                   <>
                     <View style={{
-                      height: 34, paddingHorizontal: 14, borderRadius: 17, backgroundColor: '#EFE6D2',
+                      height: 34, paddingHorizontal: 14, borderRadius: 17, backgroundColor: colors.chip,
                       borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center',
                     }}>
                       <Text style={{ fontFamily: fonts.sans, fontSize: 13.5, color: colors.warmGray }}>Pending</Text>
@@ -208,7 +208,7 @@ export default function FriendsScreen() {
         <ScrollView contentContainerStyle={{ paddingTop: 6, paddingHorizontal: 22, paddingBottom: 108 }}>
           {/* invite a friend */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 13, paddingTop: 12, paddingBottom: 16 }}>
-            <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: '#EFE6D2', alignItems: 'center', justifyContent: 'center' }}>
+            <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: colors.chip, alignItems: 'center', justifyContent: 'center' }}>
               <LinkIcon size={20} />
             </View>
             <View style={{ flex: 1, minWidth: 0 }}>
@@ -245,7 +245,7 @@ export default function FriendsScreen() {
                   </Pressable>
                 ) : (
                   <View style={{
-                    height: 34, paddingHorizontal: 14, borderRadius: 17, backgroundColor: '#EFE6D2',
+                    height: 34, paddingHorizontal: 14, borderRadius: 17, backgroundColor: colors.chip,
                     borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center',
                   }}>
                     <Text style={{ fontFamily: fonts.sans, fontSize: 13.5, color: colors.warmGray }}>Accepted</Text>

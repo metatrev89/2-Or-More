@@ -22,13 +22,14 @@ export type TabsParamList = {
 const Tab = createBottomTabNavigator<TabsParamList>();
 
 /** Per-tab active tints from the design's nav bars (each screen lights its own color). */
-const ACTIVE: Record<keyof TabsParamList, string> = {
+// Read at render, not import, so the tints follow dark mode (Nov 6).
+const activeTint = (name: keyof TabsParamList): string => ({
   Home: colors.ink,
   Feed: colors.gold,
   Progress: colors.teal,
-  Friends: '#5C5142',
+  Friends: colors.umber,
   Profile: colors.ink,
-};
+})[name];
 
 /** Nav glyphs — verbatim 24px / 1.9-stroke paths from the design bundle. */
 function NavIcon({ name, color }: { name: keyof TabsParamList; color: string }) {
@@ -93,7 +94,7 @@ function label(name: keyof TabsParamList) {
     <Text style={{
       fontFamily: focused ? fonts.sansMedium : fonts.sans,
       fontSize: 11,
-      color: focused ? ACTIVE[name] : colors.inactive,
+      color: focused ? activeTint(name) : colors.inactive,
     }}>
       {name}
     </Text>
@@ -115,7 +116,7 @@ export default function MainTabs() {
           tabBarIcon: ({ focused }) =>
             name === 'Profile'
               ? <ProfileTabIcon focused={focused} />
-              : <NavIcon name={name} color={focused ? ACTIVE[name] : colors.inactive} />,
+              : <NavIcon name={name} color={focused ? activeTint(name) : colors.inactive} />,
         };
       }}
     >

@@ -73,7 +73,7 @@ export default function FeedScreen() {
               {/* header: avatar + "name phrase" + time */}
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 11 }}>
                 <SocialAvatar name={f.name} size={42} bg={av.bg} ink={av.ink} fontSize={16} />
-                <Text style={{ flex: 1, fontFamily: fonts.sans, fontSize: 14, color: '#5C5142', lineHeight: 19 }}>
+                <Text style={{ flex: 1, fontFamily: fonts.sans, fontSize: 14, color: colors.umber, lineHeight: 19 }}>
                   <Text style={{ fontFamily: fonts.sansSemi, color: colors.ink }}>{f.name}</Text> {f.phrase}
                 </Text>
                 <Text style={{ fontFamily: fonts.sans, fontSize: 12.5, color: colors.inactive }}>{f.time}</Text>
@@ -106,7 +106,7 @@ export default function FeedScreen() {
               {f.type === 'medal' && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 13, backgroundColor: colors.cream, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 15, marginTop: 12 }}>
                   <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.gold, alignItems: 'center', justifyContent: 'center' }}>
-                    <MedalIcon size={20} />
+                    <MedalIcon size={20} color={colors.onGold} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontFamily: fonts.sansSemi, fontSize: 14.5, color: colors.ink }}>{f.label}</Text>

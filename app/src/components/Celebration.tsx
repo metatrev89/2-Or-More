@@ -14,7 +14,9 @@ import { StarBurst } from './brandIcons';
  *   chipPop      — scale 0.5→1.1@60%→1 with opacity in (bezier 0.34,1.56,0.64,1)
  */
 
-const CONF_COLORS = [colors.gold, colors.teal, colors.sand, colors.gold, colors.tealDeep, colors.gold];
+// A function, not a constant: a module-level array would freeze the palette
+// at import and never follow dark mode (Nov 6).
+const confColors = () => [colors.gold, colors.teal, colors.sand, colors.gold, colors.tealDeep, colors.gold];
 const POP_EASING = Easing.bezier(0.34, 1.56, 0.64, 1);
 
 /** celebStar: the little gold star that marks a closed ring / picked mood. */
@@ -81,7 +83,7 @@ export function Confetti() {
   const items = useMemo(() => Array.from({ length: 26 }, (_, i) => ({
     left: `${3 + (i * 37) % 94}%`,
     size: 10 + (i * 11) % 14,
-    color: CONF_COLORS[i % CONF_COLORS.length],
+    color: confColors()[i % 6],
     durMs: (1.6 + ((i * 13) % 10) / 8) * 1000,
     delayMs: (((i * 17) % 12) / 14) * 1000,
   })), []);

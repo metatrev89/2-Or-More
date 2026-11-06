@@ -27,7 +27,8 @@ function DriftWord({ text, top, left, right, bottom, color, size, dur, rot }: {
   );
 }
 
-const WORDS = [
+/** A function so the drifting words follow dark mode — see theme.ts `colors`. */
+const words = () => [
   { text: 'visualize', top: '19%', left: 36, color: colors.warmGray, size: 24, dur: 5500, rot: '-2deg' },
   { text: 'experience', top: '31%', right: 40, color: colors.gold, size: 22, dur: 6500, rot: '1.5deg' },
   { text: 'hear', bottom: '24%', left: 52, color: colors.teal, size: 23, dur: 6000, rot: '-1deg' },
@@ -90,7 +91,7 @@ export default function IntroScreen({ navigation }: NativeStackScreenProps<RootS
     return (
       <Pressable onPress={() => setShowPager(true)} style={{ flex: 1, backgroundColor: colors.cream, alignItems: 'center', justifyContent: 'center', padding: 44 }}>
         <Animated.View entering={FadeIn.duration(1400)} pointerEvents="none" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
-          {WORDS.map(w => <DriftWord key={w.text} {...w} />)}
+          {words().map(w => <DriftWord key={w.text} {...w} />)}
         </Animated.View>
         <Animated.View entering={FadeInUp.duration(900)} style={{ alignItems: 'center' }}>
           <Text style={{ fontFamily: fonts.sansSemi, fontSize: 76, color: colors.ink, letterSpacing: -2 }}>

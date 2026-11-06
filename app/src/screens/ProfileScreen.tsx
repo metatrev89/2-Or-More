@@ -405,7 +405,7 @@ export default function ProfileScreen() {
       {photoSheet && (
         <>
           <Pressable onPress={() => setPhotoSheet(false)} style={{
-            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(38,32,26,0.4)',
+            position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.scrim,
           }} />
           <Animated.View entering={FadeInUp.duration(300)} style={{
             // Stops above the floating glass bar, which the navigator paints
