@@ -161,7 +161,10 @@ export const useStore = create<State>((set, get) => ({
   feedAffirmed: {},
   shareSel: {},
   shareAudience: {},
-  appearance: 'light',
+  // System by default (Nov 6): Trevor's phone was in dark mode and the app
+  // stayed light, because Light was the default until he found the setting.
+  // Anyone who explicitly picked Light or Dark keeps it — that's stored.
+  appearance: 'system',
   appearanceLoaded: false,
   setAppearance: (a) => {
     set({ appearance: a });
