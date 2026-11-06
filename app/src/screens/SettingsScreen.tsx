@@ -168,6 +168,14 @@ export default function SettingsScreen() {
         <Text style={{ textAlign: 'center', fontFamily: fonts.sans, fontSize: 12, color: colors.inactive, marginTop: 20 }}>
           Auth: {isLiveMode ? 'Live (Supabase)' : 'Mock'} · Intake: {apiLive ? 'Live (Spark)' : 'Mock'}
         </Text>
+        {/* Which update this phone is running (Nov 6). Expo Go downloads an
+            update in the background and applies it on a LATER launch, so
+            "I merged it and nothing changed" has cost three round-trips —
+            compare this against the merge commit on GitHub. Local dev reads
+            "dev" because the variable is only set by the publish workflow. */}
+        <Text style={{ textAlign: 'center', fontFamily: fonts.mono, fontSize: 11, color: colors.inactive, marginTop: 6 }}>
+          Build {(process.env.EXPO_PUBLIC_BUILD_SHA ?? 'dev').slice(0, 7)}
+        </Text>
       </ScrollView>
     </Animated.View>
   );
