@@ -16,6 +16,9 @@ export type OnboardingScreen =
 
 interface Msg { isAi: boolean; text: string; photoUri?: string }
 
+export type Appearance = 'light' | 'dark' | 'system';
+const APPEARANCE_KEY = 'twoplus_appearance';
+
 type ScheduleFields = Partial<Pick<State, 'schedPlan' | 'freq' | 'awStart' | 'awEnd'>>;
 
 const SCHEDULE_KEY = 'twoplus_schedule';
@@ -90,6 +93,14 @@ interface State {
    * WHAT is shared. Ids, not indexes — indexes shift when the set changes.
    */
   shareAudience: Record<string, string[]>;
+  /**
+   * Light / Dark / follow the phone (Nov 6). Persisted under
+   * `twoplus_appearance`. `appearanceLoaded` gates the first paint so a dark
+   * user never sees a flash of the light theme on launch.
+   */
+  appearance: Appearance;
+  appearanceLoaded: boolean;
+  setAppearance: (a: Appearance) => void;
   // actions
   set: (partial: Partial<State>) => void;
   setProfilePhoto: (uri: string | null) => void;
@@ -150,6 +161,12 @@ export const useStore = create<State>((set, get) => ({
   feedAffirmed: {},
   shareSel: {},
   shareAudience: {},
+  appearance: 'light',
+  appearanceLoaded: false,
+  setAppearance: (a) => {
+    set({ appearance: a });
+    AsyncStorage.setItem(APPEARANCE_KEY, a).catch(() => {});
+  },
 
   set: (partial) => set(partial),
 
@@ -254,6 +271,13 @@ export const useStore = create<State>((set, get) => ({
   },
 
   hydrate: async () => {
+    // First, and on its own: the launch screen waits on this one read.
+    try {
+      const ap = await AsyncStorage.getItem(APPEARANCE_KEY);
+      if (ap === 'light' || ap === 'dark' || ap === 'system') set({ appearance: ap });
+    } catch { /* default light */ }
+    set({ appearanceLoaded: true });
+
     // Before this (Oct 1) the schedule lived in memory only, so a Custom
     // cadence chosen in onboarding reverted to Prime 5× on the next launch.
     const sched = await AsyncStorage.getItem(SCHEDULE_KEY);

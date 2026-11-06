@@ -10,7 +10,7 @@ import { BackButton } from '../components/ui';
 import { signOutUser } from '../api/auth';
 import { isLiveMode } from '../api/supabase';
 import { apiLive } from '../api/client';
-import { useStore } from '../store';
+import { useStore, type Appearance } from '../store';
 import { clearAccountCache, membershipLabel, useAccount } from '../api/account';
 
 function ChevronRight() {
@@ -61,6 +61,49 @@ function Row({ label, value, valueColor, chevron, last, onPress }: {
   );
 }
 
+/**
+ * Light / Dark / System (Nov 6). A segmented control rather than a switch,
+ * because there are three honest answers: System follows the phone, which a
+ * two-state toggle can't express. Selection is ink-on-cream, so the selected
+ * pill inverts with the theme instead of needing a colour of its own — no
+ * teal (AI only) or gold (achievement only) for a plain preference.
+ */
+function AppearanceRow() {
+  const appearance = useStore(s => s.appearance);
+  const setAppearance = useStore(s => s.setAppearance);
+  const opts: { key: Appearance; label: string }[] = [
+    { key: 'light', label: 'Light' },
+    { key: 'dark', label: 'Dark' },
+    { key: 'system', label: 'System' },
+  ];
+  return (
+    <View style={{
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+      paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.borderSoft,
+    }}>
+      <Text style={{ fontFamily: fonts.sans, fontSize: 14.5, color: colors.ink }}>Appearance</Text>
+      <View style={{ flexDirection: 'row', backgroundColor: colors.borderSoft, borderRadius: 16, padding: 3 }}>
+        {opts.map(o => {
+          const on = appearance === o.key;
+          return (
+            <Pressable
+              key={o.key}
+              onPress={() => setAppearance(o.key)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: on }}
+              style={{ paddingVertical: 5, paddingHorizontal: 11, borderRadius: 13, backgroundColor: on ? colors.ink : 'transparent' }}
+            >
+              <Text style={{ fontFamily: on ? fonts.sansMedium : fonts.sans, fontSize: 13, color: on ? colors.cream : colors.warmGray }}>
+                {o.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 /** Settings (design section 12). Rows are design-faithful; sub-pages come with live wiring. */
 export default function SettingsScreen() {
   const nav = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -95,6 +138,7 @@ export default function SettingsScreen() {
 
         <SectionLabel>PREFERENCES</SectionLabel>
         <Card>
+          <AppearanceRow />
           <Row label="Notifications" chevron />
           <Row label="Voice & playback" chevron />
           <Row label="Privacy & sharing" chevron last />

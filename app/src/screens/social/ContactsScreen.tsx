@@ -41,13 +41,13 @@ export default function ContactsScreen() {
         <Text style={{ fontFamily: fonts.sansSemi, fontSize: 27, color: colors.ink, letterSpacing: -0.5, lineHeight: 32 }}>
           Allow 2<Text style={{ color: colors.gold }}>+</Text> to access your contacts
         </Text>
-        <Text style={{ fontFamily: fonts.sans, fontSize: 15.5, color: '#5C5142', lineHeight: 24, marginTop: 16 }}>
+        <Text style={{ fontFamily: fonts.sans, fontSize: 15.5, color: colors.umber, lineHeight: 24, marginTop: 16 }}>
           We'll use your contacts to help you find people you know, so you can practice alongside the people already in your corner.
         </Text>
-        <Text style={{ fontFamily: fonts.sans, fontSize: 15.5, color: '#5C5142', lineHeight: 24, marginTop: 14 }}>
+        <Text style={{ fontFamily: fonts.sans, fontSize: 15.5, color: colors.umber, lineHeight: 24, marginTop: 14 }}>
           Your contacts are synced privately and stored securely.
         </Text>
-        <Text style={{ fontFamily: fonts.sans, fontSize: 15.5, color: '#5C5142', lineHeight: 24, marginTop: 14 }}>
+        <Text style={{ fontFamily: fonts.sans, fontSize: 15.5, color: colors.umber, lineHeight: 24, marginTop: 14 }}>
           You can turn off syncing anytime in settings.
         </Text>
         <Text style={{ fontFamily: fonts.sansMedium, fontSize: 15, color: colors.teal, marginTop: 16 }}>Learn more</Text>

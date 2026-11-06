@@ -4,7 +4,7 @@
     "slug": "twoplus",
     "version": "0.1.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "backgroundColor": "#FAF4E8",
     "ios": {
       "bundleIdentifier": "com.highnoon.twoplus",

@@ -135,9 +135,10 @@ function StatCard({ celebrating, children }: { celebrating: boolean; children: R
   );
 }
 
-const NOTIF_AV = [
-  { bg: colors.teal, ink: colors.cream }, { bg: '#EFE6D2', ink: colors.ink },
-  { bg: colors.gold, ink: colors.ink }, { bg: colors.tealDeep, ink: colors.cream },
+/** A function so it follows dark mode — see theme.ts `colors`. */
+const notifAv = () => [
+  { bg: colors.teal, ink: colors.cream }, { bg: colors.chip, ink: colors.ink },
+  { bg: colors.gold, ink: colors.onGold }, { bg: colors.tealDeep, ink: colors.cream },
   { bg: colors.sand, ink: colors.ink },
 ];
 
@@ -147,7 +148,7 @@ const NOTIF_AV = [
  */
 function NotifBadge({ type }: { type: string }) {
   if (type === 'like') return (
-    <Svg width={10} height={10} viewBox="0 0 24 24" fill={colors.ink}>
+    <Svg width={10} height={10} viewBox="0 0 24 24" fill={colors.onGold}>
       <Path d="M12 21s-7.5-4.7-10-9.2C.5 8 2.5 4.5 6 4.5c2.1 0 3.6 1.1 4.5 2.6h3c.9-1.5 2.4-2.6 4.5-2.6 3.5 0 5.5 3.5 4 7.3C19.5 16.3 12 21 12 21z" />
     </Svg>
   );
@@ -463,7 +464,7 @@ export default function HomeScreen() {
   // closed ring reads the same (Trevor, Sept 11) — the 2nd used to render
   // terracotta for "done but out of alignment", and alignment is out of v1.
   const ringStroke = (i: number) => (i < ringsShown ? colors.teal : colors.border);
-  const ringFill = (i: number) => (i < ringsShown ? 'rgba(21,122,110,0.25)' : 'none');
+  const ringFill = (i: number) => (i < ringsShown ? colors.tealWash : 'none');
 
   const dateLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
@@ -523,7 +524,7 @@ export default function HomeScreen() {
                   backgroundColor: colors.gold, borderWidth: 2, borderColor: colors.cream,
                   alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5,
                 }}>
-                  <Text style={{ fontFamily: fonts.sansSemi, fontSize: 11, color: colors.ink }}>{NOTIFS.length}</Text>
+                  <Text style={{ fontFamily: fonts.sansSemi, fontSize: 11, color: colors.onGold }}>{NOTIFS.length}</Text>
                 </View>
               )}
             </Pressable>
@@ -587,7 +588,7 @@ export default function HomeScreen() {
                 width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
                 backgroundColor: editing ? colors.gold : 'transparent',
               }}>
-                <PencilIcon size={14} color={editing ? colors.ink : colors.inactive} />
+                <PencilIcon size={14} color={editing ? colors.onGold : colors.inactive} />
               </Pressable>
             </View>
           </View>
@@ -763,7 +764,7 @@ export default function HomeScreen() {
       {/* notifications sheet */}
       {notifOpen && (
         <>
-          <Animated.View entering={FadeIn.duration(250)} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(38,32,26,0.4)', zIndex: 40 }}>
+          <Animated.View entering={FadeIn.duration(250)} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.scrim, zIndex: 40 }}>
             <Pressable onPress={() => setNotifOpen(false)} style={{ flex: 1 }} />
           </Animated.View>
           {/* The sheet used to sit at bottom:8, which the liquid-glass tab bar
@@ -786,7 +787,7 @@ export default function HomeScreen() {
             <ScrollView>
               {NOTIFS.map((n, i) => {
                 if (notifDeclined[i]) return null;
-                const av = NOTIF_AV[i % NOTIF_AV.length];
+                const av = notifAv()[i % 5];
                 const accepted = !!notifAccepted[i];
                 return (
                   <View key={i} style={{
@@ -803,7 +804,7 @@ export default function HomeScreen() {
                         <NotifBadge type={n.type} />
                       </View>
                     </View>
-                    <Text style={{ flex: 1, fontFamily: fonts.sans, fontSize: 14, color: '#5C5142', lineHeight: 20 }}>
+                    <Text style={{ flex: 1, fontFamily: fonts.sans, fontSize: 14, color: colors.umber, lineHeight: 20 }}>
                       <Text style={{ fontFamily: fonts.sansSemi, color: colors.ink }}>{n.name}</Text> {n.text}{' '}
                       <Text style={{ color: colors.inactive }}>· {n.time}</Text>
                     </Text>
@@ -824,7 +825,7 @@ export default function HomeScreen() {
                       </>
                     )}
                     {n.type === 'request' && accepted && (
-                      <View style={{ height: 32, borderRadius: 16, paddingHorizontal: 12, backgroundColor: '#EFE6D2', alignItems: 'center', justifyContent: 'center' }}>
+                      <View style={{ height: 32, borderRadius: 16, paddingHorizontal: 12, backgroundColor: colors.chip, alignItems: 'center', justifyContent: 'center' }}>
                         <Text style={{ fontFamily: fonts.sans, fontSize: 13, color: colors.warmGray }}>Connected</Text>
                       </View>
                     )}

@@ -7,7 +7,7 @@ import { permissionRefused, pickProfilePhoto, type PhotoSource } from '../../med
 import { Image } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
-import { AREAS, AREA_ACCENTS, AREA_CHAKRAS, CATCH_ALL_AREA, areaAccent, colors, fonts, timing } from '../../theme';
+import { AREAS, AREA_CHAKRAS, CATCH_ALL_AREA, areaAccent, colors, fonts, timing } from '../../theme';
 import { MOCK_SCRIPT } from '../../api/mockData';
 import { api, apiLive, type IntakePhase } from '../../api/client';
 import Svg, { Path } from 'react-native-svg';
@@ -410,7 +410,7 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
 
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 22, paddingTop: 10, paddingBottom: 8 }}>
         <View style={{ flex: 1 }}>
-          <SegmentBar total={7} activeCount={barIdx + 1} segmentColors={AREA_ACCENTS} />
+          <SegmentBar total={7} activeCount={barIdx + 1} segmentColors={AREAS.map((_, i) => areaAccent(i))} />
           {barCeleb >= 0 && (
             <View pointerEvents="none" style={{
               position: 'absolute', top: -14, left: `${((barCeleb + 0.5) / 7) * 100}%`, marginLeft: -8, zIndex: 2,
@@ -635,7 +635,7 @@ export default function IntakeScreen({ navigation }: NativeStackScreenProps<Root
         <>
           <Pressable onPress={() => setPhotoSheet(false)} style={{
             position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: 'rgba(38,32,26,0.4)',
+            backgroundColor: colors.scrim,
           }} />
           <Animated.View entering={FadeInUp.duration(300)} style={{
             position: 'absolute', left: 8, right: 8, bottom: 8,

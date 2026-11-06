@@ -6,7 +6,7 @@ import Animated, {
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { colors } from '../theme';
+import { colors, isDarkMode } from '../theme';
 
 /**
  * Liquid-glass tab bar (Trevor, Sept 12 — from the two reference apps in his
@@ -23,15 +23,13 @@ import { colors } from '../theme';
  */
 
 /** ── Translucent palette ───────────────────────────────────────────────── */
-/** Cream at 72% over a light blur — frosted, but still unmistakably cream. */
-export const GLASS_FILL = 'rgba(250, 244, 232, 0.72)';
-/** Brand border (#E8DEC9) softened, so the capsule edge reads as glass not card. */
-export const GLASS_RIM = 'rgba(232, 222, 201, 0.85)';
-/** Specular top highlight — the "lit from above" edge that sells the material. */
-export const GLASS_SHEEN = 'rgba(255, 255, 255, 0.55)';
-/** The travelling lens behind the active tab: brighter than the bar itself. */
-export const LENS_FILL = 'rgba(255, 255, 255, 0.78)';
-export const LENS_RIM = 'rgba(255, 255, 255, 0.9)';
+/*
+  These were exported string constants; they're palette tokens now
+  (colors.glassFill / glassRim / glassSheen / lensFill / lensRim in theme.ts)
+  so the capsule goes dusk-dark with the rest of the app (Nov 6). In light mode
+  the values are unchanged: cream at 72% over a light blur, the brand border
+  softened, a white top sheen, and a brighter lens behind the active tab.
+*/
 
 const BAR_H = 62;
 const SIDE = 16;
@@ -87,7 +85,7 @@ export default function GlassTabBar({ state, descriptors, navigation }: BottomTa
         borderRadius: BAR_H / 2,
         overflow: 'hidden',
         borderWidth: 1,
-        borderColor: GLASS_RIM,
+        borderColor: colors.glassRim,
         // A real shadow is what separates a floating capsule from a painted one.
         shadowColor: colors.ink,
         shadowOpacity: 0.18,
@@ -96,11 +94,11 @@ export default function GlassTabBar({ state, descriptors, navigation }: BottomTa
         elevation: 12,
       }}>
         {/* The glass itself — content scrolls visibly beneath this. */}
-        <BlurView intensity={38} tint="light" style={{ backgroundColor: GLASS_FILL }}>
+        <BlurView intensity={38} tint={isDarkMode() ? 'dark' : 'light'} style={{ backgroundColor: colors.glassFill }}>
           {/* specular sheen along the top edge */}
           <View pointerEvents="none" style={{
             position: 'absolute', top: 0, left: 18, right: 18, height: 1,
-            backgroundColor: GLASS_SHEEN,
+            backgroundColor: colors.glassSheen,
           }} />
 
           <View
@@ -120,7 +118,7 @@ export default function GlassTabBar({ state, descriptors, navigation }: BottomTa
                 <View style={{
                   width: Math.max(0, slot - LENS_INSET), height: '100%',
                   borderRadius: (BAR_H - 12) / 2,
-                  backgroundColor: LENS_FILL, borderWidth: 1, borderColor: LENS_RIM,
+                  backgroundColor: colors.lensFill, borderWidth: 1, borderColor: colors.lensRim,
                 }} />
               </Animated.View>
             )}

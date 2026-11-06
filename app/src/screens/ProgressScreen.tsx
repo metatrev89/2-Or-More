@@ -48,10 +48,11 @@ const CardLabel = ({ children }: { children: React.ReactNode }) => (
   <Text style={{ fontFamily: fonts.sansSemi, fontSize: 11.5, letterSpacing: 1.8, color: colors.warmGray }}>{children}</Text>
 );
 
-const card = {
+/** A function so the card follows dark mode — see theme.ts `colors`. */
+const cardStyle = () => ({
   backgroundColor: colors.white, borderWidth: 1, borderColor: colors.border,
   borderRadius: 20, padding: 20, marginTop: 14,
-} as const;
+} as const);
 
 /**
  * How far through a session the user got, as a colour (Trevor, Sept 11).
@@ -106,6 +107,7 @@ function Stepper({ value, width, small, onDown, onUp }: { value: string; width: 
 
 /** Progress (design section 11): daily ring hero, sessions, week, medals, month. */
 export default function ProgressScreen() {
+  const card = cardStyle();
   const { schedPlan, awStart, awEnd, qStart, qEnd, affirmations, setSchedule } = useStore();
   const prime = schedPlan === 'prime';
   const [editing, setEditing] = useState(false);
@@ -232,7 +234,7 @@ export default function ProgressScreen() {
                 width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
                 backgroundColor: editing ? colors.gold : 'transparent',
               }}>
-                <PencilIcon size={14} color={editing ? colors.ink : colors.inactive} />
+                <PencilIcon size={14} color={editing ? colors.onGold : colors.inactive} />
               </Pressable>
             </View>
             <Mono size={15} color={colors.ink}>{sessionsComplete}/{daySessions.length}</Mono>
@@ -264,7 +266,7 @@ export default function ProgressScreen() {
                         <Svg key={j} width={12} height={12} viewBox="0 0 24 24">
                           <Circle
                             cx={12} cy={12} r={9} strokeWidth={3.6}
-                            fill={j < lit ? 'rgba(21,122,110,0.25)' : 'none'}
+                            fill={j < lit ? colors.tealWash : 'none'}
                             stroke={j < lit ? colors.teal : colors.border}
                           />
                         </Svg>

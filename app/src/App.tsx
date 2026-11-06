@@ -6,7 +6,7 @@ import {
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import { AppState, ScrollView, Text, View } from 'react-native';
+import { AppState, ScrollView, Text, View, useColorScheme } from 'react-native';
 import {
   useFonts,
   InstrumentSans_400Regular,
@@ -15,7 +15,7 @@ import {
 } from '@expo-google-fonts/instrument-sans';
 import { Newsreader_400Regular_Italic, Newsreader_500Medium_Italic } from '@expo-google-fonts/newsreader';
 import { SplineSansMono_400Regular, SplineSansMono_500Medium } from '@expo-google-fonts/spline-sans-mono';
-import { colors } from './theme';
+import { applyPalette, colors, type ColorMode } from './theme';
 import { useStore } from './store';
 import { isLiveMode } from './api/supabase';
 import { restoreSession } from './api/auth';
@@ -76,10 +76,19 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 /** Lets the mini player — which lives outside the navigator — open the Player. */
 export const navRef = createNavigationContainerRef<RootStackParamList>();
 
-const navTheme = {
+/**
+ * Built at render, not import — it reads the live palette, which dark mode
+ * swaps (Nov 6). A module-level object froze the light canvas behind every
+ * screen transition.
+ */
+const navThemeFor = (dark: boolean) => ({
   ...DefaultTheme,
-  colors: { ...DefaultTheme.colors, background: colors.cream },
-};
+  dark,
+  colors: {
+    ...DefaultTheme.colors,
+    background: colors.cream, card: colors.cream, text: colors.ink, border: colors.border,
+  },
+});
 
 /** Shows crashes readably instead of a silent white screen (published bundles hide errors). */
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: Error | null }> {
@@ -102,6 +111,33 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { err
 
 function Root() {
   const hydrate = useStore(s => s.hydrate);
+
+  /*
+    DARK MODE (Nov 6). Resolve Light / Dark / System to a mode, swap the
+    palette in place, and remount the NAVIGATOR — not the app — so every
+    screen repaints from the new `colors`. AudioSessionProvider sits above
+    this, so a session keeps playing through the switch, and the navigation
+    state is captured first and handed back, so the user stays exactly where
+    they were (in Settings, usually).
+
+    Swapped during render, deliberately: children rendered in this same pass
+    must already see the new palette, or the first frame paints half old.
+  */
+  const appearance = useStore(s => s.appearance);
+  const appearanceLoaded = useStore(s => s.appearanceLoaded);
+  const systemScheme = useColorScheme();
+  const mode: ColorMode = appearance === 'system'
+    ? (systemScheme === 'dark' ? 'dark' : 'light')
+    : appearance;
+  const appliedModeRef = React.useRef<ColorMode>('light');
+  const themeKeyRef = React.useRef(0);
+  const navStateRef = React.useRef<ReturnType<typeof navRef.getRootState> | undefined>(undefined);
+  if (appliedModeRef.current !== mode) {
+    if (navRef.isReady()) navStateRef.current = navRef.getRootState();
+    applyPalette(mode);
+    appliedModeRef.current = mode;
+    themeKeyRef.current += 1;
+  }
   const session = useAudioSession();
   const [route, setRoute] = React.useState('');
   /**
@@ -198,19 +234,21 @@ function Root() {
   }, []);
 
   // Proceed on font error too — system fonts beat a stuck splash.
-  if ((!fontsLoaded && !fontError) || authState === 'checking') {
+  if ((!fontsLoaded && !fontError) || authState === 'checking' || !appearanceLoaded) {
     return <View style={{ flex: 1, backgroundColor: colors.cream }} />;
   }
 
   return (
     <NavigationContainer
+      key={themeKeyRef.current}
       ref={navRef}
-      theme={navTheme}
+      initialState={navStateRef.current}
+      theme={navThemeFor(mode === 'dark')}
       onStateChange={syncRoute}
       onReady={syncRoute}
     >
       <View style={{ flex: 1 }}>
-      <StatusBar style="dark" />
+      <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
       <Stack.Navigator
         initialRouteName={authState === 'in' ? 'Main' : 'Intro'}
         screenOptions={{ headerShown: false, animation: 'fade', animationDuration: 400 }}
