@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Pressable, ScrollView } from 'react-native';
+import { View, Text, Pressable, ScrollView, useColorScheme } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
@@ -71,6 +71,9 @@ function Row({ label, value, valueColor, chevron, last, onPress }: {
 function AppearanceRow() {
   const appearance = useStore(s => s.appearance);
   const setAppearance = useStore(s => s.setAppearance);
+  // What System resolves to right now — shown so it's visible at a glance
+  // whether the phone's setting is actually reaching the app.
+  const phone = useColorScheme() === 'dark' ? 'Dark' : 'Light';
   const opts: { key: Appearance; label: string }[] = [
     { key: 'light', label: 'Light' },
     { key: 'dark', label: 'Dark' },
@@ -81,7 +84,14 @@ function AppearanceRow() {
       flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
       paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: colors.borderSoft,
     }}>
-      <Text style={{ fontFamily: fonts.sans, fontSize: 14.5, color: colors.ink }}>Appearance</Text>
+      <View>
+        <Text style={{ fontFamily: fonts.sans, fontSize: 14.5, color: colors.ink }}>Appearance</Text>
+        {appearance === 'system' && (
+          <Text style={{ fontFamily: fonts.sans, fontSize: 12, color: colors.warmGray, marginTop: 2 }}>
+            Following your phone · {phone}
+          </Text>
+        )}
+      </View>
       <View style={{ flexDirection: 'row', backgroundColor: colors.borderSoft, borderRadius: 16, padding: 3 }}>
         {opts.map(o => {
           const on = appearance === o.key;
@@ -157,6 +167,14 @@ export default function SettingsScreen() {
         {/* Stage 2 diagnostic — shows whether this bundle carries Supabase config */}
         <Text style={{ textAlign: 'center', fontFamily: fonts.sans, fontSize: 12, color: colors.inactive, marginTop: 20 }}>
           Auth: {isLiveMode ? 'Live (Supabase)' : 'Mock'} · Intake: {apiLive ? 'Live (Spark)' : 'Mock'}
+        </Text>
+        {/* Which update this phone is running (Nov 6). Expo Go downloads an
+            update in the background and applies it on a LATER launch, so
+            "I merged it and nothing changed" has cost three round-trips —
+            compare this against the merge commit on GitHub. Local dev reads
+            "dev" because the variable is only set by the publish workflow. */}
+        <Text style={{ textAlign: 'center', fontFamily: fonts.mono, fontSize: 11, color: colors.inactive, marginTop: 6 }}>
+          Build {(process.env.EXPO_PUBLIC_BUILD_SHA ?? 'dev').slice(0, 7)}
         </Text>
       </ScrollView>
     </Animated.View>
